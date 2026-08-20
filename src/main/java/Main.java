@@ -1,10 +1,10 @@
-/** Application entry point and greeting */
+/** Application entry point and greeting. */
 public final class Main {
     private Main() {
     }
 
     /**
-     * Starts the application
+     * Starts the application.
      *
      * @param args command-line arguments
      */
@@ -13,7 +13,7 @@ public final class Main {
     }
 
     /**
-     * Returns the application's greeting
+     * Returns the application's greeting.
      *
      * @return the greeting text
      */
