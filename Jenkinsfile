@@ -18,21 +18,20 @@ pipeline{
         }
         stage ('test') {
             steps {
-                sh 'mvn test'
-                archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                sh 'mvn package'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
         stage ('coverage') {
             steps {
                 sh 'mvn jacoco:report'
-                archiveArtifacts artifacts: 'target/site/jacoco/**'
+                archiveArtifacts artifacts: 'target/site/jacoco/**/*', fingerprint: true
             }
         }
         stage ('static analysis')
         {
             steps {
                 sh 'mvn checkstyle:check'
-                archiveArtifacts artifacts: 'target/site/checkstyle.html'
             }
         }
     }
