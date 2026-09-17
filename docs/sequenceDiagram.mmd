@@ -1,0 +1,66 @@
+sequenceDiagram
+	actor Buyer
+	actor Seller
+	Participant MD as Market Data Stream 
+	Participant P as Platform
+	Participant BE as Backend
+	Participant DB as Database
+	Participant SE as Settlement Engine (Order Book)
+	Participant R as Redis
+	Participant D as Dashboard
+	
+	MD -->> P: Price Snapshot
+	P -->> Buyer: Show Current Price
+	P -->> Seller: Show Current Price
+
+	Buyer ->> P: Place Buy Order
+	P ->> BE: Submit Buy Order
+	BE ->> DB: Log the intent for transaction
+	BE ->> DB: Record the transaction
+
+	Seller ->> P: Place Sell Order
+	P ->> BE: Submit Sell Order
+	BE ->> DB: Log the intent for transaction
+	BE ->> DB: Record the transaction
+	
+	BE ->> DB: Check holdings for Buyer/Seller
+	DB -->> BE: Holdings Overview
+
+	alt Insufficent funds or holdings
+		BE ->> DB: Update the status to insufficent assets
+		BE ->> DB: Log the status
+		BE --> P: Order Rejected
+		
+		alt Buyer lacks funds:
+			P -->> Buyer: Notify insufficent funds
+		else Seller lacks assets
+			p -->> Seller: Notify insufficent assets
+		end
+		
+	else Sufficent funds/holdings
+		BE ->> SE: Send orders to the order book
+		Note over SE: Batch Processing, we process it at end of day
+		
+		alt Orders matched
+			SE -->> BE: Match the buyer with seller
+			BE ->> DB: Log the people who were a part of the transaction
+			BE ->> DB: Update the status field for the transaction
+			BE ->> DB: Log the overall transaction for it being matched
+			SE -->> BE: Settlement Confirmed
+			BE ->> DB: Update the holdings
+			BE ->> DB: Change the status to complete
+			BE ->> DB: Log the overall transaction for it being compeleted
+			BE ->> R: Referesh Cache
+			BE -->> P: Trade complete
+			P -->> Buyer: Confirmation Message for oompletion
+			P -->> Seller: Confirmation Message for completion
+		else No match by 4pm
+			SE -->> BE: Not executed
+			BE ->> DB: Update the status to match failed
+ 			BE ->> DB: Log the transactionf as a match failed
+			BE -->> P: Order expired
+			P -->> Buyer: Notify the user that order didn't execute
+			P -->> Seller: Notify the user that order didn't execute
+		end
+	end
+	
