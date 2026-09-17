@@ -1,0 +1,78 @@
+
+sequenceDiagram
+	actor Buyer
+	actor Seller
+	participant P as Platform
+	participant MD as Market Data Stream 
+	participant BE as Backend
+	participant DB as Database
+	participant SE as Settlement Engine (Order Book)
+	participant R as Redis
+	participant D as Dashboard
+	
+	MD -->> P: Price Stream
+	P -->> Buyer: Show Current Price
+	P -->> Seller: Show Current Price
+
+	Buyer ->> P: Place Buy Order (with price and quantity)
+	P ->> BE: Submit Buy Order
+	BE ->> DB: Log the intent for transaction
+	BE ->> DB: Record the transaction
+	BE ->> DB: Check Buyer Funds
+	DB -->> BE: Funds Confirmation
+
+	Seller ->> P: Place Sell Order (with price and quantity)
+	P ->> BE: Submit Sell Order
+	BE ->> DB: Log the intent for transaction
+	BE ->> DB: Record the transaction
+	BE ->> DB: Check Seller Holdings
+	DB -->> BE: Holdings Confirmation
+	
+
+	alt Insufficent funds or holdings
+		rect rgb(255, 182, 193)
+		Note over BE,DB: Rejection Path (Red)
+		BE ->> DB: Update the status to insufficent assets
+		BE ->> DB: Log the status
+		BE -->> P: Order Rejected
+		
+		alt Buyer lacks funds
+			P -->> Buyer: Notify insufficent funds
+		else Seller lacks assets
+			P -->> Seller: Notify insufficent assets
+		end
+		end
+		
+	else Sufficent funds/holdings
+		rect rgb(144, 238, 144)
+		Note over BE,SE: Approval Path (Green)
+		BE ->> SE: Send orders to the order book
+		Note over SE: Batch Processing, we process it at end of day
+		
+		alt Orders matched
+			SE -->> BE: Match the buyer with seller
+			SE -->> BE: Settlement Confirmed
+			BE ->> DB: Log the people who were a part of the transaction
+			BE ->> DB: Update the status field for the transaction
+			BE ->> DB: Log the overall transaction as matched
+			BE ->> DB: Update the holdings
+			BE ->> DB: Change the status to complete
+			BE ->> DB: Log the overall transaction for it being compeleted
+			BE ->> R: Refresh Cache
+			BE -->> P: Trade complete
+			P -->> Buyer: Confirmation Message for completion
+			P -->> Seller: Confirmation Message for completion
+		else No match by 4pm
+			rect rgb(255, 255, 153)
+			Note over SE,BE: Expired Path (Yellow)
+			BE ->> SE: 4pm Expiration (Clear Books)
+			SE -->> BE: Confirmation
+			BE ->> DB: Update the status to match failed
+ 			BE ->> DB: Log the transaction as a match failed
+			BE -->> P: Order expired
+			P -->> Buyer: Notify the user that order didn't execute
+			P -->> Seller: Notify the user that order didn't execute
+			end
+		end
+		end
+	end

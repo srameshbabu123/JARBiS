@@ -20,5 +20,5 @@ public final class Main {
     public static String getGreeting() {
         return "Hello World, this is Team JARBiS. We are creating our project "
                 + "skeleton as part of Sprint 1";
-    }
+    } 
 }
