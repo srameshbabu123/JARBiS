@@ -7,7 +7,8 @@ CREATE TABLE users (
 
 CREATE TABLE account (
     account_id INT PRIMARY KEY,
-    account_type VARCHAR(50) NOT NULL
+    account_type VARCHAR(50) NOT NULL,
+    currency VARCHAR(100) CHECK (currency IN ('USD', 'EURO', 'INR')) NOT NULL
 );
 
 CREATE TABLE user_account (
