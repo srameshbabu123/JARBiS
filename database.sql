@@ -8,7 +8,8 @@ CREATE TABLE users (
 CREATE TABLE account (
     account_id INT PRIMARY KEY,
     account_type VARCHAR(50) NOT NULL,
-    currency VARCHAR(100) CHECK (currency IN ('USD', 'EURO', 'INR')) NOT NULL
+    currency VARCHAR(100) CHECK (currency IN ('USD', 'EURO', 'INR')) NOT NULL,
+    risk_level VARCHAR(50) CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH')) NOT NULL
 );
 
 CREATE TABLE user_account (
@@ -70,13 +71,13 @@ INSERT INTO users (user_id, first_name, last_name, email) VALUES
 (100000005, 'Ethan', 'Davis', 'ethan.davis@gmail.com'),
 (100000006, 'Fiona', 'Miller', 'fiona.miller@gmail.com');
 
-INSERT INTO account (account_id, account_type) VALUES
-(101, 'Brokerage'),
-(102, 'Retirement'),
-(103, 'Savings'),
-(104, 'Investment'),
-(105, 'Trading');
-
+INSERT INTO account (account_id, account_type, currency, risk_level) VALUES
+(101, 'Brokerage', 'USD', 'LOW'),
+(102, 'Retirement', 'EURO', 'MEDIUM'),
+(103, 'Savings', 'INR', 'HIGH'),
+(104, 'Investment', 'USD', 'MEDIUM'),
+(105, 'Trading', 'EURO', 'LOW'),
+(106, 'Retirement', 'USD', 'MEDIUM');
 
 INSERT INTO user_account (user_id, account_id) VALUES
 (100000001, 101),
