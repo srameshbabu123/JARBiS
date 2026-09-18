@@ -33,6 +33,14 @@ CREATE TABLE holdings (
     FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
 );
 
+CREATE TABLE account_holdings (
+    account_id INT NOT NULL,
+    holding_id INT NOT NULL,
+    PRIMARY KEY (account_id, holding_id),
+    FOREIGN KEY (account_id) REFERENCES account(account_id),
+    FOREIGN KEY (holding_id) REFERENCES holdings(holding_id)
+);
+
 CREATE TABLE transactions (
     transaction_id INT PRIMARY KEY,
     asset_id VARCHAR(100) NOT NULL,
