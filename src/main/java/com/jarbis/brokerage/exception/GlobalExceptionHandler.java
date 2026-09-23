@@ -58,6 +58,56 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle TransactionNotFoundException - returns 404 Not Found.
+     */
+    @ExceptionHandler(TransactionNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleTransactionNotFound(
+            TransactionNotFoundException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /**
+     * Handle OrderNotFoundException - returns 404 Not Found.
+     */
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleOrderNotFound(
+            OrderNotFoundException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /**
+     * Handle EmptyTransactionException - returns 400 Bad Request.
+     */
+    @ExceptionHandler(EmptyTransactionException.class)
+    public ResponseEntity<Map<String, Object>> handleEmptyTransaction(
+            EmptyTransactionException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Handle TransactionExecutionException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(TransactionExecutionException.class)
+    public ResponseEntity<Map<String, Object>> handleTransactionExecution(
+            TransactionExecutionException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * Handle OrderExecutionException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(OrderExecutionException.class)
+    public ResponseEntity<Map<String, Object>> handleOrderExecution(
+            OrderExecutionException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
      * Handle generic IllegalArgumentException - returns 400 Bad Request.
      */
     @ExceptionHandler(IllegalArgumentException.class)

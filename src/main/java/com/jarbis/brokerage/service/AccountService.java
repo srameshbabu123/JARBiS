@@ -231,7 +231,7 @@ public class AccountService {
      * Buy an asset with funds from the account.
      * Validates sufficient balance and updates holdings.
      */
-    public Holding buyAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
+    public void buyAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
@@ -272,14 +272,13 @@ public class AccountService {
         }
 
         accountRepository.save(account);
-        return holding;
     }
 
     /**
      * Sell an asset from the account.
      * Validates sufficient holdings and credits balance.
      */
-    public Double sellAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
+    public void sellAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
@@ -318,6 +317,5 @@ public class AccountService {
         account.setBalance(account.getBalance() + proceeds);
 
         accountRepository.save(account);
-        return proceeds;
     }
 }
