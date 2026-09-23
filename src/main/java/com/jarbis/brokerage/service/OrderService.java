@@ -1,11 +1,14 @@
 package com.jarbis.brokerage.service;
 
 import com.jarbis.brokerage.entity.Asset;
+import com.jarbis.brokerage.entity.Account;
 import com.jarbis.brokerage.entity.Order;
 import com.jarbis.brokerage.entity.Transaction;
-import com.jarbis.brokerage.entity.User;
 import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.OrderStatus;
+import com.jarbis.brokerage.exception.InvalidAmountException;
+import com.jarbis.brokerage.exception.InvalidOrderRequestException;
+import com.jarbis.brokerage.exception.InvalidOrderStateException;
 import com.jarbis.brokerage.exception.OrderExecutionException;
 import com.jarbis.brokerage.exception.OrderNotFoundException;
 import com.jarbis.brokerage.repository.OrderRepository;
@@ -38,45 +41,45 @@ public class OrderService {
     // ==================== Order Creation ====================
 
     /**
-     * Create a new order for a user.
+     * Create a new order for an account.
      *
      * @param asset the asset being traded
-     * @param owner the user placing the order
+     * @param account the account placing the order
      * @param status the initial order status
      * @param side the order side (BUY or SELL)
      * @param quantity the quantity to trade
      * @param price the price per unit
      * @return the created order
      */
-    public Order createOrder(Asset asset, User owner, OrderStatus status, 
-                            com.jarbis.brokerage.enums.OrderSide side, 
-                            Double quantity, Double price) {
+    public Order createOrder(Asset asset, Account account, OrderStatus status,
+                             OrderSide side, Double quantity, Double price) {
         if (asset == null) {
-            throw new IllegalArgumentException("Asset cannot be null");
+            throw new InvalidOrderRequestException("Asset cannot be null");
         }
-        if (owner == null) {
-            throw new IllegalArgumentException("Owner cannot be null");
+        if (account == null) {
+            throw new InvalidOrderRequestException("Account cannot be null");
         }
         if (status == null) {
-            throw new IllegalArgumentException("Status cannot be null");
+            throw new InvalidOrderRequestException("Status cannot be null");
         }
         if (side == null) {
-            throw new IllegalArgumentException("Order side cannot be null");
+            throw new InvalidOrderRequestException("Order side cannot be null");
         }
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than 0");
+            throw new InvalidAmountException("Quantity must be greater than 0");
         }
         if (price == null || price <= 0) {
-            throw new IllegalArgumentException("Price must be greater than 0");
+            throw new InvalidAmountException("Price must be greater than 0");
         }
 
-        userService.verifyUserExists(owner.getId());
+        Account persistedAccount = accountService.getAccountById(account.getId());
 
-        Order order = new Order(asset, owner, status);
+        Order order = new Order(asset, persistedAccount, status);
         order.setSide(side);
         order.setQuantity(quantity);
         order.setPrice(price);
-        
+        persistedAccount.addOrder(order);
+
         return orderRepository.save(order);
     }
 
@@ -84,15 +87,15 @@ public class OrderService {
      * Create a new PENDING order.
      *
      * @param asset the asset being traded
-     * @param owner the user placing the order
+     * @param account the account placing the order
      * @param side the order side (BUY or SELL)
      * @param quantity the quantity to trade
      * @param price the price per unit
      * @return the created order
      */
-    public Order createPendingOrder(Asset asset, User owner, 
+    public Order createPendingOrder(Asset asset, Account account,
                                     OrderSide side, Double quantity, Double price) {
-        return createOrder(asset, owner, OrderStatus.PENDING, side, quantity, price);
+        return createOrder(asset, account, OrderStatus.PENDING, side, quantity, price);
     }
 
     // ==================== Order Retrieval ====================
@@ -127,7 +130,7 @@ public class OrderService {
      */
     public List<Order> getOrdersByUser(Long userId) {
         userService.verifyUserExists(userId);
-        return orderRepository.findByOwnerId(userId);
+        return orderRepository.findByAccountOwnerId(userId);
     }
 
     /**
@@ -176,7 +179,18 @@ public class OrderService {
      */
     public List<Order> getOrdersByUserAndStatus(Long userId, OrderStatus status) {
         userService.verifyUserExists(userId);
-        return orderRepository.findByOwnerIdAndStatus(userId, status);
+        return orderRepository.findByAccountOwnerIdAndStatus(userId, status);
+    }
+
+    /**
+     * Get all orders for a specific account.
+     *
+     * @param accountId the account ID
+     * @return list of orders for the account
+     */
+    public List<Order> getOrdersByAccount(Long accountId) {
+        accountService.getAccountById(accountId);
+        return orderRepository.findByAccountId(accountId);
     }
 
     /**
@@ -210,7 +224,7 @@ public class OrderService {
      */
     public Order updateOrderStatus(Long orderId, OrderStatus newStatus) {
         if (newStatus == null) {
-            throw new IllegalArgumentException("Status cannot be null");
+            throw new InvalidOrderRequestException("Status cannot be null");
         }
 
         Order order = getOrderById(orderId);
@@ -238,7 +252,7 @@ public class OrderService {
     public Order cancelOrder(Long orderId) {
         Order order = getOrderById(orderId);
         if (order.getStatus() == OrderStatus.COMPLETED) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Cannot cancel a completed order");
         }
         return updateOrderStatus(orderId, OrderStatus.CANCELLED);
@@ -254,31 +268,20 @@ public class OrderService {
      */
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         if (currentStatus == OrderStatus.COMPLETED) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Cannot transition from COMPLETED status");
         }
         if (currentStatus == OrderStatus.CANCELLED) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Cannot transition from CANCELLED status");
         }
         if (currentStatus == newStatus) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Order is already in " + newStatus + " status");
         }
     }
 
     // ==================== Order Validation ====================
-
-    /**
-     * Check if an order is in a terminal state (COMPLETED or CANCELLED).
-     *
-     * @param order the order
-     * @return true if order is terminal
-     */
-    public boolean isOrderTerminal(Order order) {
-        return order.getStatus() == OrderStatus.COMPLETED 
-                || order.getStatus() == OrderStatus.CANCELLED;
-    }
 
     /**
      * Check if an order can be executed (still PENDING).
@@ -291,16 +294,6 @@ public class OrderService {
     }
 
     /**
-     * Check if an order can be cancelled (still PENDING).
-     *
-     * @param order the order
-     * @return true if order can be cancelled
-     */
-    public boolean canOrderBeCancelled(Order order) {
-        return order.getStatus() == OrderStatus.PENDING;
-    }
-
-    /**
      * Check if an order belongs to a specific user.
      *
      * @param orderId the order ID
@@ -309,7 +302,7 @@ public class OrderService {
      */
     public boolean orderBelongsToUser(Long orderId, Long userId) {
         Order order = getOrderById(orderId);
-        return order.getOwner().getId().equals(userId);
+        return order.getAccount().getOwner().getId().equals(userId);
     }
 
     // ==================== Order Management ====================
@@ -347,30 +340,10 @@ public class OrderService {
     public void deleteOrder(Long orderId) {
         Order order = getOrderById(orderId);
         if (order.getStatus() == OrderStatus.COMPLETED) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Cannot delete a completed order");
         }
         orderRepository.delete(order);
-    }
-
-    /**
-     * Get count of orders for a user.
-     *
-     * @param userId the user ID
-     * @return the count of orders
-     */
-    public Long getOrderCountByUser(Long userId) {
-        return (long) getOrdersByUser(userId).size();
-    }
-
-    /**
-     * Get count of pending orders for a user.
-     *
-     * @param userId the user ID
-     * @return the count of pending orders
-     */
-    public Long getPendingOrderCountByUser(Long userId) {
-        return (long) getOrdersByUserAndStatus(userId, OrderStatus.PENDING).size();
     }
 
     // ==================== Order Execution ====================
@@ -391,7 +364,7 @@ public class OrderService {
             throw new OrderExecutionException("Order is not in PENDING status and cannot be executed");
         }
 
-        Long accountId = order.getOwner().getId();
+        Long accountId = order.getAccount().getId();
         Asset asset = order.getAsset();
         Double quantity = order.getQuantity();
         Double price = order.getPrice();

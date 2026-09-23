@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 @Table(name = "assets")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "asset_type", discriminatorType = DiscriminatorType.STRING)
-public abstract class Asset implements AssetInterface {
+public abstract class Asset {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,18 +30,14 @@ public abstract class Asset implements AssetInterface {
         return id;
     }
 
-    @Override
     public String getName() {
         return name;
     }
 
-    @Override
     public Double getPrice() {
         return price;
     }
 
-    @Override
     public abstract AssetType getType();
 }
-
 

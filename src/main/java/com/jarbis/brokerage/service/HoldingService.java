@@ -33,17 +33,6 @@ public class HoldingService {
         return currentPrice * holding.getQuantity();
     }
 
-    /**
-     * Calculate the market value by holding ID.
-     *
-     * @param holding the holding
-     * @return the current market value
-     */
-    public Double getMarketValueById(Holding holding) {
-        Double currentPrice = marketDataClient.getCurrentPriceById(holding.getAsset().getId());
-        return currentPrice * holding.getQuantity();
-    }
-
     // ==================== Cost Basis ====================
 
     /**
@@ -87,19 +76,6 @@ public class HoldingService {
         return (unrealizedPnL / costBasis) * 100;
     }
 
-    // ==================== Gain/Loss ====================
-
-    /**
-     * Calculate the total gain (profit) or loss for a holding.
-     * Same as unrealized PnL but named for clarity.
-     *
-     * @param holding the holding
-     * @return the gain/loss amount
-     */
-    public Double computeGainOrLoss(Holding holding) {
-        return computeUnrealizedPnL(holding);
-    }
-
     /**
      * Check if the holding is profitable (unrealized PnL > 0).
      *
@@ -110,17 +86,4 @@ public class HoldingService {
         return computeUnrealizedPnL(holding) > 0;
     }
 
-    // ==================== Return on Investment ====================
-
-    /**
-     * Calculate the return on investment (ROI) percentage for a holding.
-     * Formula: (Unrealized PnL / Cost Basis) * 100
-     *
-     * @param holding the holding
-     * @return the ROI percentage
-     */
-    public Double computeROI(Holding holding) {
-        return computeUnrealizedPnLPercentage(holding);
-    }
 }
-

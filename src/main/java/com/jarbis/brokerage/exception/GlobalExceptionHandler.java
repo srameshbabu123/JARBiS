@@ -58,6 +58,86 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle InvalidAmountException - returns 400 Bad Request.
+     */
+    @ExceptionHandler(InvalidAmountException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidAmount(
+            InvalidAmountException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Handle AccountCurrencyMismatchException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(AccountCurrencyMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountCurrencyMismatch(
+            AccountCurrencyMismatchException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * Handle AccountClosureException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(AccountClosureException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountClosure(
+            AccountClosureException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * Handle InsufficientHoldingException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(InsufficientHoldingException.class)
+    public ResponseEntity<Map<String, Object>> handleInsufficientHolding(
+            InsufficientHoldingException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * Handle InvalidCredentialsException - returns 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCredentials(
+            InvalidCredentialsException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * Handle InvalidOrderRequestException - returns 400 Bad Request.
+     */
+    @ExceptionHandler(InvalidOrderRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOrderRequest(
+            InvalidOrderRequestException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Handle InvalidOrderStateException - returns 409 Conflict.
+     */
+    @ExceptionHandler(InvalidOrderStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOrderState(
+            InvalidOrderStateException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /**
+     * Handle MarketDataUnavailableException - returns 503 Service Unavailable.
+     */
+    @ExceptionHandler(MarketDataUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleMarketDataUnavailable(
+            MarketDataUnavailableException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    /**
      * Handle TransactionNotFoundException - returns 404 Not Found.
      */
     @ExceptionHandler(TransactionNotFoundException.class)

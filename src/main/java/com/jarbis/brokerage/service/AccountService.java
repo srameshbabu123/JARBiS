@@ -1,11 +1,21 @@
 package com.jarbis.brokerage.service;
 
-import com.jarbis.brokerage.entity.*;
+import com.jarbis.brokerage.entity.Account;
+import com.jarbis.brokerage.entity.Asset;
+import com.jarbis.brokerage.entity.Holding;
+import com.jarbis.brokerage.entity.Order;
+import com.jarbis.brokerage.entity.User;
 import com.jarbis.brokerage.enums.AccountType;
 import com.jarbis.brokerage.enums.Currency;
+import com.jarbis.brokerage.exception.AccountClosureException;
+import com.jarbis.brokerage.exception.AccountCurrencyMismatchException;
 import com.jarbis.brokerage.exception.AccountNotFoundException;
+import com.jarbis.brokerage.exception.InvalidAmountException;
 import com.jarbis.brokerage.exception.InsufficientBalanceException;
+import com.jarbis.brokerage.exception.InsufficientHoldingException;
+import com.jarbis.brokerage.exception.UserNotFoundException;
 import com.jarbis.brokerage.repository.AccountRepository;
+import com.jarbis.brokerage.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +31,15 @@ import java.util.List;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final UserService userService;
+    private final UserRepository userRepository;
+    private final HoldingService holdingService;
 
     @Autowired
-    public AccountService(AccountRepository accountRepository, UserService userService) {
+    public AccountService(AccountRepository accountRepository, UserRepository userRepository,
+                          HoldingService holdingService) {
         this.accountRepository = accountRepository;
-        this.userService = userService;
+        this.userRepository = userRepository;
+        this.holdingService = holdingService;
     }
 
     // ==================== CRUD Operations ====================
@@ -34,11 +47,19 @@ public class AccountService {
     /**
      * Create a new trading account for a user.
      */
-    public Account createAccount(Long userId, AccountType accountType, Currency currency, Double initialBalance) {
-        userService.verifyUserExists(userId);
-        User user = userService.getUserOrThrow(userId);
+    public Account createAccount(Long userId, AccountType accountType, Currency currency) {
+        return createAccount(userId, accountType, currency, 0.0);
+    }
 
-        Account account = new Account(accountType, currency, initialBalance, user);
+    /**
+     * Create a new trading account for a user with an explicit initial balance.
+     */
+    public Account createAccount(Long userId, AccountType accountType, Currency currency, Double initialBalance) {
+        User user = getUserOrThrow(userId);
+        Double startingBalance = (initialBalance != null) ? initialBalance : 0.0;
+
+        Account account = new Account(accountType, currency, startingBalance, user);
+        user.addAccount(account);
         return accountRepository.save(account);
     }
 
@@ -54,8 +75,22 @@ public class AccountService {
      * Get all accounts for a specific user.
      */
     public List<Account> getAccountsByUser(Long userId) {
-        userService.verifyUserExists(userId);
+        verifyUserExists(userId);
         return accountRepository.findByOwnerId(userId);
+    }
+
+    /**
+     * Get a specific account for a specific user.
+     */
+    public Account getAccountByUser(Long userId, Long accountId) {
+        verifyUserExists(userId);
+        Account account = getAccountById(accountId);
+
+        if (!account.getOwner().getId().equals(userId)) {
+            throw new AccountNotFoundException("Account not found with id: " + accountId);
+        }
+
+        return account;
     }
 
     /**
@@ -93,7 +128,7 @@ public class AccountService {
      * Get accounts for a user filtered by account type.
      */
     public List<Account> getAccountsByUserAndType(Long userId, AccountType accountType) {
-        userService.verifyUserExists(userId);
+        verifyUserExists(userId);
         return accountRepository.findByOwnerIdAndAccountType(userId, accountType);
     }
 
@@ -101,7 +136,7 @@ public class AccountService {
      * Get accounts for a user filtered by currency.
      */
     public List<Account> getAccountsByUserAndCurrency(Long userId, Currency currency) {
-        userService.verifyUserExists(userId);
+        verifyUserExists(userId);
         return accountRepository.findByOwnerIdAndCurrency(userId, currency);
     }
 
@@ -120,7 +155,7 @@ public class AccountService {
      */
     public Account deposit(Long accountId, Double amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be greater than 0");
+            throw new InvalidAmountException("Deposit amount must be greater than 0");
         }
 
         Account account = getAccountById(accountId);
@@ -133,7 +168,7 @@ public class AccountService {
      */
     public Account withdraw(Long accountId, Double amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Withdrawal amount must be greater than 0");
+            throw new InvalidAmountException("Withdrawal amount must be greater than 0");
         }
 
         Account account = getAccountById(accountId);
@@ -152,14 +187,14 @@ public class AccountService {
      */
     public void transferFunds(Long fromAccountId, Long toAccountId, Double amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Transfer amount must be greater than 0");
+            throw new InvalidAmountException("Transfer amount must be greater than 0");
         }
 
         Account fromAccount = getAccountById(fromAccountId);
         Account toAccount = getAccountById(toAccountId);
 
         if (!fromAccount.getCurrency().equals(toAccount.getCurrency())) {
-            throw new IllegalArgumentException(
+            throw new AccountCurrencyMismatchException(
                     "Cannot transfer between different currencies. From: " + fromAccount.getCurrency() 
                     + ", To: " + toAccount.getCurrency());
         }
@@ -204,24 +239,32 @@ public class AccountService {
         Account account = getAccountById(accountId);
 
         if (account.getBalance() != 0) {
-            throw new IllegalArgumentException(
+            throw new AccountClosureException(
                     "Cannot close account with non-zero balance. Current balance: " + account.getBalance());
         }
 
         if (!account.getHoldings().isEmpty()) {
-            throw new IllegalArgumentException("Cannot close account with active holdings");
+            throw new AccountClosureException("Cannot close account with active holdings");
         }
 
         deleteAccount(accountId);
     }
 
     /**
-     * Get the total value of all holdings in an account (requires asset price).
+     * Close an account after validating that it belongs to the given user.
+     */
+    public void closeAccount(Long userId, Long accountId) {
+        getAccountByUser(userId, accountId);
+        closeAccount(accountId);
+    }
+
+    /**
+     * Get the total portfolio value of an account using current market prices.
      */
     public Double getAccountPortfolioValue(Long accountId) {
         Account account = getAccountById(accountId);
         return account.getBalance() + account.getHoldings().stream()
-                .mapToDouble(holding -> holding.getQuantity() * holding.getAsset().getPrice())
+                .mapToDouble(holdingService::getMarketValue)
                 .sum();
     }
 
@@ -233,11 +276,11 @@ public class AccountService {
      */
     public void buyAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than 0");
+            throw new InvalidAmountException("Quantity must be greater than 0");
         }
 
         if (pricePerUnit <= 0) {
-            throw new IllegalArgumentException("Price per unit must be greater than 0");
+            throw new InvalidAmountException("Price per unit must be greater than 0");
         }
 
         Account account = getAccountById(accountId);
@@ -267,8 +310,8 @@ public class AccountService {
             holding.setAveragePrice(newAveragePrice);
         } else {
             // Create new holding
-            holding = new Holding(asset, quantity, pricePerUnit);
-            account.getHoldings().add(holding);
+            holding = new Holding(account, asset, quantity, pricePerUnit);
+            account.addHolding(holding);
         }
 
         accountRepository.save(account);
@@ -280,11 +323,11 @@ public class AccountService {
      */
     public void sellAsset(Long accountId, Asset asset, Double quantity, Double pricePerUnit) {
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than 0");
+            throw new InvalidAmountException("Quantity must be greater than 0");
         }
 
         if (pricePerUnit <= 0) {
-            throw new IllegalArgumentException("Price per unit must be greater than 0");
+            throw new InvalidAmountException("Price per unit must be greater than 0");
         }
 
         Account account = getAccountById(accountId);
@@ -297,7 +340,7 @@ public class AccountService {
 
         if (holding == null || holding.getQuantity() < quantity) {
             Double availableQuantity = (holding != null) ? holding.getQuantity() : 0.0;
-            throw new IllegalArgumentException(
+            throw new InsufficientHoldingException(
                     "Insufficient holdings to sell. Available: " + availableQuantity 
                     + ", Requested: " + quantity);
         }
@@ -308,7 +351,7 @@ public class AccountService {
         // Update holding quantity
         Double remainingQuantity = holding.getQuantity() - quantity;
         if (remainingQuantity <= 0) {
-            account.getHoldings().remove(holding);
+            account.removeHolding(holding);
         } else {
             holding.setQuantity(remainingQuantity);
         }
@@ -317,5 +360,16 @@ public class AccountService {
         account.setBalance(account.getBalance() + proceeds);
 
         accountRepository.save(account);
+    }
+
+    private void verifyUserExists(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new UserNotFoundException("User not found with id: " + userId);
+        }
+    }
+
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
     }
 }

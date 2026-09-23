@@ -10,7 +10,12 @@ public class Holding {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
+
+    @ManyToOne
+    @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
 
     @Column(nullable = false)
@@ -23,7 +28,8 @@ public class Holding {
 
     public Holding() {}
 
-    public Holding(Asset asset, Double quantity, Double averagePrice) {
+    public Holding(Account account, Asset asset, Double quantity, Double averagePrice) {
+        this.account = account;
         this.asset = asset;
         this.quantity = quantity;
         this.averagePrice = averagePrice;
@@ -37,6 +43,10 @@ public class Holding {
 
     public Asset getAsset() {
         return asset;
+    }
+
+    public Account getAccount() {
+        return account;
     }
 
     public Double getQuantity() {
@@ -53,5 +63,9 @@ public class Holding {
 
     public void setAveragePrice(Double averagePrice) {
         this.averagePrice = averagePrice;
+    }
+
+    public void setAccount(Account account) {
+        this.account = account;
     }
 }

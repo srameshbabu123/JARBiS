@@ -24,12 +24,15 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final OrderService orderService;
+    private final TransactionFailureService transactionFailureService;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
-                              OrderService orderService) {
+                              OrderService orderService,
+                              TransactionFailureService transactionFailureService) {
         this.transactionRepository = transactionRepository;
         this.orderService = orderService;
+        this.transactionFailureService = transactionFailureService;
     }
 
     // ==================== Transaction Status Management ====================
@@ -38,13 +41,12 @@ public class TransactionService {
      * Update the status of a transaction.
      *
      * @param transactionId the transaction ID
-     * @param newStatus the new transaction status
-     * @return the updated transaction
+     * @param newStatus     the new transaction status
      */
-    public Transaction updateTransactionStatus(Long transactionId, TransactionStatus newStatus) {
+    public void updateTransactionStatus(Long transactionId, TransactionStatus newStatus) {
         Transaction transaction = getTransactionById(transactionId);
         transaction.setStatus(newStatus);
-        return transactionRepository.save(transaction);
+        transactionRepository.save(transaction);
     }
 
     /**
@@ -52,39 +54,20 @@ public class TransactionService {
      * This marks the transaction as successfully executed.
      *
      * @param transactionId the transaction ID
-     * @return the updated transaction
      */
-    public Transaction completeTransaction(Long transactionId) {
-        return updateTransactionStatus(transactionId, TransactionStatus.COMPLETED);
+    public void completeTransaction(Long transactionId) {
+        updateTransactionStatus(transactionId, TransactionStatus.COMPLETED);
     }
 
     /**
      * Transition transaction from PENDING to FAILED.
-     * This marks the transaction as failed and should trigger order cancellation.
+     * This persists the failure state in a separate transaction so it survives
+     * the outer execution rollback.
      *
      * @param transactionId the transaction ID
-     * @return the updated transaction
      */
-    public Transaction failTransaction(Long transactionId) {
-        Transaction transaction = updateTransactionStatus(transactionId, TransactionStatus.FAILED);
-        // Automatically cancel all orders associated with this failed transaction
-        cancelTransactionOrders(transaction);
-        return transaction;
-    }
-
-    /**
-     * Cancel all orders in a transaction when it fails.
-     */
-    private void cancelTransactionOrders(Transaction transaction) {
-        if (transaction.getParticipants() != null) {
-            transaction.getParticipants().forEach(order -> {
-                try {
-                    orderService.cancelOrder(order.getId());
-                } catch (IllegalStateException e) {
-                    // Order may already be completed, skip
-                }
-            });
-        }
+    public void failTransaction(Long transactionId) {
+        transactionFailureService.failTransaction(transactionId);
     }
 
     // ==================== Trade Value Calculations ====================
@@ -186,7 +169,7 @@ public class TransactionService {
         for (Order order : transaction.getParticipants()) {
             try {
                 orderService.executeOrder(order.getId());
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 // If any order fails, fail the entire transaction
                 failTransaction(transactionId);
                 throw new TransactionExecutionException(
@@ -196,19 +179,6 @@ public class TransactionService {
 
         // Mark transaction as completed after all orders execute successfully
         completeTransaction(transactionId);
-    }
-
-    /**
-     * Calculate total notional value for all orders in a transaction.
-     *
-     * @param transaction the transaction
-     * @return the sum of all order values
-     */
-    public Double getTransactionOrdersValue(Transaction transaction) {
-        if (transaction.getParticipants() == null || transaction.getParticipants().isEmpty()) {
-            return 0.0;
-        }
-        return (double) transaction.getParticipants().size() * computeTradeValue(transaction);
     }
 
     /**
@@ -236,4 +206,3 @@ public class TransactionService {
     }
 
 }
-

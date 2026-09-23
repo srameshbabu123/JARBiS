@@ -16,13 +16,4 @@ public interface MarketDataClient {
      * @throws RuntimeException if the external API call fails
      */
     Double getCurrentPrice(Asset asset);
-
-    /**
-     * Get the current market price by asset ID.
-     *
-     * @param assetId the ID of the asset
-     * @return the current market price
-     * @throws RuntimeException if the external API call fails
-     */
-    Double getCurrentPriceById(Long assetId);
 }

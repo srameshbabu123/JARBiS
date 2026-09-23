@@ -27,7 +27,7 @@ public class User {
     private String passwordHash;
 
     @OneToMany(
-            mappedBy = "user",
+            mappedBy = "owner",
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
@@ -105,4 +105,3 @@ public class User {
         this.accounts = accounts;
     }
 }
-

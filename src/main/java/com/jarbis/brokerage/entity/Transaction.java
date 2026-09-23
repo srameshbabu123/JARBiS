@@ -3,6 +3,7 @@ package com.jarbis.brokerage.entity;
 import com.jarbis.brokerage.enums.TransactionStatus;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -28,7 +29,7 @@ public class Transaction {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<Order> participants;
+    private List<Order> participants = new ArrayList<>();
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -71,7 +72,20 @@ public class Transaction {
     }
 
     public void setParticipants(List<Order> participants) {
-        this.participants = participants;
+        this.participants.clear();
+        if (participants != null) {
+            participants.forEach(this::addParticipant);
+        }
+    }
+
+    public void addParticipant(Order order) {
+        participants.add(order);
+        order.setTransaction(this);
+    }
+
+    public void removeParticipant(Order order) {
+        participants.remove(order);
+        order.setTransaction(null);
     }
 
     public TransactionStatus getStatus() {

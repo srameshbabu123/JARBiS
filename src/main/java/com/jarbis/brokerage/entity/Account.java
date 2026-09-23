@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,9 +19,11 @@ public class Account {
     private Long id;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private AccountType accountType;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private Currency currency;
 
     @Column(nullable = false)
@@ -31,7 +34,7 @@ public class Account {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<Holding> holdings;
+    private List<Holding> holdings = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
@@ -42,7 +45,7 @@ public class Account {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<Order> orders;
+    private List<Order> orders = new ArrayList<>();
 
     // Constructors
 
@@ -84,6 +87,16 @@ public class Account {
         return holdings;
     }
 
+    public void addHolding(Holding holding) {
+        holdings.add(holding);
+        holding.setAccount(this);
+    }
+
+    public void removeHolding(Holding holding) {
+        holdings.remove(holding);
+        holding.setAccount(null);
+    }
+
     public User getOwner() {
         return owner;
     }
@@ -94,6 +107,16 @@ public class Account {
 
     public List<Order> getOrders() {
         return orders;
+    }
+
+    public void addOrder(Order order) {
+        orders.add(order);
+        order.setAccount(this);
+    }
+
+    public void removeOrder(Order order) {
+        orders.remove(order);
+        order.setAccount(null);
     }
 
 }

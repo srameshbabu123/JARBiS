@@ -2,8 +2,6 @@ package com.jarbis.brokerage.service;
 
 import com.jarbis.brokerage.entity.Account;
 import com.jarbis.brokerage.entity.User;
-import com.jarbis.brokerage.enums.AccountType;
-import com.jarbis.brokerage.enums.Currency;
 import com.jarbis.brokerage.exception.EmailAlreadyExistsException;
 import com.jarbis.brokerage.exception.UserNotFoundException;
 import com.jarbis.brokerage.repository.UserRepository;
@@ -11,12 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
 /**
  * Service layer for User management.
- * Handles user creation, authentication, account management, and profile updates.
+ * Handles user creation, authentication, and profile updates.
  */
 @Service
 @Transactional
@@ -113,58 +108,6 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    /**
-     * Check if user exists by email.
-     */
-    public boolean userExists(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    // ==================== Account Management ====================
-
-    /**
-     * Create a new trading account for the user.
-     */
-    public Account createAccount(Long userId, AccountType accountType, Currency currency) {
-        User user = getUserById(userId);
-
-        Account account = new Account(accountType, currency, 0.0, user);
-        user.addAccount(account);
-
-        userRepository.save(user);
-        return account;
-    }
-
-    /**
-     * Get all accounts for a user.
-     */
-    public List<Account> getUserAccounts(Long userId) {
-        User user = getUserById(userId);
-        return user.getAccounts();
-    }
-
-    /**
-     * Get a specific account by user ID and account ID.
-     */
-    public Account getAccountById(Long userId, Long accountId) {
-        User user = getUserById(userId);
-
-        return user.getAccount(accountId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Account not found with id: " + accountId));
-    }
-
-    /**
-     * Close/delete an account for the user.
-     */
-    public void closeAccount(Long userId, Long accountId) {
-        User user = getUserById(userId);
-        Account account = getAccountById(userId, accountId);
-
-        user.removeAccount(account);
-        userRepository.save(user);
-    }
-
     // ==================== Security ====================
 
     /**
@@ -185,18 +128,11 @@ public class UserService {
         User user = getUserById(userId);
 
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-            throw new IllegalArgumentException("Old password is incorrect");
+            throw new com.jarbis.brokerage.exception.InvalidCredentialsException("Old password is incorrect");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-    }
-
-    /**
-     * Hash a password using the configured password encoder.
-     */
-    public String hashPassword(String password) {
-        return passwordEncoder.encode(password);
     }
 
     // ==================== Analytics ====================
@@ -211,4 +147,3 @@ public class UserService {
                 .sum();
     }
 }
-

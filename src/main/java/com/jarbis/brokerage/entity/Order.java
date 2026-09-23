@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "orders")
 public class Order {
-    // id, asset, owner, status, side, quantity, price
+    // id, asset, account, status, side, quantity, price
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,8 +18,8 @@ public class Order {
     private Asset asset;
 
     @ManyToOne
-    @JoinColumn(name = "owner_id", nullable = false)
-    private User owner;
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -43,9 +43,9 @@ public class Order {
 
     public Order() {}
 
-    public Order(Asset asset, User owner, OrderStatus status) {
+    public Order(Asset asset, Account account, OrderStatus status) {
         this.asset = asset;
-        this.owner = owner;
+        this.account = account;
         this.status = status;
     }
 
@@ -59,8 +59,12 @@ public class Order {
         return asset;
     }
 
-    public User getOwner() {
-        return owner;
+    public Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(Account account) {
+        this.account = account;
     }
 
     public OrderStatus getStatus() {
