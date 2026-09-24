@@ -72,6 +72,23 @@ public class AccountService {
     }
 
     /**
+     * Update editable account details.
+     */
+    public Account updateAccount(Long accountId, AccountType accountType, Currency currency) {
+        Account account = getAccountById(accountId);
+
+        if (accountType != null) {
+            account.setAccountType(accountType);
+        }
+
+        if (currency != null) {
+            account.setCurrency(currency);
+        }
+
+        return accountRepository.save(account);
+    }
+
+    /**
      * Get all accounts for a specific user.
      */
     public List<Account> getAccountsByUser(Long userId) {
