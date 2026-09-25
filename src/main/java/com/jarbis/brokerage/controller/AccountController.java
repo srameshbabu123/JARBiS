@@ -25,15 +25,15 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    @PostMapping
-    public ResponseEntity<AccountResponseDto> createAccount(@RequestBody CreateAccountRequestDto requestDto) {
-        Account account = requestDto.getInitialBalance() == null
-                ? accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(), requestDto.getCurrency())
-                : accountService.createAccount(
-                        requestDto.getUserId(),
-                        requestDto.getAccountType(),
-                        requestDto.getCurrency(),
-                        requestDto.getInitialBalance());
+        @PostMapping
+        public ResponseEntity<AccountResponseDto> createAccount(@RequestBody CreateAccountRequestDto requestDto) {
+            Account account = requestDto.getInitialBalance() == null
+                    ? accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(), requestDto.getCurrency())
+                    : accountService.createAccount(
+                    requestDto.getUserId(),
+                    requestDto.getAccountType(),
+                    requestDto.getCurrency(),
+                    requestDto.getInitialBalance());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(AccountResponseDto.fromAccount(account));
     }
