@@ -71,8 +71,16 @@ public class Account {
         return accountType;
     }
 
+    public void setAccountType(AccountType accountType) {
+        this.accountType = accountType;
+    }
+
     public Currency getCurrency() {
         return currency;
+    }
+
+    public void setCurrency(Currency currency) {
+        this.currency = currency;
     }
 
     public Double getBalance() {
