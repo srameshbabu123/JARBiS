@@ -25,21 +25,21 @@ pipeline {
         stage('Build') {
             steps {
                 echo '========== Building application =========='
-                sh 'mvn clean package -DskipTests -B'
+                bat 'mvn clean package -DskipTests -B'
             }
         }
 
         stage('Unit Tests') {
             steps {
                 echo '========== Running unit tests =========='
-                sh 'mvn test -B'
+                bat 'mvn test -B'
             }
         }
 
         stage('Code Coverage') {
             steps {
                 echo '========== Generating code coverage report =========='
-                sh 'mvn jacoco:report'
+                bat 'mvn jacoco:report'
                 publishHTML(target: [
                     reportDir: 'target/site/jacoco',
                     reportFiles: 'index.html',
@@ -51,7 +51,7 @@ pipeline {
         stage('Static Analysis') {
             steps {
                 echo '========== Running static code analysis =========='
-                sh 'mvn checkstyle:check -B'
+                bat 'mvn checkstyle:check -B'
             }
         }
 
@@ -59,7 +59,7 @@ pipeline {
             steps {
                 echo '========== Building Docker image =========='
                 script {
-                    sh 'docker build -t ${APP_NAME}:${IMAGE_TAG} -t ${APP_NAME}:latest .'
+                    bat 'docker build -t ${APP_NAME}:${IMAGE_TAG} -t ${APP_NAME}:latest .'
                 }
             }
         }
@@ -67,7 +67,7 @@ pipeline {
         stage('Scan Dependencies') {
             steps {
                 echo '========== Scanning dependencies for vulnerabilities =========='
-                sh 'mvn dependency-check:check -B || true'
+                bat 'mvn dependency-check:check -B || exit /b 0'
             }
         }
 
