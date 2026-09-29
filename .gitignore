@@ -23,3 +23,16 @@ Thumbs.db
 # Node
 node_modules/
 package-lock.json
+
+# Environment variables (keep local configuration secret)
+.env
+
+# Application properties with credentials
+src/main/resources/application.properties
+src/main/resources/application-*.properties
+!src/main/resources/application.properties.example
+
+# Test properties
+src/test/resources/application-test.properties
+
+

@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres
+    environment:
+      POSTGRES_DB: jarbis_db
+      POSTGRES_USER: jarbis_user
+      POSTGRES_PASSWORD: jarbis_password
+      POSTGRES_INITDB_ARGS: "-c max_connections=200"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_user -d jarbis_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Spring Boot Application (Backend)
+  jarbis-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarbis-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
+      SPRING_DATASOURCE_USERNAME: jarbis_user
+      SPRING_DATASOURCE_PASSWORD: jarbis_password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQL10Dialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: 'false'
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
+    ports:
+      - "8081:8080"
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  jarbis-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+
