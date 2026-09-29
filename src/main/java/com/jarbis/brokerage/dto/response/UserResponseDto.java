@@ -6,50 +6,47 @@ import com.jarbis.brokerage.entity.User;
  * DTO for user responses. Excludes sensitive information like password hash.
  */
 public class UserResponseDto {
-    private Long id;
-    private String fullName;
-    private String email;
+	private Long id;
+	private String fullName;
+	private String email;
 
-    // Constructors
-    public UserResponseDto() {}
+	// Constructors
+	public UserResponseDto() {
+	}
 
-    public UserResponseDto(Long id, String fullName, String email) {
-        this.id = id;
-        this.fullName = fullName;
-        this.email = email;
-    }
+	public UserResponseDto(Long id, String fullName, String email) {
+		this.id = id;
+		this.fullName = fullName;
+		this.email = email;
+	}
 
-    // Factory method to create from User entity
-    public static UserResponseDto fromUser(User user) {
-        return new UserResponseDto(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail()
-        );
-    }
+	// Factory method to create from User entity
+	public static UserResponseDto fromUser(User user) {
+		return new UserResponseDto(user.getId(), user.getFullName(), user.getEmail());
+	}
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
+	// Getters and Setters
+	public Long getId() {
+		return id;
+	}
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public String getFullName() {
-        return fullName;
-    }
+	public String getFullName() {
+		return fullName;
+	}
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
+	}
 
-    public String getEmail() {
-        return email;
-    }
+	public String getEmail() {
+		return email;
+	}
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+	public void setEmail(String email) {
+		this.email = email;
+	}
 }

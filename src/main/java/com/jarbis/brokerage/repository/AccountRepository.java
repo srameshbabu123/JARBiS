@@ -11,9 +11,9 @@ import java.util.Optional;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Long> {
-    List<Account> findByOwnerId(Long userId);
-    List<Account> findByAccountType(AccountType accountType);
-    List<Account> findByCurrency(Currency currency);
-    List<Account> findByOwnerIdAndAccountType(Long userId, AccountType accountType);
-    List<Account> findByOwnerIdAndCurrency(Long userId, Currency currency);
+	List<Account> findByOwnerId(Long userId);
+	List<Account> findByAccountType(AccountType accountType);
+	List<Account> findByCurrency(Currency currency);
+	List<Account> findByOwnerIdAndAccountType(Long userId, AccountType accountType);
+	List<Account> findByOwnerIdAndCurrency(Long userId, Currency currency);
 }

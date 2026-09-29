@@ -5,11 +5,11 @@ package com.jarbis.brokerage.exception;
  */
 public class InvalidAmountException extends RuntimeException {
 
-    public InvalidAmountException(String message) {
-        super(message);
-    }
+	public InvalidAmountException(String message) {
+		super(message);
+	}
 
-    public InvalidAmountException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public InvalidAmountException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

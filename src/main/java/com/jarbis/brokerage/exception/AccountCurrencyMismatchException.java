@@ -5,11 +5,11 @@ package com.jarbis.brokerage.exception;
  */
 public class AccountCurrencyMismatchException extends RuntimeException {
 
-    public AccountCurrencyMismatchException(String message) {
-        super(message);
-    }
+	public AccountCurrencyMismatchException(String message) {
+		super(message);
+	}
 
-    public AccountCurrencyMismatchException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public AccountCurrencyMismatchException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

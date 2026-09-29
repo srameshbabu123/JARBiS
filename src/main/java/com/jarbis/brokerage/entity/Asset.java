@@ -9,35 +9,35 @@ import jakarta.persistence.*;
 @DiscriminatorColumn(name = "asset_type", discriminatorType = DiscriminatorType.STRING)
 public abstract class Asset {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(nullable = false)
-    private String name;
+	@Column(nullable = false)
+	private String name;
 
-    @Column(nullable = false)
-    private Double price;
+	@Column(nullable = false)
+	private Double price;
 
-    protected Asset() {}
+	protected Asset() {
+	}
 
-    protected Asset(String name, Double price) {
-        this.name = name;
-        this.price = price;
-    }
+	protected Asset(String name, Double price) {
+		this.name = name;
+		this.price = price;
+	}
 
-    public Long getId() {
-        return id;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public Double getPrice() {
-        return price;
-    }
+	public Double getPrice() {
+		return price;
+	}
 
-    public abstract AssetType getType();
+	public abstract AssetType getType();
 }
-

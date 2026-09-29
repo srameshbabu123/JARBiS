@@ -6,11 +6,11 @@ package com.jarbis.brokerage.exception;
  */
 public class AccountClosureException extends RuntimeException {
 
-    public AccountClosureException(String message) {
-        super(message);
-    }
+	public AccountClosureException(String message) {
+		super(message);
+	}
 
-    public AccountClosureException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public AccountClosureException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }
