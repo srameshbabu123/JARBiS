@@ -19,6 +19,6 @@ public final class Main {
 	 * @return the greeting text
 	 */
 	public static String getGreeting() {
-		return "Hello World, this is Team JARBiS. We are creating our project " + "skeleton as part of Sprint 1";
+		return "Hello Guys, this is Team JARBiS. We are creating our project " + "skeleton as part of Sprint 1";
 	}
 }
