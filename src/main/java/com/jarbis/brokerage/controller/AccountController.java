@@ -19,45 +19,40 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/accounts")
 public class AccountController {
-    private final AccountService accountService;
+	private final AccountService accountService;
 
-    public AccountController(AccountService accountService) {
-        this.accountService = accountService;
-    }
+	public AccountController(AccountService accountService) {
+		this.accountService = accountService;
+	}
 
-        @PostMapping
-        public ResponseEntity<AccountResponseDto> createAccount(@RequestBody CreateAccountRequestDto requestDto) {
-            Account account = requestDto.getInitialBalance() == null
-                    ? accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(), requestDto.getCurrency())
-                    : accountService.createAccount(
-                    requestDto.getUserId(),
-                    requestDto.getAccountType(),
-                    requestDto.getCurrency(),
-                    requestDto.getInitialBalance());
+	@PostMapping
+	public ResponseEntity<AccountResponseDto> createAccount(@RequestBody CreateAccountRequestDto requestDto) {
+		Account account = requestDto.getInitialBalance() == null
+				? accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(),
+						requestDto.getCurrency())
+				: accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(),
+						requestDto.getCurrency(), requestDto.getInitialBalance());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(AccountResponseDto.fromAccount(account));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).body(AccountResponseDto.fromAccount(account));
+	}
 
-    @GetMapping("/{accountId}")
-    public ResponseEntity<AccountResponseDto> getAccountById(@PathVariable Long accountId) {
-        return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.getAccountById(accountId)));
-    }
+	@GetMapping("/{accountId}")
+	public ResponseEntity<AccountResponseDto> getAccountById(@PathVariable Long accountId) {
+		return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.getAccountById(accountId)));
+	}
 
-    @PutMapping("/{accountId}")
-    public ResponseEntity<AccountResponseDto> updateAccount(
-            @PathVariable Long accountId,
-            @RequestBody UpdateAccountRequestDto requestDto) {
-        Account account = accountService.updateAccount(
-                accountId,
-                requestDto.getAccountType(),
-                requestDto.getCurrency());
+	@PutMapping("/{accountId}")
+	public ResponseEntity<AccountResponseDto> updateAccount(@PathVariable Long accountId,
+			@RequestBody UpdateAccountRequestDto requestDto) {
+		Account account = accountService.updateAccount(accountId, requestDto.getAccountType(),
+				requestDto.getCurrency());
 
-        return ResponseEntity.ok(AccountResponseDto.fromAccount(account));
-    }
+		return ResponseEntity.ok(AccountResponseDto.fromAccount(account));
+	}
 
-    @DeleteMapping("/{accountId}")
-    public ResponseEntity<Void> deleteAccount(@PathVariable Long accountId) {
-        accountService.deleteAccount(accountId);
-        return ResponseEntity.noContent().build();
-    }
+	@DeleteMapping("/{accountId}")
+	public ResponseEntity<Void> deleteAccount(@PathVariable Long accountId) {
+		accountService.deleteAccount(accountId);
+		return ResponseEntity.noContent().build();
+	}
 }

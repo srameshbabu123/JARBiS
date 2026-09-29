@@ -5,11 +5,11 @@ package com.jarbis.brokerage.exception;
  */
 public class OrderExecutionException extends RuntimeException {
 
-    public OrderExecutionException(String message) {
-        super(message);
-    }
+	public OrderExecutionException(String message) {
+		super(message);
+	}
 
-    public OrderExecutionException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public OrderExecutionException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

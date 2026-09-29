@@ -21,80 +21,77 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users")
 public class UserController {
-    private final UserService userService;
+	private final UserService userService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+	public UserController(UserService userService) {
+		this.userService = userService;
+	}
 
-    /**
-     * Create a new user.
-     *
-     * @param requestDto the user creation request
-     * @return the created user response
-     */
-    @PostMapping
-    public ResponseEntity<UserResponseDto> createUser(@RequestBody CreateUserRequestDto requestDto) {
-        User user = userService.createUser(
-                requestDto.getFullName(),
-                requestDto.getEmail(),
-                requestDto.getPassword()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponseDto.fromUser(user));
-    }
+	/**
+	 * Create a new user.
+	 *
+	 * @param requestDto
+	 *            the user creation request
+	 * @return the created user response
+	 */
+	@PostMapping
+	public ResponseEntity<UserResponseDto> createUser(@RequestBody CreateUserRequestDto requestDto) {
+		User user = userService.createUser(requestDto.getFullName(), requestDto.getEmail(), requestDto.getPassword());
+		return ResponseEntity.status(HttpStatus.CREATED).body(UserResponseDto.fromUser(user));
+	}
 
-    /**
-     * Retrieve a user by ID.
-     *
-     * @param userId the user ID
-     * @return the user response
-     */
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long userId) {
-        User user = userService.getUserById(userId);
-        return ResponseEntity.ok(UserResponseDto.fromUser(user));
-    }
+	/**
+	 * Retrieve a user by ID.
+	 *
+	 * @param userId
+	 *            the user ID
+	 * @return the user response
+	 */
+	@GetMapping("/{userId}")
+	public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long userId) {
+		User user = userService.getUserById(userId);
+		return ResponseEntity.ok(UserResponseDto.fromUser(user));
+	}
 
-    /**
-     * Update user profile information.
-     *
-     * @param userId the user ID
-     * @param requestDto the update request
-     * @return the updated user response
-     */
-    @PutMapping("/{userId}")
-    public ResponseEntity<UserResponseDto> updateUser(
-            @PathVariable Long userId,
-            @RequestBody CreateUserRequestDto requestDto) {
-        User user = userService.updateUser(
-                userId,
-                requestDto.getFullName(),
-                requestDto.getEmail()
-        );
-        return ResponseEntity.ok(UserResponseDto.fromUser(user));
-    }
+	/**
+	 * Update user profile information.
+	 *
+	 * @param userId
+	 *            the user ID
+	 * @param requestDto
+	 *            the update request
+	 * @return the updated user response
+	 */
+	@PutMapping("/{userId}")
+	public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long userId,
+			@RequestBody CreateUserRequestDto requestDto) {
+		User user = userService.updateUser(userId, requestDto.getFullName(), requestDto.getEmail());
+		return ResponseEntity.ok(UserResponseDto.fromUser(user));
+	}
 
-    /**
-     * Delete a user by ID.
-     *
-     * @param userId the user ID
-     * @return no content response
-     */
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
-        userService.deleteUser(userId);
-        return ResponseEntity.noContent().build();
-    }
+	/**
+	 * Delete a user by ID.
+	 *
+	 * @param userId
+	 *            the user ID
+	 * @return no content response
+	 */
+	@DeleteMapping("/{userId}")
+	public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
+		userService.deleteUser(userId);
+		return ResponseEntity.noContent().build();
+	}
 
-    /**
-     * Get user balance across all accounts.
-     *
-     * @param userId the user ID
-     * @return the total balance
-     */
-    @GetMapping("/{userId}/balance")
-    public ResponseEntity<Double> getUserBalance(@PathVariable Long userId) {
-        Double balance = userService.getUserBalance(userId);
-        return ResponseEntity.ok(balance);
-    }
+	/**
+	 * Get user balance across all accounts.
+	 *
+	 * @param userId
+	 *            the user ID
+	 * @return the total balance
+	 */
+	@GetMapping("/{userId}/balance")
+	public ResponseEntity<Double> getUserBalance(@PathVariable Long userId) {
+		Double balance = userService.getUserBalance(userId);
+		return ResponseEntity.ok(balance);
+	}
 }

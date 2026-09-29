@@ -5,11 +5,11 @@ package com.jarbis.brokerage.exception;
  */
 public class EmptyTransactionException extends RuntimeException {
 
-    public EmptyTransactionException(String message) {
-        super(message);
-    }
+	public EmptyTransactionException(String message) {
+		super(message);
+	}
 
-    public EmptyTransactionException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public EmptyTransactionException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

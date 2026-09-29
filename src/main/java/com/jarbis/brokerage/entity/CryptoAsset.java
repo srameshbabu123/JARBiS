@@ -8,14 +8,15 @@ import jakarta.persistence.Entity;
 @DiscriminatorValue("CRYPTOCURRENCY")
 public class CryptoAsset extends Asset {
 
-    public CryptoAsset() {}
+	public CryptoAsset() {
+	}
 
-    public CryptoAsset(String name, double price) {
-        super(name, (double) price);
-    }
+	public CryptoAsset(String name, double price) {
+		super(name, (double) price);
+	}
 
-    @Override
-    public AssetType getType() {
-        return AssetType.CRYPTOCURRENCY;
-    }
+	@Override
+	public AssetType getType() {
+		return AssetType.CRYPTOCURRENCY;
+	}
 }

@@ -8,16 +8,16 @@ import jakarta.persistence.Entity;
 @DiscriminatorValue("STOCK")
 public class StockAsset extends Asset {
 
-    public StockAsset() {
-        super();
-    }
+	public StockAsset() {
+		super();
+	}
 
-    public StockAsset(String name, Double price) {
-        super(name, price);
-    }
+	public StockAsset(String name, Double price) {
+		super(name, price);
+	}
 
-    @Override
-    public AssetType getType() {
-        return AssetType.STOCK;
-    }
+	@Override
+	public AssetType getType() {
+		return AssetType.STOCK;
+	}
 }

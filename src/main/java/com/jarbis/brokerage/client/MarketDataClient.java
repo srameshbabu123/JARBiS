@@ -8,12 +8,14 @@ import com.jarbis.brokerage.entity.Asset;
  */
 public interface MarketDataClient {
 
-    /**
-     * Get the current market price of an asset.
-     *
-     * @param asset the asset to get pricing for
-     * @return the current market price
-     * @throws RuntimeException if the external API call fails
-     */
-    Double getCurrentPrice(Asset asset);
+	/**
+	 * Get the current market price of an asset.
+	 *
+	 * @param asset
+	 *            the asset to get pricing for
+	 * @return the current market price
+	 * @throws RuntimeException
+	 *             if the external API call fails
+	 */
+	Double getCurrentPrice(Asset asset);
 }

@@ -8,14 +8,15 @@ import jakarta.persistence.Entity;
 @DiscriminatorValue("ETF")
 public class ETFAsset extends Asset {
 
-    public ETFAsset() {}
+	public ETFAsset() {
+	}
 
-    public ETFAsset(String name, Double price) {
-        super(name, price);
-    }
+	public ETFAsset(String name, Double price) {
+		super(name, price);
+	}
 
-    @Override
-    public AssetType getType() {
-        return AssetType.ETF;
-    }
+	@Override
+	public AssetType getType() {
+		return AssetType.ETF;
+	}
 }

@@ -17,285 +17,278 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Service layer tests for User management following TDD principles.
- * Tests cover all business logic and edge cases.
+ * Service layer tests for User management following TDD principles. Tests cover
+ * all business logic and edge cases.
  */
 class UserServiceTest {
 
-    private UserRepository userRepository;
-    private PasswordEncoder passwordEncoder;
-    private UserService userService;
-
-    @BeforeEach
-    void setUp() {
-        userRepository = mock(UserRepository.class);
-        passwordEncoder = mock(PasswordEncoder.class);
-        userService = new UserService(userRepository, passwordEncoder);
-    }
-
-    @Nested
-    class CreateUserTests {
-
-        @Test
-        void testCreateUserSuccessfully() {
-            String fullName = "John Doe";
-            String email = "john@example.com";
-            String password = "plainPassword123";
-
-            when(userRepository.existsByEmail(email)).thenReturn(false);
-            when(passwordEncoder.encode(password)).thenReturn("hashedPassword123");
-            
-            User savedUser = new User(fullName, email, "hashedPassword123");
-            savedUser.setId(1L);
-            when(userRepository.save(any(User.class))).thenReturn(savedUser);
-
-            User result = userService.createUser(fullName, email, password);
-
-            assertNotNull(result);
-            assertEquals(1L, result.getId());
-            assertEquals(fullName, result.getFullName());
-            assertEquals(email, result.getEmail());
-            verify(userRepository).existsByEmail(email);
-            verify(passwordEncoder).encode(password);
-            verify(userRepository).save(any(User.class));
-        }
-
-        @Test
-        void testCreateUserWithDuplicateEmailThrowsException() {
-            String email = "duplicate@example.com";
-            
-            when(userRepository.existsByEmail(email)).thenReturn(true);
-
-            assertThrows(EmailAlreadyExistsException.class,
-                    () -> userService.createUser("John", email, "password"));
-            
-            verify(userRepository).existsByEmail(email);
-            verify(userRepository, never()).save(any(User.class));
-        }
-
-        @Test
-        void testCreateUserWithEmptyEmail() {
-            when(userRepository.existsByEmail("")).thenReturn(false);
-            when(passwordEncoder.encode("password")).thenReturn("hashed");
-            
-            User savedUser = new User("John", "", "hashed");
-            savedUser.setId(1L);
-            when(userRepository.save(any(User.class))).thenReturn(savedUser);
-
-            User result = userService.createUser("John", "", "password");
-
-            assertNotNull(result);
-            assertEquals("", result.getEmail());
-        }
-
-        @Test
-        void testCreateUserWithSpecialCharactersInName() {
-            String specialName = "José María O'Connor";
-            String email = "jose@example.com";
-            
-            when(userRepository.existsByEmail(email)).thenReturn(false);
-            when(passwordEncoder.encode("password")).thenReturn("hashed");
-            
-            User savedUser = new User(specialName, email, "hashed");
-            savedUser.setId(1L);
-            when(userRepository.save(any(User.class))).thenReturn(savedUser);
-
-            User result = userService.createUser(specialName, email, "password");
-
-            assertEquals(specialName, result.getFullName());
-        }
-    }
-
-    @Nested
-    class GetUserTests {
-
-        @Test
-        void testGetUserByIdSuccess() {
-            User user = new User("John", "john@example.com", "hashed");
-            user.setId(1L);
-
-            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-            User result = userService.getUserById(1L);
-
-            assertNotNull(result);
-            assertEquals(1L, result.getId());
-            assertEquals("John", result.getFullName());
-            verify(userRepository).findById(1L);
-        }
+	private UserRepository userRepository;
+	private PasswordEncoder passwordEncoder;
+	private UserService userService;
 
-        @Test
-        void testGetUserByIdNotFoundThrowsException() {
-            when(userRepository.findById(999L)).thenReturn(Optional.empty());
+	@BeforeEach
+	void setUp() {
+		userRepository = mock(UserRepository.class);
+		passwordEncoder = mock(PasswordEncoder.class);
+		userService = new UserService(userRepository, passwordEncoder);
+	}
 
-            assertThrows(UserNotFoundException.class,
-                    () -> userService.getUserById(999L));
-            verify(userRepository).findById(999L);
-        }
+	@Nested
+	class CreateUserTests {
+
+		@Test
+		void testCreateUserSuccessfully() {
+			String fullName = "John Doe";
+			String email = "john@example.com";
+			String password = "plainPassword123";
 
-        @Test
-        void testGetUserByEmailSuccess() {
-            User user = new User("Jane", "jane@example.com", "hashed");
-            user.setId(2L);
+			when(userRepository.existsByEmail(email)).thenReturn(false);
+			when(passwordEncoder.encode(password)).thenReturn("hashedPassword123");
 
-            when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(user));
+			User savedUser = new User(fullName, email, "hashedPassword123");
+			savedUser.setId(1L);
+			when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-            User result = userService.getUserByEmail("jane@example.com");
+			User result = userService.createUser(fullName, email, password);
 
-            assertNotNull(result);
-            assertEquals(2L, result.getId());
-            verify(userRepository).findByEmail("jane@example.com");
-        }
+			assertNotNull(result);
+			assertEquals(1L, result.getId());
+			assertEquals(fullName, result.getFullName());
+			assertEquals(email, result.getEmail());
+			verify(userRepository).existsByEmail(email);
+			verify(passwordEncoder).encode(password);
+			verify(userRepository).save(any(User.class));
+		}
 
-        @Test
-        void testGetUserByEmailNotFoundThrowsException() {
-            when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+		@Test
+		void testCreateUserWithDuplicateEmailThrowsException() {
+			String email = "duplicate@example.com";
 
-            assertThrows(UserNotFoundException.class,
-                    () -> userService.getUserByEmail("nonexistent@example.com"));
-        }
-    }
+			when(userRepository.existsByEmail(email)).thenReturn(true);
 
-    @Nested
-    class UpdateUserTests {
+			assertThrows(EmailAlreadyExistsException.class, () -> userService.createUser("John", email, "password"));
 
-        @Test
-        void testUpdateUserSuccessfully() {
-            User existingUser = new User("Old Name", "old@example.com", "hashed");
-            existingUser.setId(1L);
+			verify(userRepository).existsByEmail(email);
+			verify(userRepository, never()).save(any(User.class));
+		}
 
-            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+		@Test
+		void testCreateUserWithEmptyEmail() {
+			when(userRepository.existsByEmail("")).thenReturn(false);
+			when(passwordEncoder.encode("password")).thenReturn("hashed");
 
-            userService.updateUser(1L, "New Name", "new@example.com");
+			User savedUser = new User("John", "", "hashed");
+			savedUser.setId(1L);
+			when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-            assertEquals("New Name", existingUser.getFullName());
-            assertEquals("new@example.com", existingUser.getEmail());
-            verify(userRepository).save(existingUser);
-        }
+			User result = userService.createUser("John", "", "password");
 
-        @Test
-        void testUpdateUserToExistingEmailThrowsException() {
-            User existingUser = new User("John", "john@example.com", "hashed");
-            existingUser.setId(1L);
+			assertNotNull(result);
+			assertEquals("", result.getEmail());
+		}
 
-            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
+		@Test
+		void testCreateUserWithSpecialCharactersInName() {
+			String specialName = "José María O'Connor";
+			String email = "jose@example.com";
 
-            assertThrows(EmailAlreadyExistsException.class,
-                    () -> userService.updateUser(1L, "John", "taken@example.com"));
+			when(userRepository.existsByEmail(email)).thenReturn(false);
+			when(passwordEncoder.encode("password")).thenReturn("hashed");
 
-            verify(userRepository, never()).save(any(User.class));
-        }
+			User savedUser = new User(specialName, email, "hashed");
+			savedUser.setId(1L);
+			when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        @Test
-        void testUpdateUserWithNullValuesPreservesExisting() {
-            User existingUser = new User("John", "john@example.com", "hashed");
-            existingUser.setId(1L);
+			User result = userService.createUser(specialName, email, "password");
 
-            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+			assertEquals(specialName, result.getFullName());
+		}
+	}
 
-            userService.updateUser(1L, null, null);
+	@Nested
+	class GetUserTests {
 
-            assertEquals("John", existingUser.getFullName());
-            assertEquals("john@example.com", existingUser.getEmail());
-        }
+		@Test
+		void testGetUserByIdSuccess() {
+			User user = new User("John", "john@example.com", "hashed");
+			user.setId(1L);
 
-        @Test
-        void testUpdateUserNonExistentThrowsException() {
-            when(userRepository.findById(999L)).thenReturn(Optional.empty());
+			when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-            assertThrows(UserNotFoundException.class,
-                    () -> userService.updateUser(999L, "Name", "email@example.com"));
-        }
-    }
+			User result = userService.getUserById(1L);
 
-    @Nested
-    class DeleteUserTests {
+			assertNotNull(result);
+			assertEquals(1L, result.getId());
+			assertEquals("John", result.getFullName());
+			verify(userRepository).findById(1L);
+		}
 
-        @Test
-        void testDeleteUserSuccessfully() {
-            User user = new User("John", "john@example.com", "hashed");
-            user.setId(1L);
+		@Test
+		void testGetUserByIdNotFoundThrowsException() {
+			when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+			assertThrows(UserNotFoundException.class, () -> userService.getUserById(999L));
+			verify(userRepository).findById(999L);
+		}
 
-            userService.deleteUser(1L);
+		@Test
+		void testGetUserByEmailSuccess() {
+			User user = new User("Jane", "jane@example.com", "hashed");
+			user.setId(2L);
 
-            verify(userRepository).delete(user);
-        }
+			when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(user));
 
-        @Test
-        void testDeleteNonExistentUserThrowsException() {
-            when(userRepository.findById(999L)).thenReturn(Optional.empty());
+			User result = userService.getUserByEmail("jane@example.com");
 
-            assertThrows(UserNotFoundException.class,
-                    () -> userService.deleteUser(999L));
+			assertNotNull(result);
+			assertEquals(2L, result.getId());
+			verify(userRepository).findByEmail("jane@example.com");
+		}
 
-            verify(userRepository, never()).delete(any(User.class));
-        }
-    }
+		@Test
+		void testGetUserByEmailNotFoundThrowsException() {
+			when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
 
-    @Nested
-    class VerifyPasswordTests {
+			assertThrows(UserNotFoundException.class, () -> userService.getUserByEmail("nonexistent@example.com"));
+		}
+	}
 
-        @Test
-        void testVerifyPasswordSuccess() {
-            User user = new User("John", "john@example.com", "hashedPassword123");
+	@Nested
+	class UpdateUserTests {
 
-            when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
-            when(passwordEncoder.matches("plainPassword", "hashedPassword123")).thenReturn(true);
+		@Test
+		void testUpdateUserSuccessfully() {
+			User existingUser = new User("Old Name", "old@example.com", "hashed");
+			existingUser.setId(1L);
 
-            boolean result = userService.verifyPassword("john@example.com", "plainPassword");
+			when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+			when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+			when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
-            assertTrue(result);
-            verify(passwordEncoder).matches("plainPassword", "hashedPassword123");
-        }
+			userService.updateUser(1L, "New Name", "new@example.com");
 
-        @Test
-        void testVerifyPasswordFailsWithWrongPassword() {
-            User user = new User("John", "john@example.com", "hashedPassword123");
+			assertEquals("New Name", existingUser.getFullName());
+			assertEquals("new@example.com", existingUser.getEmail());
+			verify(userRepository).save(existingUser);
+		}
 
-            when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
-            when(passwordEncoder.matches("wrongPassword", "hashedPassword123")).thenReturn(false);
+		@Test
+		void testUpdateUserToExistingEmailThrowsException() {
+			User existingUser = new User("John", "john@example.com", "hashed");
+			existingUser.setId(1L);
 
-            boolean result = userService.verifyPassword("john@example.com", "wrongPassword");
+			when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+			when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
 
-            assertFalse(result);
-        }
+			assertThrows(EmailAlreadyExistsException.class,
+					() -> userService.updateUser(1L, "John", "taken@example.com"));
 
-        @Test
-        void testVerifyPasswordWithNonExistentUserReturnsFalse() {
-            when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+			verify(userRepository, never()).save(any(User.class));
+		}
 
-            boolean result = userService.verifyPassword("nonexistent@example.com", "password");
+		@Test
+		void testUpdateUserWithNullValuesPreservesExisting() {
+			User existingUser = new User("John", "john@example.com", "hashed");
+			existingUser.setId(1L);
 
-            assertFalse(result);
-            verify(passwordEncoder, never()).matches(anyString(), anyString());
-        }
-    }
+			when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+			when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
-    @Nested
-    class VerifyUserExistsTests {
+			userService.updateUser(1L, null, null);
 
-        @Test
-        void testVerifyUserExistsSuccess() {
-            when(userRepository.existsById(1L)).thenReturn(true);
+			assertEquals("John", existingUser.getFullName());
+			assertEquals("john@example.com", existingUser.getEmail());
+		}
 
-            assertDoesNotThrow(() -> userService.verifyUserExists(1L));
+		@Test
+		void testUpdateUserNonExistentThrowsException() {
+			when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-            verify(userRepository).existsById(1L);
-        }
+			assertThrows(UserNotFoundException.class, () -> userService.updateUser(999L, "Name", "email@example.com"));
+		}
+	}
 
-        @Test
-        void testVerifyUserExistsThrowsExceptionWhenNotFound() {
-            when(userRepository.existsById(999L)).thenReturn(false);
+	@Nested
+	class DeleteUserTests {
 
-            assertThrows(UserNotFoundException.class,
-                    () -> userService.verifyUserExists(999L));
-        }
-    }
+		@Test
+		void testDeleteUserSuccessfully() {
+			User user = new User("John", "john@example.com", "hashed");
+			user.setId(1L);
+
+			when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+			userService.deleteUser(1L);
+
+			verify(userRepository).delete(user);
+		}
+
+		@Test
+		void testDeleteNonExistentUserThrowsException() {
+			when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+			assertThrows(UserNotFoundException.class, () -> userService.deleteUser(999L));
+
+			verify(userRepository, never()).delete(any(User.class));
+		}
+	}
+
+	@Nested
+	class VerifyPasswordTests {
+
+		@Test
+		void testVerifyPasswordSuccess() {
+			User user = new User("John", "john@example.com", "hashedPassword123");
+
+			when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
+			when(passwordEncoder.matches("plainPassword", "hashedPassword123")).thenReturn(true);
+
+			boolean result = userService.verifyPassword("john@example.com", "plainPassword");
+
+			assertTrue(result);
+			verify(passwordEncoder).matches("plainPassword", "hashedPassword123");
+		}
+
+		@Test
+		void testVerifyPasswordFailsWithWrongPassword() {
+			User user = new User("John", "john@example.com", "hashedPassword123");
+
+			when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
+			when(passwordEncoder.matches("wrongPassword", "hashedPassword123")).thenReturn(false);
+
+			boolean result = userService.verifyPassword("john@example.com", "wrongPassword");
+
+			assertFalse(result);
+		}
+
+		@Test
+		void testVerifyPasswordWithNonExistentUserReturnsFalse() {
+			when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+			boolean result = userService.verifyPassword("nonexistent@example.com", "password");
+
+			assertFalse(result);
+			verify(passwordEncoder, never()).matches(anyString(), anyString());
+		}
+	}
+
+	@Nested
+	class VerifyUserExistsTests {
+
+		@Test
+		void testVerifyUserExistsSuccess() {
+			when(userRepository.existsById(1L)).thenReturn(true);
+
+			assertDoesNotThrow(() -> userService.verifyUserExists(1L));
+
+			verify(userRepository).existsById(1L);
+		}
+
+		@Test
+		void testVerifyUserExistsThrowsExceptionWhenNotFound() {
+			when(userRepository.existsById(999L)).thenReturn(false);
+
+			assertThrows(UserNotFoundException.class, () -> userService.verifyUserExists(999L));
+		}
+	}
 }
-
