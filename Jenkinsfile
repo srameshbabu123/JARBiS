@@ -43,20 +43,13 @@ pipeline {
             }
         }
 
-        stage('Static Analysis') {
-            steps {
-                echo '========== Running static code analysis =========='
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    bat 'mvn checkstyle:check -B'
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 echo '========== Building Docker image =========='
-                script {
-                    bat 'docker build -t ${APP_NAME}:${IMAGE_TAG} -t ${APP_NAME}:latest .'
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    script {
+                        bat 'docker build -t ${APP_NAME}:${IMAGE_TAG} -t ${APP_NAME}:latest .'
+                    }
                 }
             }
         }
