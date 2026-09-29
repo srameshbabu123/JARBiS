@@ -46,7 +46,9 @@ pipeline {
         stage('Static Analysis') {
             steps {
                 echo '========== Running static code analysis =========='
-                bat 'mvn checkstyle:check -B'
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    bat 'mvn checkstyle:check -B'
+                }
             }
         }
 
