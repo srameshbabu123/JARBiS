@@ -7,6 +7,10 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
+    triggers {
+        pollSCM('* * * * *')
+    }
+
     environment {
         DOCKER_REGISTRY = 'docker.io'
         APP_NAME = 'jarbis'
