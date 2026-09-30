@@ -27,7 +27,13 @@ public class TransactionResponseDto {
 
 	public static TransactionResponseDto fromTransaction(Transaction transaction) {
 		Long assetId = transaction.getAsset() != null ? transaction.getAsset().getId() : null;
-		Integer participantCount = transaction.getParticipants() != null ? transaction.getParticipants().size() : 0;
+		int participantCount = 0;
+		if (transaction.getBuyOrder() != null) {
+			participantCount++;
+		}
+		if (transaction.getSellOrder() != null) {
+			participantCount++;
+		}
 		return new TransactionResponseDto(transaction.getId(), assetId, transaction.getQuantity(),
 				transaction.getExecutionPrice(), transaction.getStatus(), participantCount);
 	}

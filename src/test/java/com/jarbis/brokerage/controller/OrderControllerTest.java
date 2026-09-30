@@ -2,11 +2,14 @@ package com.jarbis.brokerage.controller;
 
 import com.jarbis.brokerage.dto.request.CreateOrderRequestDto;
 import com.jarbis.brokerage.dto.request.UpdateOrderStatusRequestDto;
+import com.jarbis.brokerage.entity.Account;
+import com.jarbis.brokerage.entity.Asset;
 import com.jarbis.brokerage.entity.Order;
 import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.OrderStatus;
 import com.jarbis.brokerage.exception.OrderNotFoundException;
 import com.jarbis.brokerage.service.AccountService;
+import com.jarbis.brokerage.service.AssetService;
 import com.jarbis.brokerage.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -28,13 +31,19 @@ class OrderControllerTest {
 
 	private OrderService orderService;
 	private AccountService accountService;
+	private AssetService assetService;
 	private OrderController orderController;
+	private Account account;
+	private Asset asset;
 
 	@BeforeEach
 	void setUp() {
 		orderService = mock(OrderService.class);
 		accountService = mock(AccountService.class);
-		orderController = new OrderController(orderService, accountService);
+		assetService = mock(AssetService.class);
+		account = mock(Account.class);
+		asset = mock(Asset.class);
+		orderController = new OrderController(orderService, accountService, assetService);
 	}
 
 	@Test
@@ -42,8 +51,10 @@ class OrderControllerTest {
 		CreateOrderRequestDto requestDto = new CreateOrderRequestDto(1L, 1L, OrderSide.BUY, 100.0, 50.0);
 		Order expectedOrder = mock(Order.class);
 		when(expectedOrder.getStatus()).thenReturn(OrderStatus.PENDING);
+		when(accountService.getAccountById(1L)).thenReturn(account);
+		when(assetService.getAssetById(1L)).thenReturn(asset);
 
-		when(orderService.createPendingOrder(null, null, OrderSide.BUY, 100.0, 50.0)).thenReturn(expectedOrder);
+		when(orderService.createPendingOrder(asset, account, OrderSide.BUY, 100.0, 50.0)).thenReturn(expectedOrder);
 
 		ResponseEntity<Order> response = orderController.createOrder(requestDto);
 
@@ -148,8 +159,10 @@ class OrderControllerTest {
 			CreateOrderRequestDto requestDto = new CreateOrderRequestDto(1L, 1L, OrderSide.BUY, 50.0, 100.0);
 			Order order = mock(Order.class);
 			when(order.getSide()).thenReturn(OrderSide.BUY);
+			when(accountService.getAccountById(1L)).thenReturn(account);
+			when(assetService.getAssetById(1L)).thenReturn(asset);
 
-			when(orderService.createPendingOrder(null, null, OrderSide.BUY, 50.0, 100.0)).thenReturn(order);
+			when(orderService.createPendingOrder(asset, account, OrderSide.BUY, 50.0, 100.0)).thenReturn(order);
 
 			ResponseEntity<Order> response = orderController.createOrder(requestDto);
 
@@ -163,8 +176,10 @@ class OrderControllerTest {
 			CreateOrderRequestDto requestDto = new CreateOrderRequestDto(1L, 1L, OrderSide.SELL, 30.0, 150.0);
 			Order order = mock(Order.class);
 			when(order.getSide()).thenReturn(OrderSide.SELL);
+			when(accountService.getAccountById(1L)).thenReturn(account);
+			when(assetService.getAssetById(1L)).thenReturn(asset);
 
-			when(orderService.createPendingOrder(null, null, OrderSide.SELL, 30.0, 150.0)).thenReturn(order);
+			when(orderService.createPendingOrder(asset, account, OrderSide.SELL, 30.0, 150.0)).thenReturn(order);
 
 			ResponseEntity<Order> response = orderController.createOrder(requestDto);
 
@@ -178,8 +193,10 @@ class OrderControllerTest {
 			CreateOrderRequestDto requestDto = new CreateOrderRequestDto(1L, 1L, OrderSide.BUY, 10000.0, 50.0);
 			Order order = mock(Order.class);
 			when(order.getQuantity()).thenReturn(10000.0);
+			when(accountService.getAccountById(1L)).thenReturn(account);
+			when(assetService.getAssetById(1L)).thenReturn(asset);
 
-			when(orderService.createPendingOrder(null, null, OrderSide.BUY, 10000.0, 50.0)).thenReturn(order);
+			when(orderService.createPendingOrder(asset, account, OrderSide.BUY, 10000.0, 50.0)).thenReturn(order);
 
 			ResponseEntity<Order> response = orderController.createOrder(requestDto);
 
