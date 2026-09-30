@@ -4,6 +4,8 @@ import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.OrderStatus;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "orders")
 public class Order {
@@ -33,13 +35,13 @@ public class Order {
 	private Double quantity;
 
 	@Column(nullable = false)
+	private Double remainingQuantity;
+
+	@Column(nullable = false)
 	private Double price;
 
-	@ManyToOne
-	@JoinColumn(name = "transaction_id")
-	private Transaction transaction;
-
-	// Constructors
+	@Column(nullable = false, updatable = false)
+	private LocalDateTime submittedAt;
 
 	public Order() {
 	}
@@ -49,8 +51,6 @@ public class Order {
 		this.account = account;
 		this.status = status;
 	}
-
-	// Getters and Setters
 
 	public Long getId() {
 		return id;
@@ -76,14 +76,6 @@ public class Order {
 		this.status = status;
 	}
 
-	public Transaction getTransaction() {
-		return transaction;
-	}
-
-	public void setTransaction(Transaction transaction) {
-		this.transaction = transaction;
-	}
-
 	public OrderSide getSide() {
 		return side;
 	}
@@ -98,6 +90,17 @@ public class Order {
 
 	public void setQuantity(Double quantity) {
 		this.quantity = quantity;
+		if (this.remainingQuantity == null) {
+			this.remainingQuantity = quantity;
+		}
+	}
+
+	public Double getRemainingQuantity() {
+		return remainingQuantity != null ? remainingQuantity : quantity;
+	}
+
+	public void setRemainingQuantity(Double remainingQuantity) {
+		this.remainingQuantity = remainingQuantity;
 	}
 
 	public Double getPrice() {
@@ -106,5 +109,20 @@ public class Order {
 
 	public void setPrice(Double price) {
 		this.price = price;
+	}
+
+	public LocalDateTime getSubmittedAt() {
+		return submittedAt;
+	}
+
+	public void setSubmittedAt(LocalDateTime submittedAt) {
+		this.submittedAt = submittedAt;
+	}
+
+	@PrePersist
+	void initializeSubmittedAt() {
+		if (submittedAt == null) {
+			submittedAt = LocalDateTime.now();
+		}
 	}
 }

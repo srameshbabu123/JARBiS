@@ -107,8 +107,7 @@ class TransactionControllerTest {
 		Transaction transaction = new Transaction();
 		Order order1 = new Order();
 		Order order2 = new Order();
-		transaction.getParticipants().add(order1);
-		transaction.getParticipants().add(order2);
+		transaction.setParticipants(Arrays.asList(order1, order2));
 
 		when(transactionService.getTransactionById(1L)).thenReturn(transaction);
 		when(transactionService.getTransactionOrderCount(transaction)).thenReturn(2);
@@ -375,7 +374,7 @@ class TransactionControllerTest {
 		void testGetOrderCountWithSingleOrder() {
 			Transaction transaction = new Transaction();
 			Order order = new Order();
-			transaction.getParticipants().add(order);
+			transaction.setParticipants(Arrays.asList(order));
 
 			when(transactionService.getTransactionById(1L)).thenReturn(transaction);
 			when(transactionService.getTransactionOrderCount(transaction)).thenReturn(1);
@@ -389,10 +388,7 @@ class TransactionControllerTest {
 		@Test
 		void testGetOrderCountWithMultipleOrders() {
 			Transaction transaction = new Transaction();
-			for (int i = 0; i < 5; i++) {
-				Order order = new Order();
-				transaction.getParticipants().add(order);
-			}
+			transaction.setParticipants(Arrays.asList(new Order(), new Order()));
 
 			when(transactionService.getTransactionById(1L)).thenReturn(transaction);
 			when(transactionService.getTransactionOrderCount(transaction)).thenReturn(5);
@@ -450,7 +446,7 @@ class TransactionControllerTest {
 		void testAllOrdersCompletedWithSingleOrder() {
 			Transaction transaction = new Transaction();
 			Order order = new Order();
-			transaction.getParticipants().add(order);
+			transaction.setParticipants(Arrays.asList(order));
 
 			when(transactionService.getTransactionById(1L)).thenReturn(transaction);
 			when(transactionService.areAllOrdersCompleted(transaction)).thenReturn(true);

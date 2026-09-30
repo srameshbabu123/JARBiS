@@ -42,12 +42,19 @@ public class TransactionFailureService {
 
 		transaction.setStatus(TransactionStatus.FAILED);
 
-		for (Order order : transaction.getParticipants()) {
-			if (order.getStatus() == OrderStatus.PENDING) {
-				orderService.cancelOrder(order.getId());
-			}
+		if (transaction.getBuyOrder() != null) {
+			cancelIfStillOpen(transaction.getBuyOrder());
+		}
+		if (transaction.getSellOrder() != null) {
+			cancelIfStillOpen(transaction.getSellOrder());
 		}
 
 		transactionRepository.save(transaction);
+	}
+
+	private void cancelIfStillOpen(Order order) {
+		if (order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PARTIALLY_FILLED) {
+			orderService.cancelOrder(order.getId());
+		}
 	}
 }

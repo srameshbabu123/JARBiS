@@ -1,5 +1,6 @@
 package com.jarbis.brokerage.entity;
 
+import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.TransactionStatus;
 import jakarta.persistence.*;
 
@@ -24,18 +25,21 @@ public class Transaction {
 	@Column(nullable = false)
 	private Double executionPrice;
 
-	@OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<Order> participants = new ArrayList<>();
+	@ManyToOne
+	@JoinColumn(name = "buy_order_id", nullable = false)
+	private Order buyOrder;
+
+	@ManyToOne
+	@JoinColumn(name = "sell_order_id", nullable = false)
+	private Order sellOrder;
 
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
 	private TransactionStatus status;
 
-	// Constructors
 	public Transaction() {
 	}
 
-	// Getters and Setters
 	public Long getId() {
 		return id;
 	}
@@ -64,25 +68,80 @@ public class Transaction {
 		this.executionPrice = executionPrice;
 	}
 
-	public List<Order> getParticipants() {
-		return participants;
+	public Order getBuyOrder() {
+		return buyOrder;
+	}
+
+	public void setBuyOrder(Order buyOrder) {
+		this.buyOrder = buyOrder;
+	}
+
+	public Order getSellOrder() {
+		return sellOrder;
+	}
+
+	public void setSellOrder(Order sellOrder) {
+		this.sellOrder = sellOrder;
+	}
+
+	public List<Long> getParticipantOrderIds() {
+		List<Long> participantOrderIds = new ArrayList<>(2);
+		if (buyOrder != null && buyOrder.getId() != null) {
+			participantOrderIds.add(buyOrder.getId());
+		}
+		if (sellOrder != null && sellOrder.getId() != null) {
+			participantOrderIds.add(sellOrder.getId());
+		}
+		return participantOrderIds;
 	}
 
 	public void setParticipants(List<Order> participants) {
-		this.participants.clear();
+		buyOrder = null;
+		sellOrder = null;
 		if (participants != null) {
 			participants.forEach(this::addParticipant);
 		}
 	}
 
 	public void addParticipant(Order order) {
-		participants.add(order);
-		order.setTransaction(this);
+		if (order == null) {
+			return;
+		}
+		if (order.getSide() == OrderSide.BUY) {
+			if (buyOrder != null && !buyOrder.equals(order)) {
+				throw new IllegalStateException("Transaction already has a buy order");
+			}
+			setBuyOrder(order);
+			return;
+		}
+		if (order.getSide() == OrderSide.SELL) {
+			if (sellOrder != null && !sellOrder.equals(order)) {
+				throw new IllegalStateException("Transaction already has a sell order");
+			}
+			setSellOrder(order);
+			return;
+		}
+		if (buyOrder == null) {
+			setBuyOrder(order);
+			return;
+		}
+		if (sellOrder == null) {
+			setSellOrder(order);
+			return;
+		}
+		throw new IllegalStateException("A transaction can only contain two participant orders");
 	}
 
 	public void removeParticipant(Order order) {
-		participants.remove(order);
-		order.setTransaction(null);
+		if (order == null) {
+			return;
+		}
+		if (buyOrder != null && buyOrder.equals(order)) {
+			buyOrder = null;
+		}
+		if (sellOrder != null && sellOrder.equals(order)) {
+			sellOrder = null;
+		}
 	}
 
 	public TransactionStatus getStatus() {

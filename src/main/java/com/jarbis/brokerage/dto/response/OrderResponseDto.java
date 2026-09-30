@@ -33,9 +33,8 @@ public class OrderResponseDto {
 	public static OrderResponseDto fromOrder(Order order) {
 		Long accountId = order.getAccount() != null ? order.getAccount().getId() : null;
 		Long assetId = order.getAsset() != null ? order.getAsset().getId() : null;
-		Long transactionId = order.getTransaction() != null ? order.getTransaction().getId() : null;
 		return new OrderResponseDto(order.getId(), accountId, assetId, order.getStatus(), order.getSide(),
-				order.getQuantity(), order.getPrice(), transactionId);
+				order.getQuantity(), order.getPrice(), null);
 	}
 
 	public Long getId() {
