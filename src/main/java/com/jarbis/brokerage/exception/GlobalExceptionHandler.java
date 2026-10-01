@@ -34,6 +34,14 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * Handle AssetNotFoundException - returns 404 Not Found.
+	 */
+	@ExceptionHandler(AssetNotFoundException.class)
+	public ResponseEntity<Map<String, Object>> handleAssetNotFound(AssetNotFoundException ex, WebRequest request) {
+		return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	/**
 	 * Handle EmailAlreadyExistsException - returns 409 Conflict.
 	 */
 	@ExceptionHandler(EmailAlreadyExistsException.class)

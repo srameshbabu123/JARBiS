@@ -7,6 +7,7 @@ import com.jarbis.brokerage.entity.Asset;
 import com.jarbis.brokerage.entity.Order;
 import com.jarbis.brokerage.enums.OrderStatus;
 import com.jarbis.brokerage.service.AccountService;
+import com.jarbis.brokerage.service.AssetService;
 import com.jarbis.brokerage.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +28,12 @@ import java.util.List;
 public class OrderController {
 	private final OrderService orderService;
 	private final AccountService accountService;
+	private final AssetService assetService;
 
-	public OrderController(OrderService orderService, AccountService accountService) {
+	public OrderController(OrderService orderService, AccountService accountService, AssetService assetService) {
 		this.orderService = orderService;
 		this.accountService = accountService;
+		this.assetService = assetService;
 	}
 
 	/**
@@ -39,7 +42,7 @@ public class OrderController {
 	@PostMapping
 	public ResponseEntity<Order> createOrder(@RequestBody CreateOrderRequestDto requestDto) {
 		Account account = accountService.getAccountById(requestDto.getAccountId());
-		Asset asset = null; // Asset retrieval would need AssetService
+		Asset asset = assetService.getAssetById(requestDto.getAssetId());
 
 		Order order = orderService.createPendingOrder(asset, account, requestDto.getSide(), requestDto.getQuantity(),
 				requestDto.getPrice());

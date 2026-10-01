@@ -3,9 +3,9 @@ package com.jarbis.brokerage.service;
 import com.jarbis.brokerage.entity.Asset;
 import com.jarbis.brokerage.entity.Account;
 import com.jarbis.brokerage.entity.Order;
-import com.jarbis.brokerage.entity.Transaction;
 import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.OrderStatus;
+import com.jarbis.brokerage.messaging.OrderSubmittedPublisher;
 import com.jarbis.brokerage.exception.InvalidAmountException;
 import com.jarbis.brokerage.exception.InvalidOrderRequestException;
 import com.jarbis.brokerage.exception.InvalidOrderStateException;
@@ -15,7 +15,10 @@ import com.jarbis.brokerage.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -29,12 +32,17 @@ public class OrderService {
 	private final OrderRepository orderRepository;
 	private final UserService userService;
 	private final AccountService accountService;
+	private final OrderSubmittedPublisher orderSubmittedPublisher;
+	private final OrderBookService orderBookService;
 
 	@Autowired
-	public OrderService(OrderRepository orderRepository, UserService userService, AccountService accountService) {
+	public OrderService(OrderRepository orderRepository, UserService userService, AccountService accountService,
+			OrderSubmittedPublisher orderSubmittedPublisher, OrderBookService orderBookService) {
 		this.orderRepository = orderRepository;
 		this.userService = userService;
 		this.accountService = accountService;
+		this.orderSubmittedPublisher = orderSubmittedPublisher;
+		this.orderBookService = orderBookService;
 	}
 
 	// ==================== Order Creation ====================
@@ -82,10 +90,15 @@ public class OrderService {
 		Order order = new Order(asset, persistedAccount, status);
 		order.setSide(side);
 		order.setQuantity(quantity);
+		order.setRemainingQuantity(quantity);
 		order.setPrice(price);
 		persistedAccount.addOrder(order);
 
-		return orderRepository.save(order);
+		Order savedOrder = orderRepository.save(order);
+		if (status == OrderStatus.PENDING) {
+			publishSubmittedOrderAfterCommit(savedOrder.getId());
+		}
+		return savedOrder;
 	}
 
 	/**
@@ -162,6 +175,18 @@ public class OrderService {
 	 */
 	public List<Order> getPendingOrders() {
 		return getOrdersByStatus(OrderStatus.PENDING);
+	}
+
+	/**
+	 * Get all open orders for a specific asset.
+	 *
+	 * @param assetId
+	 *            the asset ID
+	 * @return list of open orders for the asset
+	 */
+	public List<Order> getOpenOrdersByAsset(Long assetId) {
+		return orderRepository.findByAssetIdAndStatusIn(assetId,
+				EnumSet.of(OrderStatus.PENDING, OrderStatus.PARTIALLY_FILLED));
 	}
 
 	/**
@@ -249,7 +274,9 @@ public class OrderService {
 		Order order = getOrderById(orderId);
 		validateStatusTransition(order.getStatus(), newStatus);
 		order.setStatus(newStatus);
-		return orderRepository.save(order);
+		Order savedOrder = orderRepository.save(order);
+		syncOrderBookAfterCommit(savedOrder);
+		return savedOrder;
 	}
 
 	/**
@@ -309,7 +336,8 @@ public class OrderService {
 	 * @return true if order can be executed
 	 */
 	public boolean isOrderExecutable(Order order) {
-		return order.getStatus() == OrderStatus.PENDING;
+		return (order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PARTIALLY_FILLED)
+				&& order.getRemainingQuantity() != null && order.getRemainingQuantity() > 0;
 	}
 
 	/**
@@ -326,34 +354,81 @@ public class OrderService {
 		return order.getAccount().getOwner().getId().equals(userId);
 	}
 
-	// ==================== Order Management ====================
-
 	/**
-	 * Associate an order with a transaction.
+	 * Persist order changes made during settlement.
 	 *
-	 * @param orderId
-	 *            the order ID
-	 * @param transaction
-	 *            the transaction
-	 * @return the updated order
+	 * @param order
+	 *            the order to save
+	 * @return the persisted order
 	 */
-	public Order assignOrderToTransaction(Long orderId, Transaction transaction) {
-		Order order = getOrderById(orderId);
-		order.setTransaction(transaction);
+	public Order saveOrder(Order order) {
 		return orderRepository.save(order);
 	}
 
-	/**
-	 * Remove an order from its transaction.
-	 *
-	 * @param orderId
-	 *            the order ID
-	 * @return the updated order
-	 */
-	public Order removeOrderFromTransaction(Long orderId) {
-		Order order = getOrderById(orderId);
-		order.setTransaction(null);
-		return orderRepository.save(order);
+	private void publishSubmittedOrderAfterCommit(Long orderId) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			orderSubmittedPublisher.publish(orderId);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				orderSubmittedPublisher.publish(orderId);
+			}
+		});
+	}
+
+	private void syncOrderBookAfterCommit(Order order) {
+		if (order == null || order.getAsset() == null || order.getAsset().getId() == null || order.getId() == null) {
+			return;
+		}
+
+		Long assetId = order.getAsset().getId();
+		Long orderId = order.getId();
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			syncOrderBook(order);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				if (order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PARTIALLY_FILLED) {
+					orderBookService.upsertOrder(order);
+					return;
+				}
+				orderBookService.removeOrder(assetId, orderId);
+			}
+		});
+	}
+
+	private void syncOrderBook(Order order) {
+		if (order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.PARTIALLY_FILLED) {
+			orderBookService.upsertOrder(order);
+			return;
+		}
+		orderBookService.removeOrder(order.getAsset().getId(), order.getId());
+	}
+
+	private void removeOrderFromBookAfterCommit(Order order) {
+		if (order == null || order.getAsset() == null || order.getAsset().getId() == null || order.getId() == null) {
+			return;
+		}
+
+		Long assetId = order.getAsset().getId();
+		Long orderId = order.getId();
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			orderBookService.removeOrder(assetId, orderId);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				orderBookService.removeOrder(assetId, orderId);
+			}
+		});
 	}
 
 	/**
@@ -368,6 +443,7 @@ public class OrderService {
 			throw new InvalidOrderStateException("Cannot delete a completed order");
 		}
 		orderRepository.delete(order);
+		removeOrderFromBookAfterCommit(order);
 	}
 
 	// ==================== Order Execution ====================
@@ -393,7 +469,7 @@ public class OrderService {
 
 		Long accountId = order.getAccount().getId();
 		Asset asset = order.getAsset();
-		Double quantity = order.getQuantity();
+		Double quantity = order.getRemainingQuantity();
 		Double price = order.getPrice();
 
 		if (order.getSide() == OrderSide.BUY) {
@@ -404,6 +480,7 @@ public class OrderService {
 			throw new OrderExecutionException("Unknown order side: " + order.getSide());
 		}
 
+		order.setRemainingQuantity(0.0);
 		completeOrder(orderId);
 	}
 }

@@ -4,10 +4,12 @@ import com.jarbis.brokerage.entity.Asset;
 import com.jarbis.brokerage.entity.Order;
 import com.jarbis.brokerage.entity.Transaction;
 import com.jarbis.brokerage.enums.OrderStatus;
+import com.jarbis.brokerage.enums.OrderSide;
 import com.jarbis.brokerage.enums.TransactionStatus;
 import com.jarbis.brokerage.exception.EmptyTransactionException;
 import com.jarbis.brokerage.exception.InvalidAmountException;
 import com.jarbis.brokerage.exception.InvalidOrderRequestException;
+import com.jarbis.brokerage.exception.InvalidOrderStateException;
 import com.jarbis.brokerage.exception.TransactionExecutionException;
 import com.jarbis.brokerage.exception.TransactionNotFoundException;
 import com.jarbis.brokerage.repository.TransactionRepository;
@@ -48,14 +50,16 @@ public class TransactionService {
 	 *            the executed quantity
 	 * @param executionPrice
 	 *            the execution price per unit
-	 * @param participantOrders
-	 *            the participant orders in the transaction
+	 * @param buyOrder
+	 *            the buy order participant
+	 * @param sellOrder
+	 *            the sell order participant
 	 * @param status
 	 *            the initial transaction status
 	 * @return the created transaction
 	 */
-	public Transaction createTransaction(Asset asset, Double quantity, Double executionPrice,
-			List<Order> participantOrders, TransactionStatus status) {
+	public Transaction createTransaction(Asset asset, Double quantity, Double executionPrice, Order buyOrder,
+			Order sellOrder, TransactionStatus status) {
 		if (asset == null) {
 			throw new InvalidOrderRequestException("Asset cannot be null");
 		}
@@ -68,22 +72,26 @@ public class TransactionService {
 		if (executionPrice == null || executionPrice <= 0) {
 			throw new InvalidAmountException("Execution price must be greater than 0");
 		}
-		if (participantOrders == null || participantOrders.isEmpty()) {
-			throw new EmptyTransactionException("Transaction must contain at least one participant order");
+		if (buyOrder == null || sellOrder == null) {
+			throw new EmptyTransactionException("Transaction must contain exactly one buy order and one sell order");
+		}
+		if (buyOrder.getSide() != OrderSide.BUY) {
+			throw new InvalidOrderRequestException("Buy participant must be a BUY order");
+		}
+		if (sellOrder.getSide() != OrderSide.SELL) {
+			throw new InvalidOrderRequestException("Sell participant must be a SELL order");
+		}
+		if (!asset.getId().equals(buyOrder.getAsset().getId()) || !asset.getId().equals(sellOrder.getAsset().getId())) {
+			throw new InvalidOrderRequestException("Transaction participants must belong to the transaction asset");
 		}
 
 		Transaction transaction = new Transaction();
 		transaction.setAsset(asset);
 		transaction.setQuantity(quantity);
 		transaction.setExecutionPrice(executionPrice);
+		transaction.setBuyOrder(buyOrder);
+		transaction.setSellOrder(sellOrder);
 		transaction.setStatus(status);
-
-		for (Order order : participantOrders) {
-			if (order == null) {
-				throw new InvalidOrderRequestException("Participant orders cannot contain null entries");
-			}
-			transaction.addParticipant(order);
-		}
 
 		return transactionRepository.save(transaction);
 	}
@@ -97,13 +105,15 @@ public class TransactionService {
 	 *            the executed quantity
 	 * @param executionPrice
 	 *            the execution price per unit
-	 * @param participantOrders
-	 *            the participant orders in the transaction
+	 * @param buyOrder
+	 *            the buy order participant
+	 * @param sellOrder
+	 *            the sell order participant
 	 * @return the created pending transaction
 	 */
-	public Transaction createPendingTransaction(Asset asset, Double quantity, Double executionPrice,
-			List<Order> participantOrders) {
-		return createTransaction(asset, quantity, executionPrice, participantOrders, TransactionStatus.PENDING);
+	public Transaction createPendingTransaction(Asset asset, Double quantity, Double executionPrice, Order buyOrder,
+			Order sellOrder) {
+		return createTransaction(asset, quantity, executionPrice, buyOrder, sellOrder, TransactionStatus.PENDING);
 	}
 
 	// ==================== Transaction Status Management ====================
@@ -243,23 +253,24 @@ public class TransactionService {
 	public void executeTransaction(Long transactionId) {
 		Transaction transaction = getTransactionById(transactionId);
 
-		if (transaction.getParticipants() == null || transaction.getParticipants().isEmpty()) {
-			throw new EmptyTransactionException("Transaction has no participant orders to execute");
+		Order buyOrder = transaction.getBuyOrder();
+		Order sellOrder = transaction.getSellOrder();
+		if (buyOrder == null || sellOrder == null) {
+			throw new EmptyTransactionException("Transaction must contain both a buy order and a sell order");
+		}
+		if (transaction.getStatus() != TransactionStatus.PENDING) {
+			throw new InvalidOrderStateException("Only pending transactions can be executed");
 		}
 
-		// Execute each participant order individually
-		for (Order order : transaction.getParticipants()) {
-			try {
-				orderService.executeOrder(order.getId());
-			} catch (RuntimeException e) {
-				// If any order fails, fail the entire transaction
-				failTransaction(transactionId);
-				throw new TransactionExecutionException(
-						"Transaction execution failed while executing order " + order.getId(), e);
-			}
+		try {
+			orderService.executeOrder(buyOrder.getId());
+			orderService.executeOrder(sellOrder.getId());
+		} catch (RuntimeException e) {
+			failTransaction(transactionId);
+			throw new TransactionExecutionException(
+					"Transaction execution failed while executing transaction " + transactionId, e);
 		}
 
-		// Mark transaction as completed after all orders execute successfully
 		completeTransaction(transactionId);
 	}
 
@@ -271,7 +282,14 @@ public class TransactionService {
 	 * @return number of orders
 	 */
 	public Integer getTransactionOrderCount(Transaction transaction) {
-		return (transaction.getParticipants() != null) ? transaction.getParticipants().size() : 0;
+		int count = 0;
+		if (transaction.getBuyOrder() != null) {
+			count++;
+		}
+		if (transaction.getSellOrder() != null) {
+			count++;
+		}
+		return count;
 	}
 
 	/**
@@ -282,10 +300,11 @@ public class TransactionService {
 	 * @return true if all orders are completed
 	 */
 	public boolean areAllOrdersCompleted(Transaction transaction) {
-		if (transaction.getParticipants() == null || transaction.getParticipants().isEmpty()) {
+		if (transaction.getBuyOrder() == null || transaction.getSellOrder() == null) {
 			return false;
 		}
-		return transaction.getParticipants().stream().allMatch(order -> order.getStatus() == OrderStatus.COMPLETED);
+		return transaction.getBuyOrder().getStatus() == OrderStatus.COMPLETED
+				&& transaction.getSellOrder().getStatus() == OrderStatus.COMPLETED;
 	}
 
 }
