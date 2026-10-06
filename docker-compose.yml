@@ -26,6 +26,8 @@ services:
   kafka:
     image: apache/kafka:3.9.1
     container_name: jarbis-kafka
+    hostname: kafka
+    user: root
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -48,7 +50,7 @@ services:
     networks:
       - jarbis-network
     healthcheck:
-      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:19092", "--list"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:19092 >/dev/null 2>&1"]
       interval: 10s
       timeout: 10s
       retries: 12
