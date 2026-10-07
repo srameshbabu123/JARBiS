@@ -93,6 +93,8 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
+      JWT_SECRET: jarbis-jwt-secret-key-change-in-production
+      JWT_EXPIRATION_MS: 3600000
     ports:
       - "8081:8080"
     networks:
