@@ -22,6 +22,29 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Separate PostgreSQL instance for OLAP and reporting
+  postgres-olap:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres-olap
+    environment:
+      POSTGRES_DB: jarbis_olap
+      POSTGRES_USER: jarbis_olap_user
+      POSTGRES_PASSWORD: jarbis_olap_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_olap_data:/var/lib/postgresql/data
+      - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
   # Single-node Kafka in KRaft mode for local development
   kafka:
     image: apache/kafka:3.9.1
@@ -117,5 +140,7 @@ volumes:
   kafka_data:
     driver: local
   postgres_data:
+    driver: local
+  postgres_olap_data:
     driver: local
 

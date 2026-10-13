@@ -18,6 +18,44 @@ localhost:9092. The kafka-init service creates orders.submitted and exits
 successfully before the backend starts. An exited kafka-init container with
 exit code 0 is expected. This plaintext Kafka setup is for local development.
 
+## OLAP database
+
+The stack includes a second, isolated PostgreSQL instance for analytics. The
+backend continues to use `postgres` and database `jarbis_db` on host port
+`5432`. The OLAP instance is `postgres-olap` and uses database `jarbis_olap`
+on host port `5433`.
+
+The two instances have separate credentials, Docker volumes, and schemas:
+
+| Purpose | Host | Port | Database | User |
+| --- | --- | --- | --- | --- |
+| OLTP | `localhost` | `5432` | `jarbis_db` | `jarbis_user` |
+| OLAP | `localhost` | `5433` | `jarbis_olap` | `jarbis_olap_user` |
+
+The OLAP initialization script creates the `analytics.order_facts` table and
+the `analytics.daily_order_metrics` materialized view. It is intentionally
+not populated by the backend yet. A Kafka consumer, scheduled ETL job, or CDC
+pipeline should copy committed events from the OLTP database into the OLAP
+fact table.
+
+To inspect the OLAP database:
+
+```bash
+docker compose exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
+	-c "SELECT current_database(), current_schema();"
+```
+
+To refresh its aggregate view after loading facts:
+
+```bash
+docker compose exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
+	-c "REFRESH MATERIALIZED VIEW analytics.daily_order_metrics;"
+```
+
+Do not use `docker compose down -v` when you want to retain either database.
+Remove only `jarbis_postgres_olap_data` when you intentionally want to
+recreate the OLAP instance from its initialization script.
+
 ## Which database contains my assets?
 
 Compose creates and uses jarbis_db with user jarbis_user. The backend's
