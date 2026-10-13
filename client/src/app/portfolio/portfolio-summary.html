@@ -1,0 +1,25 @@
+@let vm = workspace;
+
+<div class="stats">
+  <section class="stat hero-stat">
+    <span>Total account value <i>↗</i></span>
+    <h2>{{vm.cash+vm.invested|currency}}</h2>
+    <small>Cash + current holdings</small>
+    <div class="mini-bars">▂ ▃ ▂ ▄ ▃ ▅ ▄ ▆ ▅ ▇</div>
+  </section>
+  <section class="stat">
+    <span>Invested balance <i>◈</i></span>
+    <h2>{{vm.invested|currency}}</h2>
+    <small>{{vm.holdings.length}} assets in your portfolio</small>
+  </section>
+  <section class="stat">
+    <span>Available cash <i>⊕</i></span>
+    <h2>{{vm.cash|currency}}</h2>
+    <small>Ready for your next move</small>
+  </section>
+  <section class="stat">
+    <span>Unrealized return <i>⌁</i></span>
+    <h2 class="positive">{{vm.pnl>=0?'+':''}}{{vm.pnl|currency}}</h2>
+    <small>Across current holdings</small>
+  </section>
+</div>

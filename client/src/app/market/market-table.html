@@ -1,0 +1,77 @@
+@let vm = workspace;
+
+<section class="panel">
+  <div class="panel-heading">
+    <h3>
+      {{vm.page==='watchlist'?'My watchlist':vm.page==='charts'?'Explore
+      symbols':'Market screener'}}
+    </h3>
+    <span class="sample-tag">Sample market universe</span>
+  </div>
+  <div class="filters">
+    <input
+      aria-label="Search stocks"
+      placeholder="⌕  Search symbol or company"
+      [(ngModel)]="market.query"
+    />@if(vm.page==='screener'){<select
+      aria-label="Sector"
+      [(ngModel)]="market.sector"
+    >
+      @for(s of ['All
+      sectors','Technology','Automotive','Consumer','Financials'];track s){
+      <option>{{s}}</option>
+      }</select
+    ><label class="check"
+      ><input type="checkbox" [(ngModel)]="market.gainers" /> Gainers
+      only</label
+    >}
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Price</th>
+          <th>Change</th>
+          <th>Sector</th>
+          <th>Market cap</th>
+          <th>Watch</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(s of market.filtered;track
+        s.symbol){@if(vm.page!=='watchlist'||market.watched.includes(s.symbol)){
+        <tr>
+          <td>
+            <button class="asset-cell text-button" (click)="market.chart(s)">
+              <span class="stock-icon" [style.color]="s.color"
+                >{{s.symbol[0]}}</span
+              ><span><b>{{s.symbol}}</b><small>{{s.name}}</small></span>
+            </button>
+          </td>
+          <td>{{s.price|currency}}</td>
+          <td class="positive" [class.negative]="s.change<0">
+            {{s.change>0?'+':''}}{{s.change}}%
+          </td>
+          <td>{{s.sector}}</td>
+          <td>{{s.cap|number}} B</td>
+          <td>
+            <button
+              class="star"
+              [attr.aria-label]="(market.watched.includes(s.symbol)?'Remove ':'Add ')+s.symbol"
+              (click)="market.toggle(s.symbol)"
+            >
+              {{market.watched.includes(s.symbol)?'★':'☆'}}
+            </button>
+          </td>
+        </tr>
+        }}
+      </tbody>
+    </table>
+    @if(market.filtered.length===0){
+    <p class="muted">No results. Try another search.</p>
+    }@if(vm.page==='watchlist'&&!market.watched.length){
+    <p class="muted">Your watchlist is empty. Add assets from the screener.</p>
+    }
+  </div>
+</section>

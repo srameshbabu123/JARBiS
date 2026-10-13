@@ -1,0 +1,65 @@
+@let vm = workspace;
+
+<div class="auth">
+  <section class="auth-art">
+    <a class="brand" href="#/overview"
+      ><b class="logo">J</b> JARBiS<span>®</span></a
+    >
+    <div>
+      <span class="eyebrow">A DIFFERENT PERSPECTIVE</span>
+      <h1>Your market.<br />Your move.</h1>
+      <p>See the bigger picture.<br />Build a portfolio that feels like you.</p>
+      <div class="orb"></div>
+    </div>
+    <small>Clarity in every decision.</small>
+  </section>
+  <section class="auth-form">
+    <span class="eyebrow">LET’S GET STARTED</span>
+    <h1>{{signup?'Create your account':'Welcome back.'}}</h1>
+    <p class="muted">
+      {{signup?'Your next chapter starts here.':'A little perspective goes a
+      long way.'}}
+    </p>
+    <form #authForm="ngForm" (ngSubmit)="authForm.valid && authenticate()">
+      @if(signup){<label
+        >Full name<input
+          name="name"
+          [(ngModel)]="fullName"
+          required
+          autocomplete="name" /></label
+      >}<label
+        >Email address<input
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          required
+          autocomplete="email" /></label
+      ><label
+        >Password<input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          minlength="8"
+          required
+          [autocomplete]="signup?'new-password':'current-password'" /></label
+      ><button class="primary wide" [disabled]="vm.busy || authForm.invalid">
+        {{vm.busy?'Please wait…':signup?'Create account →':'Sign in →'}}
+      </button>
+    </form>
+    <p role="alert" class="negative">{{vm.error}}</p>
+    <p role="status">{{vm.notice}}</p>
+    <button
+      class="text-button"
+      (click)="signup=!signup;vm.error='';vm.notice=''"
+    >
+      {{signup?'Already a member? Sign in':'New here? Create an account'}}
+    </button>
+    <div class="divider"></div>
+    <button class="outline wide" (click)="vm.go('Overview')">
+      Explore demo ↗</button
+    ><small
+      >Preview without an account. Sign in to connect an existing brokerage
+      account.</small
+    >
+  </section>
+</div>

@@ -1,0 +1,54 @@
+@let vm = workspace;
+
+<div class="profile-grid">
+  <section class="panel">
+    <h3>Personal details</h3>
+    <form (ngSubmit)="vm.saveProfile()">
+      <label
+        >Full name<input
+          name="profileName"
+          [(ngModel)]="vm.profileName"
+          required /></label
+      ><label
+        >Email address<input
+          name="profileEmail"
+          type="email"
+          [(ngModel)]="vm.profileEmail"
+          required /></label
+      ><button class="primary">Save changes</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h3>Connect your brokerage account</h3>
+    <p class="muted">
+      Sign in, then enter an existing account ID. Your account balance and
+      holdings will load from the brokerage server.
+    </p>
+    <form (ngSubmit)="vm.connect()">
+      <div class="inline-fields">
+        <label
+          >User ID<input
+            name="userId"
+            type="number"
+            min="1"
+            [(ngModel)]="vm.userId"
+            readonly
+            required /></label
+        ><label
+          >Account ID<input
+            name="accountId"
+            type="number"
+            min="1"
+            [(ngModel)]="vm.accountId"
+            required
+        /></label>
+      </div>
+      <button class="outline" [disabled]="vm.busy">
+        {{vm.busy?'Loading…':'Load account'}}
+      </button>
+      <button type="button" class="text-button" (click)="vm.resetDemo()">
+        Reset to demo
+      </button>
+    </form>
+  </section>
+</div>

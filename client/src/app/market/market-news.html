@@ -1,0 +1,56 @@
+@let vm = workspace;
+
+<section class="news-section">
+  <div class="panel-heading">
+    <div>
+      <span class="eyebrow">BEYOND THE NUMBERS</span>
+      <h3>Market reading</h3>
+    </div>
+    @if(vm.page==='overview'){<button
+      class="text-button"
+      (click)="vm.go('News')"
+    >
+      Explore news ↗</button
+    >}
+  </div>
+  <div class="news-grid">
+    <a
+      class="news-card"
+      href="https://www.reuters.com/markets/"
+      target="_blank"
+      rel="noopener noreferrer"
+      ><div class="news-art art-one">
+        <span>THE BIG<br />PICTURE.</span><i>↗</i>
+      </div>
+      <small>REUTERS · MARKETS</small>
+      <h3>Stay close to the stories moving global markets.</h3>
+      <p>Open the latest market reporting ↗</p></a
+    ><a
+      class="news-card"
+      href="https://www.cnbc.com/markets/"
+      target="_blank"
+      rel="noopener noreferrer"
+      ><div class="news-art art-two">
+        <span>MARKET<br />MOMENTUM.</span><i>⌁</i>
+      </div>
+      <small>CNBC · MARKET COVERAGE</small>
+      <h3>Track the trading day, one development at a time.</h3>
+      <p>Read current market coverage ↗</p></a
+    ><a
+      class="news-card"
+      href="https://www.federalreserve.gov/newsevents.htm"
+      target="_blank"
+      rel="noopener noreferrer"
+      ><div class="news-art art-three">
+        <span>POLICY &amp;<br />PERSPECTIVE.</span><i>◎</i>
+      </div>
+      <small>FEDERAL RESERVE · NEWS</small>
+      <h3>Get monetary policy updates straight from the source.</h3>
+      <p>Explore the latest releases ↗</p></a
+    >
+  </div>
+  <small class="muted"
+    >Live source links. An in-app article feed requires a market-news
+    API.</small
+  >
+</section>

@@ -1,0 +1,52 @@
+@let vm = workspace;
+
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h3>Your holdings <span class="count">{{vm.holdings.length}}</span></h3>
+      <small>A home for your long-term vision.</small>
+    </div>
+    <span class="muted">Account {{vm.accountId}}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Quantity</th>
+          <th>Avg. cost</th>
+          <th>Market value</th>
+          <th>Unrealized P&amp;L</th>
+          <th>Return</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(h of vm.holdings;track h.id){
+        <tr>
+          <td>
+            <span class="asset-cell"
+              ><span class="stock-icon">{{h.assetName.slice(0,1)}}</span
+              ><b>{{h.assetName}}</b></span
+            >
+          </td>
+          <td>{{h.quantity|number}}</td>
+          <td>{{h.averagePrice|currency}}</td>
+          <td>{{h.marketValue|currency}}</td>
+          <td [class.negative]="h.unrealizedPnL<0" class="positive">
+            {{h.unrealizedPnL|currency}}
+          </td>
+          <td>
+            <span class="pill"
+              >{{h.unrealizedPnLPercentage|number:'1.2-2'}}%</span
+            >
+          </td>
+        </tr>
+        }@empty{
+        <tr>
+          <td colspan="6">No holdings in this account yet.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
