@@ -7,7 +7,9 @@
     "build": "ng build",
     "test:trade": "npm run build && node tests/trade-smoke.mjs",
     "format": "prettier --write src angular.json tsconfig.json",
-    "format:check": "prettier --check src angular.json tsconfig.json"
+    "format:check": "prettier --check src angular.json tsconfig.json",
+    "test:cash": "npm run build && node tests/cash-smoke.mjs",
+    "test:ui": "npm run build && node tests/trade-smoke.mjs && node tests/cash-smoke.mjs"
   },
   "dependencies": {
     "@angular/common": "22.2.2",

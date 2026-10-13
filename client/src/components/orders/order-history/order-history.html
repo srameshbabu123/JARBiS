@@ -34,8 +34,8 @@
             {{o.side}}
           </td>
           <td>{{o.quantity}}</td>
-          <td>{{o.price|currency}}</td>
-          <td>{{o.quantity*o.price|currency}}</td>
+          <td>{{o.price|currency:vm.currency}}</td>
+          <td>{{o.quantity*o.price|currency:vm.currency}}</td>
           <td>
             <span class="pill" [class.pending]="o.status==='PENDING'"
               >{{o.status}}</span

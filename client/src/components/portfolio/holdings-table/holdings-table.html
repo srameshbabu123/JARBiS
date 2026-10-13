@@ -30,10 +30,10 @@
             >
           </td>
           <td>{{h.quantity|number}}</td>
-          <td>{{h.averagePrice|currency}}</td>
-          <td>{{h.marketValue|currency}}</td>
+          <td>{{h.averagePrice|currency:vm.currency}}</td>
+          <td>{{h.marketValue|currency:vm.currency}}</td>
           <td [class.negative]="h.unrealizedPnL<0" class="positive">
-            {{h.unrealizedPnL|currency}}
+            {{h.unrealizedPnL|currency:vm.currency}}
           </td>
           <td>
             <span class="pill"

@@ -76,7 +76,8 @@ try {
   else {
    assert.equal(req.headers().authorization,'Bearer test-session-only');
    if(path==='/api/users/9')body={id:9,fullName:'Test User',email:'test@example.com'};
-   else if(path==='/api/accounts/42')body={id:42,ownerId:9,balance:10000,accountType:'BROKERAGE',currency:'USD'};
+   else if(path==='/api/accounts/mine')body=[{id:42,ownerId:9,balance:10000,accountType:'INVESTMENT',currency:'USD'}];
+   else if(path==='/api/accounts/mine/42')body={id:42,ownerId:9,balance:10000,accountType:'BROKERAGE',currency:'USD'};
    else if(path==='/api/holdings/account/42')body=[holding];
    else if(path==='/api/orders/account/42')body=[];
    else if(path==='/api/orders'&&req.method()==='POST'){
@@ -90,7 +91,9 @@ try {
  });
  await page.getByRole('button',{name:'Sign in ↗',exact:true}).click();
  await page.getByLabel('Email address').fill('test@example.com');await page.getByLabel('Password',{exact:true}).fill('test-password');await page.getByRole('button',{name:'Sign in →',exact:true}).click();
- await page.getByLabel('Account ID',{exact:true}).fill('42');await page.getByRole('button',{name:'Load account',exact:true}).click();await page.getByText('Loaded account 42 · USD').waitFor();
+ await page.getByText('Loaded account 42 · USD').waitFor();
+ assert.equal(await page.getByLabel('User ID',{exact:true}).count(),0);
+ assert.equal(await page.getByLabel('Account ID',{exact:true}).count(),0);
  await page.locator('nav button').filter({hasText:'Trade'}).click();
  await page.getByRole('heading',{name:'Order ticket',exact:true}).waitFor();
  await page.getByLabel('Asset from your holdings').selectOption({label:'Test Asset · #77'});

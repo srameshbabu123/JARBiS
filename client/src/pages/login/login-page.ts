@@ -82,7 +82,7 @@ export class LoginPageComponent {
           this.workspace.profileEmail = r.user.email;
           this.workspace.go("Profile");
           this.workspace.notice =
-            "Signed in. Enter your account ID and load the account to trade.";
+            "Signed in. Your brokerage accounts will appear below.";
         },
         error: () => {
           this.workspace.busy = false;

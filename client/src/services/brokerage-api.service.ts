@@ -31,7 +31,13 @@ export class BrokerageApiService {
     return this.http.get<number>(`/api/users/${id}/balance`);
   }
   account(id: number) {
-    return this.http.get<Account>(`/api/accounts/${id}`);
+    return this.http.get<Account>(`/api/accounts/mine/${id}`);
+  }
+  myAccounts() {
+    return this.http.get<Account[]>("/api/accounts/mine");
+  }
+  changeCash(id: number, amount: number, action: "deposit" | "withdraw") {
+    return this.http.post<Account>(`/api/accounts/${id}/${action}`, { amount });
   }
   holdings(id: number) {
     return this.http.get<Holding[]>(`/api/holdings/account/${id}`);

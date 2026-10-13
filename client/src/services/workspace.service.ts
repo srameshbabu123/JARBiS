@@ -120,6 +120,62 @@ export class WorkspaceService {
   set loadedAccount(value: Account | null) {
     this.loadedAccountState.set(value);
   }
+  readonly accounts = signal<Account[]>([]);
+  readonly accountsLoading = signal(false);
+  readonly cashBusy = signal(false);
+  get currency() {
+    return this.loadedAccount?.currency ?? "USD";
+  }
+  get availableCash() {
+    return Math.max(
+      0,
+      this.cash -
+        this.orders
+          .filter(
+            (o) =>
+              o.side === "BUY" &&
+              ["PENDING", "PARTIALLY_FILLED"].includes(o.status),
+          )
+          .reduce(
+            (total, o) => total + (o.remainingQuantity ?? o.quantity) * o.price,
+            0,
+          ),
+    );
+  }
+  discoverAccounts() {
+    if (!this.session.currentUser || this.accountsLoading()) return;
+    this.accountsLoading.set(true);
+    this.error = "";
+    this.api
+      .myAccounts()
+      .pipe(
+        takeUntil(this.resetRequests),
+        finalize(() => this.accountsLoading.set(false)),
+      )
+      .subscribe({
+        next: (accounts) => {
+          this.accounts.set(accounts);
+          if (accounts.length === 1 && !this.loadedAccount)
+            this.selectAccount(accounts[0].id);
+        },
+        error: () =>
+          (this.error =
+            "Could not load your accounts. Please refresh your account list."),
+      });
+  }
+  selectAccount(id: number) {
+    if (this.cashBusy() || this.busy) return;
+    this.accountId = id;
+    this.connect();
+  }
+  applyCash(account: Account) {
+    if (this.loadedAccount?.id !== account.id) return;
+    this.loadedAccount = account;
+    this.cash = account.balance;
+    this.accounts.update((accounts) =>
+      accounts.map((a) => (a.id === account.id ? account : a)),
+    );
+  }
   constructor() {
     this.resetDemo();
   }
@@ -131,6 +187,8 @@ export class WorkspaceService {
   }
   resetDemo() {
     this.resetRequests.next();
+    this.accounts.set([]);
+    this.cashBusy.set(false);
     this.busy = false;
     this.loadedAccount = null;
     this.live = false;
@@ -206,9 +264,10 @@ export class WorkspaceService {
       !Number.isInteger(this.userId) ||
       !Number.isInteger(this.accountId) ||
       this.userId < 1 ||
-      this.accountId < 1
+      this.accountId < 1 ||
+      !this.accounts().some((account) => account.id === this.accountId)
     ) {
-      this.error = "Enter valid positive user and account IDs.";
+      this.error = "Choose one of your brokerage accounts.";
       return;
     }
     this.busy = true;
@@ -230,6 +289,11 @@ export class WorkspaceService {
             return;
           }
           this.loadedAccount = r.account;
+          this.accounts.update((accounts) =>
+            accounts.map((account) =>
+              account.id === r.account.id ? r.account : account,
+            ),
+          );
           this.live = true;
           this.profileName = r.user.fullName;
           this.profileEmail = r.user.email;
@@ -242,7 +306,7 @@ export class WorkspaceService {
         error: () => {
           this.busy = false;
           this.error =
-            "Unable to load account. Check API connection and IDs. Demo data remains visible.";
+            "Unable to load account. Check API connection and IDs. Your previous account view remains visible.";
         },
       });
   }

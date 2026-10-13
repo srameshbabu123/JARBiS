@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+.cash-actions {
+  margin: 20px 0;
+  width: fit-content;
+}
+form {
+  display: grid;
+  gap: 14px;
+  max-width: 440px;
+}
+form .primary {
+  width: fit-content;
+}
+.cash-review {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+.cash-review p {
+  margin: 12px 0;
+}
+.cash-panel > .muted {
+  margin-top: 12px;
+}

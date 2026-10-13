@@ -20,7 +20,7 @@
       </div>
     </div>
     <div class="chart-value">
-      {{(vm.page==='overview'?vm.cash+vm.invested:market.selected.price)|currency}}<span
+      {{(vm.page==='overview'?vm.cash+vm.invested:market.selected.price)|currency:(vm.page==='overview'?vm.currency:'USD')}}<span
         >↗ Sample trend</span
       >
     </div>
@@ -84,7 +84,7 @@
         >{{s.symbol.slice(0,1)}}</span
       ><span><b>{{s.symbol}}</b><small>{{s.name}}</small></span
       ><span class="stock-price"
-        ><b>{{s.price|currency}}</b
+        ><b>{{s.price|currency:'USD'}}</b
         ><small [class.negative]="s.change<0" class="positive"
           >{{s.change>0?'+':''}}{{s.change}}%</small
         ></span

@@ -33,11 +33,17 @@ Components use `OnPush`; shared writable state uses signals behind getters/sette
 
 ## Behavior and API integration
 
-Demo mode uses illustrative quotes, charts, balances and orders. Confirming a demo order creates a local PENDING order without HTTP requests or settlement. Sign in/register, open Profile, and load an existing account ID to use backend data. The authenticated user ID comes from the login response. Trade can use holdings or a manually entered existing asset ID; the backend has no asset search/list endpoint yet.
+Demo mode uses illustrative quotes, charts, balances and orders. Confirming a demo order creates a local PENDING order without HTTP requests or settlement. Sign in/register, open Profile to discover your brokerage accounts from your signed-in session. A single account loads automatically; multiple accounts use a selector. No user/account ID entry is required. Trade can use holdings or a manually entered existing asset ID; the backend has no asset search/list endpoint yet.
 
 Orders POST exactly `{accountId, assetId, side, quantity, price}` to `/api/orders`. The UI estimates cash/shares after pending reservations, freezes review details, blocks duplicate clicks, and treats network/5xx failures as ambiguous without automatic retry. Refresh history or reload the account to see settlement results. Tokens remain in memory and are cleared on sign-out/refresh. Authorization and final balance checks remain backend responsibilities.
 
-News opens publisher sources; it is not an in-app article feed. Market data is illustrative. Watchlists are browser-local. Trade uses account currency; the inherited overview/profile formatting is USD. Live quotes, account discovery/creation, and persisted watchlists require further integration.
+News opens publisher sources; it is not an in-app article feed. Market data is illustrative. Watchlists are browser-local. Cash, holdings, order history, and portfolio summaries use the selected account currency. Illustrative market quotes remain USD. Live quotes, account creation, and persisted watchlists require further integration.
+
+## Deposits and withdrawals
+
+Manage cash on Overview or Profile. Enter an amount, review it, and explicitly confirm. Demo mode changes demo cash locally. Connected mode uses POST `/api/accounts/{accountId}/deposit` or `/withdraw` with `{amount}` and the in-memory Bearer session. The server identifies the owner from the JWT principal and uses a locked account lookup. Amounts must be positive, finite, and have at most two decimal places. Withdrawals exclude cash reserved for open BUY orders. Success updates the selected account balance; no automatic retry occurs after a network/5xx response. Use Refresh cash balance to check an uncertain result before a new request.
+
+These operations update brokerage cash balances only. No bank transfer, external payment processing, reconciliation or transfer ledger is connected. The UI states this explicitly. Account discovery uses GET `/api/accounts/mine`; account loading uses GET `/api/accounts/mine/{accountId}`, both scoped to the authenticated principal.
 
 ## Validation
 
@@ -45,7 +51,7 @@ News opens publisher sources; it is not an in-app article feed. Market data is i
 npm run format:check
 npm run build
 npx playwright install chromium
-npm run test:trade
+npm run test:ui
 ```
 
-`CHROMIUM_PATH=/path/to/chromium npm run test:trade` can use an existing browser. Browser tests serve the production build with mocked API responses and never submit real trades. They cover demo buy/sell, validation, review locks, history, lazy routes, browser back/reload, watchlist persistence, authentication headers, exact order payloads, duplicate submission, ambiguous failures, sign-out, and mobile overflow. Screenshots are written to ignored `test-results/`. Live backend integration is not exercised by these tests.
+`CHROMIUM_PATH=/path/to/chromium npm run test:ui` can use an existing browser. Browser tests serve the production build with mocked API responses and never submit real trades. They cover demo buy/sell, validation, review locks, history, lazy routes, browser back/reload, watchlist persistence, authentication headers, exact order payloads, duplicate submission, ambiguous failures, sign-out, and mobile overflow. The cash suite also checks demo/live deposits and withdrawals, single/multiple account discovery, currency, amount validation, duplicate prevention and ambiguous failures. Screenshots are written to ignored `test-results/`. Live backend integration is not exercised by these tests.
