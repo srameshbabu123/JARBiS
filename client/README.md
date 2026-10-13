@@ -31,6 +31,10 @@ Open http://localhost:4200/#/overview or http://localhost:4200/#/trade. The exis
 
 Components use `OnPush`; shared writable state uses signals behind getters/setters to retain template-driven form bindings. Login owns its transient form fields, and its HTTP subscription ends when the page is destroyed. Trade subscriptions also end on destruction and explicitly notify Angular on asynchronous results. No manual hashchange listener or Zone.js dependency remains. Templates and feature styles are colocated; global styles load one shared theme for all pages. The shared brand component renders the existing Velocity logo in the sidebar, login and footer; the supplied icon is the favicon.
 
+## Dark and light themes
+
+Use the mode toggle in the workspace header or login page. The saved browser preference applies on reload; dark mode is the default. Shared tokens use the supplied exact Velocity background, grid and four-stop gradient colors in each mode. Neutral surfaces and readable status colors derive from the selected theme. The existing dark/light logo and icon assets switch with the mode, and chart grids/lines use shared theme tokens.
+
 ## Behavior and API integration
 
 Demo mode uses illustrative quotes, charts, balances and orders. Confirming a demo order creates a local PENDING order without HTTP requests or settlement. Sign in/register, open Profile to discover your brokerage accounts from your signed-in session. A single account loads automatically; multiple accounts use a selector. No user/account ID entry is required. Trade can use holdings or a manually entered existing asset ID; the backend has no asset search/list endpoint yet.

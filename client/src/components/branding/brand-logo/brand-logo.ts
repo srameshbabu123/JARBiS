@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, input } from "@angular/core";
+import { ThemeService } from "../../../services/theme.service";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  inject,
+} from "@angular/core";
 @Component({
   selector: "app-brand-logo",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -6,5 +12,6 @@ import { ChangeDetectionStrategy, Component, input } from "@angular/core";
   styleUrl: "./brand-logo.css",
 })
 export class BrandLogoComponent {
+  protected readonly theme = inject(ThemeService);
   readonly compact = input(false);
 }

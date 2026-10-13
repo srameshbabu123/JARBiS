@@ -6,7 +6,7 @@ export const STOCKS = [
     change: 3.42,
     sector: "Technology",
     cap: 3490,
-    color: "#ad83fa",
+    color: "var(--purple)",
   },
   {
     symbol: "AAPL",
@@ -15,7 +15,7 @@ export const STOCKS = [
     change: 1.18,
     sector: "Technology",
     cap: 3420,
-    color: "#e7e7ef",
+    color: "var(--purple)",
   },
   {
     symbol: "MSFT",
@@ -24,7 +24,7 @@ export const STOCKS = [
     change: 0.86,
     sector: "Technology",
     cap: 3190,
-    color: "#fa9e64",
+    color: "var(--orange)",
   },
   {
     symbol: "TSLA",
@@ -33,7 +33,7 @@ export const STOCKS = [
     change: -1.24,
     sector: "Automotive",
     cap: 798,
-    color: "#ed81b4",
+    color: "var(--pink)",
   },
   {
     symbol: "AMZN",
@@ -42,7 +42,7 @@ export const STOCKS = [
     change: 2.13,
     sector: "Consumer",
     cap: 2080,
-    color: "#ffac69",
+    color: "var(--orange)",
   },
   {
     symbol: "JPM",
@@ -51,7 +51,7 @@ export const STOCKS = [
     change: -0.42,
     sector: "Financials",
     cap: 628,
-    color: "#9b8bf1",
+    color: "var(--purple)",
   },
   {
     symbol: "GOOGL",
@@ -60,6 +60,6 @@ export const STOCKS = [
     change: 1.67,
     sector: "Technology",
     cap: 2170,
-    color: "#e680b6",
+    color: "var(--pink)",
   },
 ];

@@ -12,8 +12,8 @@
 }
 .mode {
   color: var(--orange);
-  background: #36271f;
-  border: 1px solid #624331;
+  background: var(--orange-wash);
+  border: 1px solid var(--orange-wash);
   font-size: 10px;
   border-radius: 20px;
   padding: 8px 13px;
@@ -21,7 +21,7 @@
 .side-picker {
   display: flex;
   gap: 8px;
-  background: #101014;
+  background: var(--purple-wash);
   padding: 5px;
   border-radius: 10px;
   margin: 25px 0;
@@ -37,14 +37,14 @@
   font-weight: 600;
 }
 .side-picker .chosen {
-  background: #3c2a20;
+  background: var(--orange-wash);
   color: var(--orange);
-  border-color: #895436;
+  border-color: var(--orange-wash);
 }
 .side-picker .sell.chosen {
-  background: #3a2534;
+  background: var(--line);
   color: var(--pink);
-  border-color: #89526f;
+  border-color: var(--orange-wash);
 }
 fieldset {
   border: 0;
@@ -102,7 +102,7 @@ small {
     600 34px Manrope,
     sans-serif;
   margin-top: 9px;
-  color: #f3d5c2;
+  color: var(--muted);
 }
 .help {
   color: var(--pink);
@@ -110,8 +110,8 @@ small {
   margin-top: 14px;
 }
 .review {
-  border: 1px solid #64437b;
-  background: #251c2d;
+  border: 1px solid var(--purple-wash);
+  background: var(--purple-wash);
   padding: 20px;
   border-radius: 9px;
 }
@@ -126,10 +126,10 @@ small {
   margin-top: 20px;
 }
 .receipt {
-  border: 1px solid #624e80;
+  border: 1px solid var(--purple-wash);
   border-radius: 10px;
   padding: 22px;
-  background: #282033;
+  background: var(--purple-wash);
 }
 .receipt p {
   line-height: 1.6;
@@ -170,7 +170,7 @@ small {
   color: var(--purple);
 }
 .how-it-works strong {
-  color: #ddd4e4;
+  color: var(--text);
   font-size: 13px;
 }
 .how-it-works p {

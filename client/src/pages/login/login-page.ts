@@ -1,3 +1,4 @@
+import { ThemeToggleComponent } from "../../components/branding/theme-toggle/theme-toggle";
 import { BrandLogoComponent } from "../../components/branding/brand-logo/brand-logo";
 import { finalize } from "rxjs";
 import { ChangeDetectionStrategy } from "@angular/core";
@@ -10,7 +11,12 @@ import { WorkspaceService } from "../../services/workspace.service";
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [":host { display: block; }"],
   selector: "app-login-page",
-  imports: [BrandLogoComponent, CommonModule, FormsModule],
+  imports: [
+    ThemeToggleComponent,
+    BrandLogoComponent,
+    CommonModule,
+    FormsModule,
+  ],
   templateUrl: "./login-page.html",
 })
 export class LoginPageComponent {

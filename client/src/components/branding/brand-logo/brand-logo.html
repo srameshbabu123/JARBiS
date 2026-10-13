@@ -1,6 +1,6 @@
 <span class="logo-window" [class.compact]="compact()"
   ><img
-    src="assets/branding/velocity-logo-dark.jpg"
+    [src]="'assets/branding/velocity-logo-'+theme.mode()+'.jpg'"
     alt="Velocity"
     width="2048"
     height="1143"

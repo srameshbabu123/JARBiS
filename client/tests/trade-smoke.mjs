@@ -23,6 +23,20 @@ try {
  await page.waitForFunction(()=>[...document.querySelectorAll('app-brand-logo img')].length===2 && [...document.querySelectorAll('app-brand-logo img')].every(img=>img.complete && img.naturalWidth>0));
  assert.equal(await page.getByText('JARBiS',{exact:false}).count(),0);
  await page.screenshot({path:new URL('../test-results/trade.png',import.meta.url).pathname,fullPage:true});
+ // Exact palettes, theme-specific artwork, and saved mode across a reload.
+ const palette=()=>page.evaluate(()=>{const style=getComputedStyle(document.documentElement);return Object.fromEntries(['bg','chart-grid','orange','pink','magenta','purple'].map(key=>[key,style.getPropertyValue('--'+key).trim().toLowerCase()]))});
+ assert.deepEqual(await palette(),{bg:'#050505','chart-grid':'#262626',orange:'#ff6b00',pink:'#ff4d8d',magenta:'#d93cbe',purple:'#9d2bff'});
+ await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();
+ await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
+ assert.deepEqual(await palette(),{bg:'#f9f9f9','chart-grid':'#d1d1d1',orange:'#ff5500',pink:'#e60067',magenta:'#b812a4',purple:'#7209b7'});
+ await page.waitForFunction(()=>[...document.querySelectorAll('app-brand-logo img')].every(img=>img.src.endsWith('velocity-logo-light.jpg') && img.complete && img.naturalWidth>0));
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(249, 249, 249)');
+ await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
+ await page.screenshot({path:new URL('../test-results/trade-light.png',import.meta.url).pathname,fullPage:true});
+ await page.reload();await page.getByRole('heading',{name:'Order ticket'}).waitFor();
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();
+ await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
  const quantity=page.getByLabel('Quantity',{exact:true});
  await quantity.fill('0');assert(await page.getByRole('button',{name:'Review buy order'}).isDisabled());
  await quantity.fill('10000');assert(await page.getByRole('button',{name:'Review buy order'}).isDisabled());

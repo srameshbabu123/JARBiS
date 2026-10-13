@@ -4,7 +4,7 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: #f2eff6;
+  color: var(--text);
   font:
     14px "DM Sans",
     sans-serif;

@@ -1,3 +1,4 @@
+import { ThemeToggleComponent } from "../../branding/theme-toggle/theme-toggle";
 import { BrandLogoComponent } from "../../branding/brand-logo/brand-logo";
 import { ChangeDetectionStrategy } from "@angular/core";
 import { MarketService } from "../../../services/market.service";
@@ -12,6 +13,7 @@ import { RouterLink } from "@angular/router";
   styles: [":host { display: block; }"],
   selector: "app-workspace-shell",
   imports: [
+    ThemeToggleComponent,
     BrandLogoComponent,
     CommonModule,
     FormsModule,
