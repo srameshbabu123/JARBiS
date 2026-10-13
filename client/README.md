@@ -1,4 +1,4 @@
-# JARBiS Angular 22 client
+# Velocity Angular 22 client
 
 The client is based on `development` (backend commit `f068d2c`), with the existing UI imported from `feature/angular-client-ui`. Angular framework, router, CLI, and build tooling are pinned to **22.2.2**. TypeScript is 6.0, and the app uses Angular's default zoneless rendering.
 
@@ -19,19 +19,17 @@ Open http://localhost:4200/#/overview or http://localhost:4200/#/trade. The exis
 | Location | Responsibility |
 | --- | --- |
 | `src/main.ts` | Bootstrap only |
-| `src/app/app.config.ts` | HTTP/interceptor and router providers |
-| `src/app/app.routes.ts` | Lazy standalone route definitions and unknown-route fallback |
-| `src/app/pages/` | Routed overview, login, trade, charts, watchlist, screener, news, history, and profile pages |
-| `src/app/workspace/` | Shell/navigation and signal-backed account/demo state shared across routes |
-| `src/app/auth/` | In-memory session and scoped Bearer interceptor |
-| `src/app/brokerage/` | Typed API transport and backend DTOs |
-| `src/app/portfolio/` | Reusable balance and holdings components |
-| `src/app/market/` | Market components, sample quotes, filters, chart selection, and browser-local watchlist |
-| `src/app/orders/` | History component with local status filter |
-| `src/app/profile/` | Profile editing and account connection forms |
-| `src/app/trade/` | Focused order ticket, review, validation, receipt, and submission |
+| `src/app.config.ts` | HTTP/interceptor and router providers |
+| `src/app.routes.ts` | Lazy standalone route definitions and unknown-route fallback |
+| `src/pages/` | Routed overview, login, trade, charts, watchlist, screener, news, history, and profile pages |
+| `src/components/` | Reusable portfolio, market, order, profile, trade, shell and branding components, with colocated templates/styles |
+| `src/services/` | Signal-backed workspace/market state, session, API transport and Bearer interceptor |
+| `src/models/` | Backend DTOs |
+| `src/data/` | Illustrative market data |
+| `src/styles/` | Shared theme tokens, base typography/controls, and consistent page/layout classes |
+| `src/assets/branding/` | Existing Velocity dark/light logos and icons copied from the repository |
 
-Components use `OnPush`; shared writable state uses signals behind getters/setters to retain template-driven form bindings. Login owns its transient form fields, and its HTTP subscription ends when the page is destroyed. Trade subscriptions also end on destruction and explicitly notify Angular on asynchronous results. No manual hashchange listener or Zone.js dependency remains. Templates and feature styles are colocated; global styles contain the existing visual theme.
+Components use `OnPush`; shared writable state uses signals behind getters/setters to retain template-driven form bindings. Login owns its transient form fields, and its HTTP subscription ends when the page is destroyed. Trade subscriptions also end on destruction and explicitly notify Angular on asynchronous results. No manual hashchange listener or Zone.js dependency remains. Templates and feature styles are colocated; global styles load one shared theme for all pages. The shared brand component renders the existing Velocity logo in the sidebar, login and footer; the supplied icon is the favicon.
 
 ## Behavior and API integration
 

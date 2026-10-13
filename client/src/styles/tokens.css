@@ -1,0 +1,12 @@
+:root {
+  color-scheme: dark;
+  --bg: #101014;
+  --panel: #19191f;
+  --line: #2b2b33;
+  --muted: #92919f;
+  --orange: #ffa46c;
+  --purple: #b292f6;
+  --pink: #ec94bf;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+}

@@ -13,12 +13,21 @@
             "tsConfig": "tsconfig.json",
             "index": "src/index.html",
             "styles": ["src/styles.css"],
-            "outputPath": "dist/client"
+            "outputPath": "dist/client",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
+              }
+            ]
           }
         },
         "serve": {
           "builder": "@angular/build:dev-server",
-          "options": { "buildTarget": "client:build" }
+          "options": {
+            "buildTarget": "client:build"
+          }
         }
       }
     }

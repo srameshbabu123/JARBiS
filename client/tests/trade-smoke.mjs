@@ -19,6 +19,9 @@ try {
  const origin=`http://127.0.0.1:${server.address().port}`;
  await page.goto(origin+'/#trade');
  await page.getByRole('heading',{name:'Order ticket'}).waitFor();
+ assert.match(await page.title(),/Velocity/);
+ await page.waitForFunction(()=>[...document.querySelectorAll('app-brand-logo img')].length===2 && [...document.querySelectorAll('app-brand-logo img')].every(img=>img.complete && img.naturalWidth>0));
+ assert.equal(await page.getByText('JARBiS',{exact:false}).count(),0);
  await page.screenshot({path:new URL('../test-results/trade.png',import.meta.url).pathname,fullPage:true});
  const quantity=page.getByLabel('Quantity',{exact:true});
  await quantity.fill('0');assert(await page.getByRole('button',{name:'Review buy order'}).isDisabled());
