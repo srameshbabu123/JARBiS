@@ -11,8 +11,8 @@ public class CryptoAsset extends Asset {
 	public CryptoAsset() {
 	}
 
-	public CryptoAsset(String name, double price) {
-		super(name, (double) price);
+	public CryptoAsset(String name) {
+		super(name);
 	}
 
 	@Override

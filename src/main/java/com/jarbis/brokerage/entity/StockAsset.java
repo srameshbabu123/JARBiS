@@ -12,8 +12,8 @@ public class StockAsset extends Asset {
 		super();
 	}
 
-	public StockAsset(String name, Double price) {
-		super(name, price);
+	public StockAsset(String name) {
+		super(name);
 	}
 
 	@Override

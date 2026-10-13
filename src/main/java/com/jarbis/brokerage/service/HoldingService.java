@@ -23,7 +23,7 @@ public class HoldingService {
 
 	/**
 	 * Calculate the market value of a holding (current price * quantity). Fetches
-	 * current price from external market data provider.
+	 * the current price from the Redis-backed market data client.
 	 *
 	 * @param holding
 	 *            the holding to calculate market value for

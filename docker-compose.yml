@@ -22,6 +22,23 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: jarbis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   # Spring Boot Application (Backend)
   jarbis-backend:
     build:
@@ -30,6 +47,8 @@ services:
     container_name: jarbis-backend
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
@@ -40,6 +59,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: 'false'
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
     ports:
@@ -63,4 +84,5 @@ networks:
 volumes:
   postgres_data:
     driver: local
-
+  redis_data:
+    driver: local
