@@ -11,6 +11,7 @@ public class MarketDataProperties {
 	private String apiKey;
 	private String symbolsFile = "classpath:market-data-symbols.txt";
 	private int batchSize = 25;
+	private Polling polling = new Polling();
 	private Redis redis = new Redis();
 
 	public String getBaseUrl() {
@@ -45,12 +46,51 @@ public class MarketDataProperties {
 		this.batchSize = batchSize;
 	}
 
+	public Polling getPolling() {
+		return polling;
+	}
+
+	public void setPolling(Polling polling) {
+		this.polling = polling;
+	}
+
 	public Redis getRedis() {
 		return redis;
 	}
 
 	public void setRedis(Redis redis) {
 		this.redis = redis;
+	}
+
+	public static class Polling {
+
+		private boolean enabled;
+		private long fixedDelayMs = 15000;
+		private long initialDelayMs = 5000;
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
+
+		public long getFixedDelayMs() {
+			return fixedDelayMs;
+		}
+
+		public void setFixedDelayMs(long fixedDelayMs) {
+			this.fixedDelayMs = fixedDelayMs;
+		}
+
+		public long getInitialDelayMs() {
+			return initialDelayMs;
+		}
+
+		public void setInitialDelayMs(long initialDelayMs) {
+			this.initialDelayMs = initialDelayMs;
+		}
 	}
 
 	public static class Redis {
