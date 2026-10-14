@@ -16,15 +16,11 @@ public abstract class Asset {
 	@Column(nullable = false)
 	private String name;
 
-	@Column(nullable = false)
-	private Double price;
-
 	protected Asset() {
 	}
 
-	protected Asset(String name, Double price) {
+	protected Asset(String name) {
 		this.name = name;
-		this.price = price;
 	}
 
 	public Long getId() {
@@ -33,10 +29,6 @@ public abstract class Asset {
 
 	public String getName() {
 		return name;
-	}
-
-	public Double getPrice() {
-		return price;
 	}
 
 	public abstract AssetType getType();
