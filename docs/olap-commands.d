@@ -148,7 +148,7 @@ docker-compose exec -T postgres-olap psql \
 
 # 24. Connect from a database GUI such as DBeaver or pgAdmin
 # Host: localhost
-# Port: 5433
+# Port: 8091
 # Database: jarbis_olap
 # User: jarbis_olap_user
 # Password: jarbis_olap_password

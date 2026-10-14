@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: jarbis_password
     command: ["postgres", "-c", "max_connections=200"]
     ports:
-      - "5432:5432"
+      - "8090:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -31,7 +31,7 @@ services:
       POSTGRES_USER: jarbis_olap_user
       POSTGRES_PASSWORD: jarbis_olap_password
     ports:
-      - "5433:5432"
+      - "8091:5432"
     volumes:
       - postgres_olap_data:/var/lib/postgresql/data
       - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
@@ -99,14 +99,13 @@ services:
       dockerfile: Dockerfile
     container_name: jarbis-backend
     depends_on:
-      postgres:
-        condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
     environment:
       SERVER_PORT: 8080
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
+      # Shared development master database hosted on the Linux server.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://10.18.67.77:8090/jarbis_db
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: jarbis_password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
