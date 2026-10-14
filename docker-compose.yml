@@ -22,24 +22,6 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Redis market-data store
-  redis:
-    image: redis:7-alpine
-    container_name: jarbis-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - jarbis-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-
   # Single-node Kafka in KRaft mode for local development
   kafka:
     image: apache/kafka:3.9.1
@@ -95,8 +77,6 @@ services:
     container_name: jarbis-backend
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully

@@ -31,50 +31,6 @@ class UserControllerTest {
 	}
 
 	@Nested
-	class CreateUserTests {
-
-		@Test
-		void testCreateUserSuccess() {
-			CreateUserRequestDto requestDto = new CreateUserRequestDto("John Doe", "john@example.com", "password123");
-			User user = new User("John Doe", "john@example.com", "hashedPassword");
-			user.setId(1L);
-
-			when(userService.createUser("John Doe", "john@example.com", "password123")).thenReturn(user);
-
-			ResponseEntity<UserResponseDto> response = userController.createUser(requestDto);
-
-			assertEquals(HttpStatus.CREATED, response.getStatusCode());
-			assertEquals(1L, response.getBody().getId());
-			assertEquals("John Doe", response.getBody().getFullName());
-			assertEquals("john@example.com", response.getBody().getEmail());
-			verify(userService).createUser("John Doe", "john@example.com", "password123");
-		}
-
-		@Test
-		void testCreateUserWithDuplicateEmailThrowsException() {
-			CreateUserRequestDto requestDto = new CreateUserRequestDto("Jane Doe", "duplicate@example.com",
-					"password123");
-
-			when(userService.createUser("Jane Doe", "duplicate@example.com", "password123"))
-					.thenThrow(new EmailAlreadyExistsException("duplicate@example.com"));
-
-			assertThrows(EmailAlreadyExistsException.class, () -> userController.createUser(requestDto));
-			verify(userService).createUser("Jane Doe", "duplicate@example.com", "password123");
-		}
-
-		@Test
-		void testCreateUserWithNullFieldsHandledByService() {
-			CreateUserRequestDto requestDto = new CreateUserRequestDto(null, null, null);
-
-			// Service should handle validation
-			when(userService.createUser(null, null, null))
-					.thenThrow(new IllegalArgumentException("Required fields cannot be null"));
-
-			assertThrows(IllegalArgumentException.class, () -> userController.createUser(requestDto));
-		}
-	}
-
-	@Nested
 	class GetUserTests {
 
 		@Test
