@@ -1,85 +1,100 @@
-# Internal analytics dashboard
+# Internal analytics backend
 
-This branch combines development's Redis market-data changes with the OLAP branch. The dashboard is a separate Java 17 / Spring Boot application at http://localhost:8082. Its browser assets are served by that application, so no frontend toolchain or CORS setup is required. It does not alter the separate Angular client branches.
+This branch combines development's market-data implementation with the OLAP feature branch and adds a **backend-only** Java 17 / Spring Boot analytics service. It contains no dashboard pages, styles, chart code, or other frontend assets. The separately developed frontend consumes the API below.
 
-## Start a local stack
+## Run
 
-1. Copy `.env.analytics.example` to `.env.analytics`. Replace the database-password and JWT-secret placeholders. For existing databases, use their existing passwords; changing environment variables does not change an initialized database password.
-2. Generate a BCrypt password hash interactively (the command prompts for a password):
+1. Copy `.env.analytics.example` to `.env.analytics`. Set database passwords and a random JWT secret of at least 32 bytes. Existing database volumes require their existing passwords.
+2. Generate the internal account's BCrypt hash interactively:
 
    ```bash
    docker run --rm -it httpd:2.4-alpine htpasswd -nBC 12 admin
    ```
 
-   Copy only the `$2y$...` portion after `admin:` into `ANALYTICS_ADMIN_PASSWORD_HASH`. Keep single quotes around it in `.env.analytics`. The service refuses to start without a valid hash. No client registration grants internal access.
-3. Start the stack:
+   Set `ANALYTICS_ADMIN_PASSWORD_HASH` to the `$2y$...` part after `admin:`. Keep single quotes around the hash in the env file.
+3. Set `ANALYTICS_ALLOWED_ORIGINS` to explicit frontend origins, comma-separated, such as `http://localhost:4200`. Leave empty for same-origin access. Wildcards are rejected.
+4. Run:
 
    ```bash
    docker compose --env-file .env.analytics --profile analytics up -d --build
-   docker compose --env-file .env.analytics --profile analytics logs --tail=100 analytics jarbis-backend
    ```
 
-4. Open http://localhost:8082 and sign in with the configured internal username and password.
+The API listens on `http://localhost:8082`; there is no web UI at this address. The Compose port binds to loopback. Use an SSH tunnel or TLS reverse proxy for remote access. Set `ANALYTICS_SECURE_COOKIE=true` behind HTTPS. Use a same-site frontend/API deployment for the strict session cookie; CORS alone does not enable cross-site cookies.
 
-The example uses the local `postgres` service for trading. It does not seed accounts or assets. Use the existing registration/account/order flows to generate completed trades. The current matching engine still needs opposite-side orders. This feature does not change execution pricing or the matching rules.
+The example points trading at local Compose PostgreSQL. Set `BROKERAGE_DB_URL` explicitly for shared OLTP and `ANALYTICS_DB_URL` for shared OLAP. Container PostgreSQL ports are 5432; the existing host ports are 8090/8091. The analytics service has no OLTP datasource.
 
-New OLAP volumes initialize only the schema, not sample data. Existing volumes and records are retained; Flyway applies additive migrations using its own `reporting_migrations` history schema. Never delete a shared volume to apply these migrations. Existing facts are labeled LEGACY, not claimed as live events.
+## Frontend authentication contract
 
-For an isolated sample-data demonstration, load the existing `002_dummy_data.sql` **before the analytics service first applies migrations**, on a disposable OLAP database. Those records then appear under `Legacy / sample data`. Selecting that dataset adjusts the date range to its last 30 days; apply the filters. Do not load fixtures into a database receiving live events: synthetic IDs may collide with real IDs. The consumer refuses to overwrite a legacy trade with a live trade sharing its ID.
+All requests below must retain cookies (`credentials: 'include'` in fetch or `withCredentials: true` in Angular HttpClient).
 
-## Shared server deployment
+1. `GET /session/csrf` (public): returns `{ "parameterName": "_csrf", "headerName": "X-CSRF-TOKEN", "token": "..." }` and initializes the session.
+2. `POST /login`: send `application/x-www-form-urlencoded` fields `username` and `password`, plus the returned CSRF header/token. Success is **204**, invalid credentials **401**, missing/invalid CSRF **403**. There is no HTML response or redirect.
+3. Fetch `/session/csrf` again after successful login because authentication rotates the CSRF token.
+4. `GET /session/me`: returns `{ "username": "admin", "roles": ["ROLE_ANALYST"] }`. Anonymous callers receive **401**.
+5. `POST /logout`: include the current CSRF header/token. Returns **204** and invalidates the session.
 
-Deploy the updated trading backend and analytics service on the designated server, pointing them to the intended OLTP and OLAP databases. Set `BROKERAGE_DB_URL` explicitly to the intended shared OLTP host/port; the default now points to local Compose PostgreSQL. Set `ANALYTICS_DB_URL` to the actual shared OLAP host/port if it is not the Compose `postgres-olap` service. Internal container ports are 5432; host ports are 8090 / 8091.
+Reporting requires ROLE_ANALYST. Client JWTs do not grant internal access. Sessions expire after 30 minutes of inactivity. There is one configured analyst account initially; individual staff identities/SSO are future work. The backend keeps CSRF protection enabled, and credentialed CORS only accepts configured origins. A frontend should route users to its own sign-in page after a 401; 403 means insufficient role or a rejected CSRF/origin check.
 
-Only the designated deployment should set `BROKERAGE_ANALYTICS_ENABLED=true`. Every instance sharing an OLTP database must publish through the same Kafka cluster, not separate teammate-local brokers. Ordinary teammate stacks leave the relay disabled. Pending events remain in the database until the designated relay runs.
+## Reporting API
 
-The analytics HTTP port binds to loopback by default. For remote access, use an SSH tunnel or a TLS reverse proxy and set `ANALYTICS_SECURE_COOKIE=true` behind HTTPS. Sessions expire after 30 minutes of inactivity and logout invalidates the session. CSRF protection covers login/logout; the reporting API is read-only. One internal analyst account is configured for this initial implementation; use individually provisioned staff identities/SSO for a wider rollout.
+| Method and path | Result |
+| --- | --- |
+| GET `/admin/analytics/options` | Available instruments, account-type segments, currencies, and datasets with first/last dates |
+| GET `/admin/analytics/dashboard` | Summary, preceding-period summary, daily activity, top instruments, daily clients, ingestion timestamps, applied filter |
+| GET `/admin/analytics/trades` | Paginated completed fills |
 
-Changed Compose configuration requires database passwords and the JWT secret through environment variables; it contains no embedded password values. For deployment, use managed secrets and a database role restricted to the analytics schema, with only the privileges required for migrations/projection. Separate migration, projection, and SELECT-only query credentials and process limits are a further hardening step. The API has no OLTP datasource or OLTP credentials.
+Dashboard/trade query parameters:
 
-## Included behavior
+| Parameter | Meaning |
+| --- | --- |
+| `from`, `to` | Inclusive ISO dates, interpreted in UTC; maximum 367 days. Dashboard defaults to the last 30 days; trades requires both. |
+| `instrumentId` | Optional numeric asset ID |
+| `segment` | Optional account type from `/options`; this is the available client-segmentation proxy |
+| `currency` | Settlement currency, default USD; currencies are never summed together |
+| `dataset` | LIVE (default) or LEGACY (existing/sample records) |
+| `page` | Trades only; zero-based, default 0, page size 25 |
 
-- Four cards: executed value, completed fills, distinct active clients, distinct instruments, each with a preceding equal-length-period comparison.
-- Daily activity chart with value / fills switch, top instruments, daily unique client chart, and paginated completed-trade blotter.
-- Inclusive UTC date filters (maximum 367 days), instrument, account-type segment, currency, and live / legacy dataset.
-- A fill counts once per transaction, not once per participant order. Segment filtering selects trades involving that account type and counts only clients in the chosen segment. Account type is the currently available segment proxy; custom commercial/risk segments are not invented.
-- Monetary totals remain in one selected settlement currency. No sum across currencies and no implied FX conversion. UNKNOWN is explicitly labeled.
-- Empty, loading, failed-request, expired-session and legacy-data states. No third-party scripts or CDN dependencies. Strict CSP, role checks, HttpOnly session cookies, and no names/emails in API responses.
-- Latest live ingestion timestamp shown as an event timestamp, not a claim of real-time market-data freshness.
+Example:
 
-Endpoints: `GET /admin/analytics/options`, `GET /admin/analytics/dashboard`, `GET /admin/analytics/trades`. Dashboard/trades accept `from`, `to`, `instrumentId`, `segment`, `currency`, `dataset`; trades also takes zero-based `page` (25 rows).
-
-## Data delivery and recovery
-
-`TransactionService.completeTransaction` writes execution time and an immutable JSON settlement payload to `analytics_outbox` in the same transaction as the completed trade. A failed settlement rolls back that event. Payloads contain identifiers, account-type snapshots, amounts and timestamps, not names/emails/passwords. The event reports UNKNOWN currency when the existing engine settles differing account currencies; this is not an FX conversion.
-
-The opt-in relay locks one pending row with `FOR UPDATE SKIP LOCKED`, waits for Kafka acknowledgement, then marks it published. A crash between those actions can redeliver; the analytics consumer atomically records the UUID and projects the fill. A second UUID for an already projected live transaction also does not duplicate the fact. Completed facts and participant snapshots are not updated by replay.
-
-The new topic is `trading.settled.v1`, separate from `orders.submitted`. One partition is sufficient initially; consumer group `jarbis-analytics-v1` is independent from settlement. Invalid events or a database outage are retried indefinitely instead of silently dropped. Monitor consumer errors/lag and fix the underlying event/schema issue; a bad event blocks its partition. The deployment uses the existing single-node development Kafka configuration and is not a production HA setup.
-
-Reconciliation queries:
-
-```sql
--- OLTP: pending publication and oldest outstanding event
-SELECT count(*), min(created_at) FROM analytics_outbox WHERE published_at IS NULL;
--- OLAP: completed live fill count and latest ingestion
-SELECT count(*), max(ingested_at) FROM analytics.transaction_facts WHERE data_source='LIVE';
+```text
+GET /admin/analytics/dashboard?from=2026-10-01&to=2026-10-15&currency=USD&dataset=LIVE
 ```
 
-Replay published events by republishing their original outbox payloads through an operational tool. Preserve event IDs. Do not delete processed-event records or reset IDs. For historical trades created before this change, there is no trustworthy execution timestamp in the old entity, so this implementation does not fabricate a live historical backfill.
+Dashboard response shape (illustrative values):
 
-The API queries indexed fact tables directly, so it does not rely on manually refreshed materialized views. The existing views are preserved for other users.
+```json
+{
+  "summary": {"trades": 2, "value": 80.00, "clients": 3, "instruments": 1},
+  "previous": {"trades": 0, "value": 0, "clients": 0, "instruments": 0},
+  "activity": [{"day": "2026-10-01", "trades": 2, "value": 80.00}],
+  "instruments": [{"id": 8, "name": "AAPL", "trades": 2, "value": 80.00}],
+  "clients": [{"day": "2026-10-01", "clients": 3}],
+  "ingestion": {"last_event_at": null, "last_ingested_at": null, "processed_events": 0},
+  "filter": {"from": "2026-10-01", "to": "2026-10-15", "instrumentId": null, "segment": null, "currency": "USD", "dataset": "LIVE"}
+}
+```
 
-## Validation
+Days without activity are omitted; the frontend may fill gaps with zeros. Value is execution price times quantity, one count per completed fill. Active clients are distinct across both participants; for a segment filter only clients in that account type count. Trade values for a segment include each matching trade once. The preceding period has the same number of days immediately before `from`. If the previous value is zero, percentage growth has no baseline.
+
+`/trades` returns `rows`, `page`, `pageSize`, and `total`. Each row includes `id`, `instrument`, `quantity`, `price`, `value`, `currency`, `executed_at`, `buy_order_id`, and `sell_order_id`. Rows sort by execution time then ID descending. No client names/emails/passwords are returned. Monetary values are JSON numbers. The latest ingestion timestamp is the latest received live event, not proof that the pipeline is currently caught up. UNKNOWN currency is not a valid cross-currency monetary total.
+
+## Data pipeline and database changes
+
+`TransactionService.completeTransaction` saves the execution timestamp and an immutable event payload in `analytics_outbox` in the settlement transaction. Rollback also rolls back the event. The relay publishes `trading.settled.v1`, waits for acknowledgement, then marks delivery. Crash recovery can redeliver; OLAP records event UUIDs and projects facts atomically, preventing duplicate fills. A second event ID for an already projected live transaction also does not duplicate the fact.
+
+Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated deployment. All relays for one OLTP database must use the same Kafka cluster, not separate teammate-local brokers. Other stacks leave the relay disabled; events remain pending until it runs. Invalid events and database failures retry without silent skipping; a bad event blocks its partition and requires investigation.
+
+Flyway adds migrations using `reporting_migrations` history, preserving existing volumes. New volumes initialize the schema without dummy data. Existing facts are labeled LEGACY. For sample-only development, load `002_dummy_data.sql` before first migration on a disposable OLAP database. Never load synthetic IDs into a database receiving live events; collisions are rejected rather than overwriting legacy facts. Old trades without execution timestamps are not given fabricated live backfill timestamps.
+
+Queries use indexed fact tables directly, so materialized-view refresh is not required for this API. Existing views remain available. The development deployment uses one Kafka node. Database role separation (migration, projection, SELECT-only reporting) and staff SSO are further hardening work.
+
+## Verification and scope
 
 ```bash
 mvn test
 mvn -f analytics-service/pom.xml verify
-node --check analytics-service/src/main/resources/static/dashboard.js
 ```
 
-PostgreSQL integration tests additionally run when `TEST_POSTGRES_URL`, `TEST_POSTGRES_USER`, and `TEST_POSTGRES_PASSWORD` point to a disposable database. They drop and recreate the analytics/migration schemas. Never point test variables at shared data. CI provisions its own PostgreSQL instance.
+CI also runs PostgreSQL tests in its own disposable `admin_dashboard_test` database. Local integration tests run when `TEST_POSTGRES_URL` names that database and TEST_POSTGRES_USER/PASSWORD are configured. These tests drop/recreate analytics schemas; never point them at shared data.
 
-## Remaining BRS work
-
-This implements BR-16 / BR-17 reporting, isolated from trading, for newly completed transactions. It is not a certification of the whole platform. The earlier review's client ownership checks, acceptance/reservations, current-quote execution, database-level settlement concurrency, financial decimal conversion, immutable legal audit trail, order-status push updates, and client session revocation remain separate trading work. The blotter shows completed fills, not a full legal order lifecycle or rejected-order history. No controls edit balances, clients, or completed trades. An additional differentiated capability under BR-18 still needs a product decision.
+This backend supports BR-16/17 analysis of new completed fills. Full legal order-lifecycle audit, current-quote pricing, client ownership enforcement, acceptance reservations, financial decimal migration, concurrency protection, client session revocation, status push updates, and BR-18 differentiation remain separate work. It provides no administrative balance/trade editing and no frontend implementation.

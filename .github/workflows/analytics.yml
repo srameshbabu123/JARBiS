@@ -29,4 +29,3 @@ jobs:
           cache: maven
       - run: mvn -B test
       - run: mvn -B -f analytics-service/pom.xml verify
-      - run: node --check analytics-service/src/main/resources/static/dashboard.js

@@ -1,5 +1,7 @@
 package com.jarbis.analytics;
 
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +12,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -25,17 +29,35 @@ public class SecurityConfig {
     }
 
     @Bean
+    CorsConfigurationSource corsConfigurationSource(@Value("${analytics.allowed-origins:}") String origins) {
+        CorsConfiguration cors = new CorsConfiguration();
+        List<String> allowed = Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+        if (allowed.stream().anyMatch(s -> s.contains("*") || !(s.startsWith("https://") || s.startsWith("http://")))) {
+            throw new IllegalArgumentException("Configure explicit http(s) frontend origins; wildcards are not allowed");
+        }
+        cors.setAllowedOrigins(allowed);
+        cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        cors.setAllowedHeaders(List.of("Content-Type", "X-CSRF-TOKEN", "X-Requested-With"));
+        cors.setAllowCredentials(true);
+        cors.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cors);
+        return source;
+    }
+
+    @Bean
     SecurityFilterChain security(HttpSecurity http) throws Exception {
-        return http.authorizeHttpRequests(a -> a
-                .requestMatchers("/login.html", "/login", "/login.js", "/styles.css", "/session/csrf", "/actuator/health").permitAll()
+        return http.cors(c -> {})
+            .authorizeHttpRequests(a -> a
+                .requestMatchers("/login", "/session/csrf", "/actuator/health").permitAll()
                 .anyRequest().hasRole("ANALYST"))
-            .exceptionHandling(e -> e.defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
-                new AntPathRequestMatcher("/admin/**")))
-            .formLogin(f -> f.loginPage("/login.html").loginProcessingUrl("/login")
-                .defaultSuccessUrl("/", true).failureUrl("/login.html?error"))
-            .logout(l -> l.logoutSuccessUrl("/login.html"))
-            .headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives(
-                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")))
+            .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            .requestCache(c -> c.disable())
+            .formLogin(f -> f.loginPage("/session/login").loginProcessingUrl("/login")
+                .successHandler((request, response, authentication) -> response.setStatus(204))
+                .failureHandler((request, response, exception) -> response.sendError(401)))
+            .logout(l -> l.logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)))
+            .headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'")))
             .build();
     }
 }
