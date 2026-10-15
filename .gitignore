@@ -36,3 +36,7 @@ src/main/resources/application-*.properties
 src/test/resources/application-test.properties
 
 
+
+# Analytics configuration and build output
+.env.analytics
+analytics-service/target/
