@@ -1,100 +1,129 @@
-# Internal analytics backend
+# Python internal analytics backend
 
-This branch combines development's market-data implementation with the OLAP feature branch and adds a **backend-only** Java 17 / Spring Boot analytics service. It contains no dashboard pages, styles, chart code, or other frontend assets. The separately developed frontend consumes the API below.
+The client-facing trading backend remains Java. Only `analytics-service/` has moved from Spring Boot to Python 3.12. There are no frontend pages or chart assets. Your teammate connects their frontend to the HTTP endpoints below.
 
-## Run
+## Architecture and responsibilities
 
-1. Copy `.env.analytics.example` to `.env.analytics`. Set database passwords and a random JWT secret of at least 32 bytes. Existing database volumes require their existing passwords.
-2. Generate the internal account's BCrypt hash interactively:
+1. Java settlement commits holdings/cash/trade changes and an outbox event together.
+2. The Java outbox relay publishes `trading.settled.v1`. It marks delivery after Kafka acknowledgement.
+3. `python -m analytics.consumer` validates events with Pydantic and writes OLAP facts plus a processed-event marker in one PostgreSQL transaction. Kafka offsets commit only after the database transaction succeeds. Replays do not duplicate fills. Invalid events stop the consumer without acknowledging that offset; the Compose restart policy retries. Investigate persistent failures rather than skipping financial events.
+4. FastAPI serves the reporting API. It queries only OLAP, using a bounded psycopg pool. PostgreSQL calculates the summaries, distinct-client counts, currency filters, and rankings.
+5. pandas prepares the bounded daily activity dataset, filling missing days with zero while preserving Decimal values internally. Raw trade tables are not loaded wholesale into pandas. Empty datasets still return an empty activity array.
+6. The teammate's frontend draws interactive charts from JSON. No server-generated chart images are implemented; Plotly/Matplotlib or report exports can be added later if required.
 
-   ```bash
-   docker run --rm -it httpd:2.4-alpine htpasswd -nBC 12 admin
-   ```
+The HTTP process and consumer are separate containers built from the same Python code. This lets ingestion restart independently of HTTP. Keep one consumer group for this projection, and stop the old Java analytics process before switching deployments. Redis remains the Java market-quote cache and is not the source of trade analytics.
 
-   Set `ANALYTICS_ADMIN_PASSWORD_HASH` to the `$2y$...` part after `admin:`. Keep single quotes around the hash in the env file.
-3. Set `ANALYTICS_ALLOWED_ORIGINS` to explicit frontend origins, comma-separated, such as `http://localhost:4200`. Leave empty for same-origin access. Wildcards are rejected.
-4. Run:
+## Files to walk through
 
-   ```bash
-   docker compose --env-file .env.analytics --profile analytics up -d --build
-   ```
-
-The API listens on `http://localhost:8082`; there is no web UI at this address. The Compose port binds to loopback. Use an SSH tunnel or TLS reverse proxy for remote access. Set `ANALYTICS_SECURE_COOKIE=true` behind HTTPS. Use a same-site frontend/API deployment for the strict session cookie; CORS alone does not enable cross-site cookies.
-
-The example points trading at local Compose PostgreSQL. Set `BROKERAGE_DB_URL` explicitly for shared OLTP and `ANALYTICS_DB_URL` for shared OLAP. Container PostgreSQL ports are 5432; the existing host ports are 8090/8091. The analytics service has no OLTP datasource.
-
-## Frontend authentication contract
-
-All requests below must retain cookies (`credentials: 'include'` in fetch or `withCredentials: true` in Angular HttpClient).
-
-1. `GET /session/csrf` (public): returns `{ "parameterName": "_csrf", "headerName": "X-CSRF-TOKEN", "token": "..." }` and initializes the session.
-2. `POST /login`: send `application/x-www-form-urlencoded` fields `username` and `password`, plus the returned CSRF header/token. Success is **204**, invalid credentials **401**, missing/invalid CSRF **403**. There is no HTML response or redirect.
-3. Fetch `/session/csrf` again after successful login because authentication rotates the CSRF token.
-4. `GET /session/me`: returns `{ "username": "admin", "roles": ["ROLE_ANALYST"] }`. Anonymous callers receive **401**.
-5. `POST /logout`: include the current CSRF header/token. Returns **204** and invalidates the session.
-
-Reporting requires ROLE_ANALYST. Client JWTs do not grant internal access. Sessions expire after 30 minutes of inactivity. There is one configured analyst account initially; individual staff identities/SSO are future work. The backend keeps CSRF protection enabled, and credentialed CORS only accepts configured origins. A frontend should route users to its own sign-in page after a 401; 403 means insufficient role or a rejected CSRF/origin check.
-
-## Reporting API
-
-| Method and path | Result |
+| File | Responsibility |
 | --- | --- |
-| GET `/admin/analytics/options` | Available instruments, account-type segments, currencies, and datasets with first/last dates |
-| GET `/admin/analytics/dashboard` | Summary, preceding-period summary, daily activity, top instruments, daily clients, ingestion timestamps, applied filter |
-| GET `/admin/analytics/trades` | Paginated completed fills |
+| `analytics/config.py` | Explicit properties configuration, with environment overrides |
+| `analytics/api.py` | HTTP routes, validation, CORS, login, session and CSRF behavior |
+| `analytics/sessions.py` | Revocable PostgreSQL-backed sessions, idle expiry, hashed cookie tokens |
+| `analytics/models.py` | Event schema and report-filter validation |
+| `analytics/consumer.py` | Kafka polling, fail-without-ack behavior, commit ordering |
+| `analytics/projector.py` | Atomic, idempotent OLAP writes |
+| `analytics/reports.py` | SQL reporting and pandas chart preparation |
+| `analytics/database.py` | Connection pooling and checksummed migrations |
+| `migrations/` | Additive SQL; original tables retained, session table added |
 
-Dashboard/trade query parameters:
+## Configuration: application.properties and environment
 
-| Parameter | Meaning |
+`analytics-service/application.properties` contains non-secret defaults. Python does not automatically understand Java properties files; our config loader explicitly reads simple `KEY=value` entries. It then applies environment overrides. It does not automatically load `.env` and does not support Java `${...}` substitution or properties escape syntax.
+
+Set credentials in environment variables, or create an untracked `application-local.properties` and select it with `ANALYTICS_PROPERTIES_FILE=/absolute/path/to/application-local.properties`. This file must include the full configuration you need; it replaces the default properties file. No secrets belong in a committed properties file.
+
+Settings:
+
+| Setting | Purpose |
 | --- | --- |
-| `from`, `to` | Inclusive ISO dates, interpreted in UTC; maximum 367 days. Dashboard defaults to the last 30 days; trades requires both. |
-| `instrumentId` | Optional numeric asset ID |
-| `segment` | Optional account type from `/options`; this is the available client-segmentation proxy |
-| `currency` | Settlement currency, default USD; currencies are never summed together |
-| `dataset` | LIVE (default) or LEGACY (existing/sample records) |
-| `page` | Trades only; zero-based, default 0, page size 25 |
+| ANALYTICS_DB_URL | PostgreSQL URL, e.g. `postgresql://localhost:8091/jarbis_olap` |
+| ANALYTICS_DB_USER / ANALYTICS_DB_PASSWORD | OLAP credentials |
+| ANALYTICS_ADMIN_USER / ANALYTICS_ADMIN_PASSWORD_HASH | Provisioned internal account and BCrypt hash |
+| ANALYTICS_ALLOWED_ORIGINS | Comma-separated explicit frontend origins; empty means same-origin only |
+| ANALYTICS_SECURE_COOKIE | true behind HTTPS; false only for local HTTP |
+| KAFKA_BOOTSTRAP_SERVERS | Kafka address reachable from the consumer |
+| ANALYTICS_TOPIC | Defaults to trading.settled.v1 |
+| ANALYTICS_CONSUMER_GROUP | Defaults to jarbis-analytics-v1 |
 
-Example:
+Existing `jdbc:postgresql://` analytics URLs are accepted and normalized during transition. Shared-server connections use host port 8091 for OLAP; database containers on the same Docker network use `postgres-olap:5432`. Java OLTP still uses host port 8090 when connecting through the shared server. These are separate from API port 8082.
 
-```text
-GET /admin/analytics/dashboard?from=2026-10-01&to=2026-10-15&currency=USD&dataset=LIVE
-```
-
-Dashboard response shape (illustrative values):
-
-```json
-{
-  "summary": {"trades": 2, "value": 80.00, "clients": 3, "instruments": 1},
-  "previous": {"trades": 0, "value": 0, "clients": 0, "instruments": 0},
-  "activity": [{"day": "2026-10-01", "trades": 2, "value": 80.00}],
-  "instruments": [{"id": 8, "name": "AAPL", "trades": 2, "value": 80.00}],
-  "clients": [{"day": "2026-10-01", "clients": 3}],
-  "ingestion": {"last_event_at": null, "last_ingested_at": null, "processed_events": 0},
-  "filter": {"from": "2026-10-01", "to": "2026-10-15", "instrumentId": null, "segment": null, "currency": "USD", "dataset": "LIVE"}
-}
-```
-
-Days without activity are omitted; the frontend may fill gaps with zeros. Value is execution price times quantity, one count per completed fill. Active clients are distinct across both participants; for a segment filter only clients in that account type count. Trade values for a segment include each matching trade once. The preceding period has the same number of days immediately before `from`. If the previous value is zero, percentage growth has no baseline.
-
-`/trades` returns `rows`, `page`, `pageSize`, and `total`. Each row includes `id`, `instrument`, `quantity`, `price`, `value`, `currency`, `executed_at`, `buy_order_id`, and `sell_order_id`. Rows sort by execution time then ID descending. No client names/emails/passwords are returned. Monetary values are JSON numbers. The latest ingestion timestamp is the latest received live event, not proof that the pipeline is currently caught up. UNKNOWN currency is not a valid cross-currency monetary total.
-
-## Data pipeline and database changes
-
-`TransactionService.completeTransaction` saves the execution timestamp and an immutable event payload in `analytics_outbox` in the settlement transaction. Rollback also rolls back the event. The relay publishes `trading.settled.v1`, waits for acknowledgement, then marks delivery. Crash recovery can redeliver; OLAP records event UUIDs and projects facts atomically, preventing duplicate fills. A second event ID for an already projected live transaction also does not duplicate the fact.
-
-Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated deployment. All relays for one OLTP database must use the same Kafka cluster, not separate teammate-local brokers. Other stacks leave the relay disabled; events remain pending until it runs. Invalid events and database failures retry without silent skipping; a bad event blocks its partition and requires investigation.
-
-Flyway adds migrations using `reporting_migrations` history, preserving existing volumes. New volumes initialize the schema without dummy data. Existing facts are labeled LEGACY. For sample-only development, load `002_dummy_data.sql` before first migration on a disposable OLAP database. Never load synthetic IDs into a database receiving live events; collisions are rejected rather than overwriting legacy facts. Old trades without execution timestamps are not given fabricated live backfill timestamps.
-
-Queries use indexed fact tables directly, so materialized-view refresh is not required for this API. Existing views remain available. The development deployment uses one Kafka node. Database role separation (migration, projection, SELECT-only reporting) and staff SSO are further hardening work.
-
-## Verification and scope
+## Local Python development
 
 ```bash
-mvn test
-mvn -f analytics-service/pom.xml verify
+cd analytics-service
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
 ```
 
-CI also runs PostgreSQL tests in its own disposable `admin_dashboard_test` database. Local integration tests run when `TEST_POSTGRES_URL` names that database and TEST_POSTGRES_USER/PASSWORD are configured. These tests drop/recreate analytics schemas; never point them at shared data.
+Generate a BCrypt hash interactively:
 
-This backend supports BR-16/17 analysis of new completed fills. Full legal order-lifecycle audit, current-quote pricing, client ownership enforcement, acceptance reservations, financial decimal migration, concurrency protection, client session revocation, status push updates, and BR-18 differentiation remain separate work. It provides no administrative balance/trade editing and no frontend implementation.
+```bash
+python -c 'import bcrypt,getpass; print(bcrypt.hashpw(getpass.getpass("Internal password: ").encode(),bcrypt.gensalt()).decode())'
+```
+
+Configure the settings above, then start the two processes in separate terminals:
+
+```bash
+uvicorn analytics.api:create_app --factory --host 127.0.0.1 --port 8082
+python -m analytics.consumer
+```
+
+For Docker, copy `.env.analytics.example` to `.env.analytics`, replace all credential placeholders and the BCrypt hash, and run from the repository root:
+
+```bash
+docker compose --env-file .env.analytics --profile analytics up -d --build
+```
+
+Compose uses the env file to populate container settings; Python itself does not read that file. Both `analytics` (HTTP) and `analytics-consumer` (Kafka ingestion) use only the OLAP database. The example trading URL uses local Compose PostgreSQL; explicitly set the shared-server URLs when deploying centrally. Bindings default to localhost; use a tunnel or TLS reverse proxy for remote access.
+
+Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated Java deployment. Every relay for one shared OLTP must use the same Kafka cluster, not separate teammate-local brokers.
+
+## Existing database migration
+
+No volumes need to be deleted. Startup takes a PostgreSQL advisory lock and applies additive SQL with a SHA-256 ledger in `reporting_migrations.python_history`. The original V1/V2 SQL is idempotent and adopts existing Flyway-managed tables. The old Flyway history remains intact; do not run the retired Java analytics application against the same deployment. A new V3 adds internal sessions. Do not modify already applied migration files; add another version instead.
+
+New volumes initialize the OLAP schema without fixtures. Existing facts are LEGACY, not live backfill. Load sample SQL only into a disposable database before initial analytics migrations. Never mix synthetic trade IDs with live ingestion; the projector rejects collisions. Old trades without a trustworthy execution timestamp are not assigned a fabricated live timestamp.
+
+## Frontend API contract
+
+Existing paths, JSON keys, and status codes are retained. The previous Java in-memory login sessions do not transfer: staff must sign in again after migration. Python sessions persist in OLAP and expire after 30 minutes of inactivity; logout revokes them. Cookie values are hashed in storage, and successful login rotates both session and CSRF tokens.
+
+All browser requests must include cookies (`credentials: 'include'` / Angular `withCredentials: true`). Use a same-site deployment for the strict cookie; allowing a CORS origin does not make cross-site cookies work.
+
+1. GET `/session/csrf`: public; returns `parameterName`, `headerName`, and `token`, initializing an anonymous session.
+2. POST `/login`: form-urlencoded `username` and `password`, with the returned `X-CSRF-TOKEN` header. Success 204, bad credentials 401, invalid CSRF 403. No HTML/redirect.
+3. Fetch `/session/csrf` again after login for the rotated token.
+4. GET `/session/me`: returns `username` and `roles: ["ROLE_ANALYST"]`; anonymous callers receive 401. Client JWTs do not grant internal access.
+5. POST `/logout`: current CSRF header; returns 204 and invalidates the session.
+
+One provisioned analyst account is supported initially; individual staff accounts/SSO and login rate limiting at the deployment boundary are further production work.
+
+| GET endpoint | Response |
+| --- | --- |
+| `/admin/analytics/options` | instruments, segments (account type), currencies, datasets with first/last dates |
+| `/admin/analytics/dashboard` | summary, previous, activity, instruments, clients, ingestion, filter |
+| `/admin/analytics/trades` | rows, page, pageSize (25), total |
+| `/actuator/health` | public database reachability check; not proof of Kafka consumer freshness |
+
+Dashboard/trades filters: inclusive UTC `from` and `to` ISO dates (maximum 367 days), optional numeric `instrumentId`, optional `segment` from options, `currency` (default USD), `dataset` (LIVE default or LEGACY). Dashboard defaults to the last 30 days; trades requires dates and accepts zero-based `page`. Invalid parameters return 400.
+
+`summary`/`previous` contain `trades`, `value`, `clients`, `instruments`. `activity` contains `day`, `trades`, `value`; pandas adds zero days inside nonempty ranges. `instruments` contains `id`, `name`, `trades`, `value`. `clients` contains `day`, `clients` and remains sparse. `ingestion` contains `last_event_at`, `last_ingested_at`, `processed_events`. Monetary values remain JSON numbers. Each trade row contains `id`, `instrument`, `quantity`, `price`, `value`, `currency`, `executed_at`, `buy_order_id`, `sell_order_id` and sorts newest first.
+
+A fill counts once per transaction. Active clients are distinct across buyer/seller participation; a selected account-type segment counts only clients in that segment, while trade value includes a matching trade once. Currencies are never summed together; UNKNOWN cannot be interpreted as a valid monetary reporting total. Preceding comparisons use the adjacent equal-length period; a zero baseline has no meaningful percentage growth. No names, emails, or passwords are exposed. The latest ingestion timestamp is the latest received event, not proof that Kafka is caught up.
+
+## Tests
+
+```bash
+# Trading backend, repository root:
+mvn test
+# Python analytics, analytics-service directory:
+python -m pytest -q
+```
+
+Unit/API tests need no Kafka or database. Real PostgreSQL tests require TEST_POSTGRES_URL pointing to a disposable database whose name is exactly `admin_dashboard_test`, plus TEST_POSTGRES_USER/PASSWORD. These tests DROP analytics schemas; never target shared data. Both postgresql:// and legacy jdbc:postgresql:// test URLs work. CI provisions its own PostgreSQL and runs migration, replay, rollback, reporting, session-expiry and real API tests. A consumer unit test verifies DB-before-Kafka-offset ordering. A full deployed Java settlement-to-Kafka-to-Python smoke test remains a deployment check.
+
+## Remaining BRS work
+
+This backend supports BR-16/17 analysis of completed fills. Full legal order-lifecycle audit, current-quote execution, client ownership enforcement, acceptance reservations, Java financial decimal migration, settlement concurrency, client session revocation, status push updates, and BR-18 differentiation remain separate trading work. No frontend, arbitrary natural-language chart generator, or administrative balance/trade editing is included.

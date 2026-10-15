@@ -128,7 +128,29 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-jdbc:postgresql://postgres-olap:5432/jarbis_olap}
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
+      ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+      ANALYTICS_ADMIN_USER: ${ANALYTICS_ADMIN_USER:-admin}
+      ANALYTICS_ADMIN_PASSWORD_HASH: ${ANALYTICS_ADMIN_PASSWORD_HASH:-}
+      ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
+      ANALYTICS_SECURE_COOKIE: ${ANALYTICS_SECURE_COOKIE:-false}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    depends_on:
+      postgres-olap:
+        condition: service_healthy
+      analytics-topic-init:
+        condition: service_completed_successfully
+    networks:
+      - jarbis-network
+    restart: unless-stopped
+
+  analytics-consumer:
+    profiles: ["analytics"]
+    build: ./analytics-service
+    command: ["python", "-m", "analytics.consumer"]
+    environment:
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       ANALYTICS_ADMIN_USER: ${ANALYTICS_ADMIN_USER:-admin}

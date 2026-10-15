@@ -17,7 +17,7 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U test -d admin_dashboard_test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/admin_dashboard_test
+      TEST_POSTGRES_URL: postgresql://localhost:5432/admin_dashboard_test
       TEST_POSTGRES_USER: test
       TEST_POSTGRES_PASSWORD: test
     steps:
@@ -28,4 +28,11 @@ jobs:
           java-version: '17'
           cache: maven
       - run: mvn -B test
-      - run: mvn -B -f analytics-service/pom.xml verify
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: analytics-service/requirements*.txt
+      - run: pip install -r analytics-service/requirements-dev.txt
+      - run: python -m pytest -q
+        working-directory: analytics-service
