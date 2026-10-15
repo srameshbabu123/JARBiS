@@ -1,0 +1,32 @@
+name: Analytics checks
+on:
+  push:
+    branches: [feature/admin-analytics-backend]
+  pull_request:
+    branches: [development]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: admin_dashboard_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U test -d admin_dashboard_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/admin_dashboard_test
+      TEST_POSTGRES_USER: test
+      TEST_POSTGRES_PASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: mvn -B test
+      - run: mvn -B -f analytics-service/pom.xml verify
+      - run: node --check analytics-service/src/main/resources/static/dashboard.js
