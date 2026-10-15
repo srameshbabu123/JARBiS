@@ -1,0 +1,175 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres
+    environment:
+      POSTGRES_DB: jarbis_db
+      POSTGRES_USER: jarbis_user
+      POSTGRES_PASSWORD: jarbis_password
+    command: ["postgres", "-c", "max_connections=200"]
+    ports:
+      - "8090:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_user -d jarbis_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # Separate PostgreSQL instance for OLAP and reporting
+  postgres-olap:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres-olap
+    environment:
+      POSTGRES_DB: jarbis_olap
+      POSTGRES_USER: jarbis_olap_user
+      POSTGRES_PASSWORD: jarbis_olap_password
+    ports:
+      - "8091:5432"
+    volumes:
+      - postgres_olap_data:/var/lib/postgresql/data
+      - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  # Redis market-data store
+  redis:
+    image: redis:7-alpine
+    container_name: jarbis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+
+  # Single-node Kafka in KRaft mode for local development
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: jarbis-kafka
+    hostname: kafka
+    user: root
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+    ports:
+      - "127.0.0.1:9092:9092"
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:19092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  # Create the settlement topic before starting the backend.
+  kafka-init:
+    image: apache/kafka:3.9.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command: ["--bootstrap-server", "kafka:19092", "--create", "--if-not-exists", "--topic", "orders.submitted", "--partitions", "1", "--replication-factor", "1"]
+    networks:
+      - jarbis-network
+    restart: "no"
+
+  # Spring Boot Application (Backend)
+  jarbis-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarbis-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-olap:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      SERVER_PORT: 8080
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      # Shared development master database hosted on the Linux server.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://10.18.67.77:8090/jarbis_db
+      SPRING_DATASOURCE_USERNAME: jarbis_user
+      SPRING_DATASOURCE_PASSWORD: jarbis_password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: 'false'
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      BROKERAGE_MARKET_DATA_POLLING_ENABLED: "true"
+      BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY}
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
+      JWT_SECRET: jarbis-jwt-secret-key-change-in-production
+      JWT_EXPIRATION_MS: 3600000
+    ports:
+      - "8081:8080"
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  jarbis-network:
+    driver: bridge
+
+volumes:
+  kafka_data:
+    driver: local
+  postgres_data:
+    driver: local
+  postgres_olap_data:
+    driver: local
+  redis_data:
+    driver: local

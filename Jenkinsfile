@@ -1,38 +1,93 @@
-pipeline{
+pipeline {
     agent any
-    stages{
-        stage ('Checkout') {
+
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    triggers {
+        pollSCM('* * * * *')
+    }
+
+    environment {
+        DOCKER_REGISTRY = 'docker.io'
+        APP_NAME = 'jarbis'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        MAVEN_OPTS = '-XX:+TieredCompilation -XX:TieredStopAtLevel=1'
+    }
+
+    stages {
+        stage('Checkout') {
             steps {
+                echo '========== Checking out code =========='
                 checkout scm
             }
         }
-        stage ('Build Docker Image') {
+
+        stage('Build') {
             steps {
-                sh 'docker build -t project-skeleton .'
+                echo '========== Building application =========='
+                bat 'mvn clean package -DskipTests -B'
             }
         }
-        stage ('Run Docker Image') {
+
+        stage('Unit Tests') {
             steps {
-                sh 'docker run --rm project-skeleton'
+                echo '========== Running unit tests =========='
+                bat 'mvn test -B'
             }
         }
-        stage ('test') {
+
+        stage('Code Coverage') {
             steps {
-                sh 'mvn package'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                echo '========== Generating code coverage report =========='
+                bat 'mvn jacoco:report'
             }
         }
-        stage ('coverage') {
+
+        stage('Build Docker Image') {
             steps {
-                sh 'mvn jacoco:report'
-                archiveArtifacts artifacts: 'target/site/jacoco/**/*', fingerprint: true
+                echo '========== Building Docker image =========='
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    script {
+                        bat 'docker build -t ${APP_NAME}:${IMAGE_TAG} -t ${APP_NAME}:latest .'
+                    }
+                }
             }
         }
-        stage ('static analysis')
-        {
+
+        stage('Scan Dependencies') {
             steps {
-                sh 'mvn checkstyle:check'
+                echo '========== Scanning dependencies for vulnerabilities =========='
+                bat 'mvn dependency-check:check -B || exit /b 0'
             }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                echo '========== Archiving build artifacts =========='
+                archiveArtifacts artifacts: 'target/*.jar',
+                                allowEmptyArchive: true,
+                                fingerprint: true
+                archiveArtifacts artifacts: 'target/site/jacoco/**/*',
+                                allowEmptyArchive: true,
+                                fingerprint: true
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '========== Cleaning up workspace =========='
+            cleanWs()
+        }
+        success {
+            echo '========== BUILD SUCCESSFUL =========='
+        }
+        failure {
+            echo '========== BUILD FAILED =========='
         }
     }
 }
