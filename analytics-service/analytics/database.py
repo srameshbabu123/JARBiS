@@ -26,6 +26,14 @@ def migrate(pool):
                 if previous["checksum"] != checksum:
                     raise RuntimeError(f"Applied migration changed: {path.name}")
                 continue
-            # V1/V2 are the original idempotent SQL: existing Flyway databases can be adopted without erasing data.
-            conn.execute(source, prepare=False)
+            # Adopt recorded Java migrations instead of rerunning data backfills against live facts.
+            # In particular, the original V2 UNKNOWN-currency backfill was only safe before live ingestion.
+            adopted = False
+            if path.name.startswith(("V1__", "V2__")):
+                flyway = conn.execute("SELECT to_regclass('reporting_migrations.flyway_schema_history') AS name").fetchone()["name"]
+                if flyway:
+                    version = path.name.split("__", 1)[0][1:]
+                    adopted = conn.execute("SELECT EXISTS(SELECT 1 FROM reporting_migrations.flyway_schema_history WHERE version=%s AND success) AS applied", (version,)).fetchone()["applied"]
+            if not adopted:
+                conn.execute(source, prepare=False)
             conn.execute("INSERT INTO reporting_migrations.python_history(version,checksum) VALUES (%s,%s)", (path.name, checksum))

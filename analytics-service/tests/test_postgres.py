@@ -121,3 +121,19 @@ def test_real_api_startup_login_and_report(pool, event_data):
         assert response.status_code == 200
         assert response.json()["summary"] == {"trades": 1, "value": 20, "clients": 2, "instruments": 1}
         assert client.get("/admin/analytics/trades?from=2026-03-01&to=2026-03-02").json()["total"] == 1
+
+
+def test_adopts_flyway_versions_without_rewriting_live_unknown_currency(pool, event_data):
+    project(pool, SettlementEvent.model_validate(event_data))
+    with pool.connection() as conn:
+        conn.execute("UPDATE analytics.transaction_facts SET currency='UNKNOWN'")
+        conn.execute("CREATE TABLE reporting_migrations.flyway_schema_history(version TEXT, success BOOLEAN)")
+        conn.execute("INSERT INTO reporting_migrations.flyway_schema_history VALUES ('1',true),('2',true)")
+        conn.execute("DELETE FROM reporting_migrations.python_history WHERE version IN ('V1__analytics_foundation.sql','V2__settlement_projection.sql')")
+    try:
+        migrate(pool)
+        with pool.connection() as conn:
+            assert conn.execute("SELECT currency FROM analytics.transaction_facts").fetchone()["currency"] == "UNKNOWN"
+    finally:
+        with pool.connection() as conn:
+            conn.execute("DROP TABLE reporting_migrations.flyway_schema_history")

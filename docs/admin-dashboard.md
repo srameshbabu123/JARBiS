@@ -82,7 +82,7 @@ Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated Java deployment
 
 ## Existing database migration
 
-No volumes need to be deleted. Startup takes a PostgreSQL advisory lock and applies additive SQL with a SHA-256 ledger in `reporting_migrations.python_history`. The original V1/V2 SQL is idempotent and adopts existing Flyway-managed tables. The old Flyway history remains intact; do not run the retired Java analytics application against the same deployment. A new V3 adds internal sessions. Do not modify already applied migration files; add another version instead.
+No volumes need to be deleted. Startup takes a PostgreSQL advisory lock and applies additive SQL with a SHA-256 ledger in `reporting_migrations.python_history`. Recorded Flyway V1/V2 versions are adopted without rerunning their data backfills; fresh databases run the original idempotent SQL. The old Flyway history remains intact; do not run the retired Java analytics application against the same deployment. A new V3 adds internal sessions. Do not modify already applied migration files; add another version instead.
 
 New volumes initialize the OLAP schema without fixtures. Existing facts are LEGACY, not live backfill. Load sample SQL only into a disposable database before initial analytics migrations. Never mix synthetic trade IDs with live ingestion; the projector rejects collisions. Old trades without a trustworthy execution timestamp are not assigned a fabricated live timestamp.
 
