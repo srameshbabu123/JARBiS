@@ -1,0 +1,53 @@
+@let vm = workspace;
+
+<section class="panel">
+  <div class="panel-heading">
+    <h3>Order history <span class="count">{{history.length}}</span></h3>
+    @if(vm.live){<button class="outline" (click)="vm.refreshOrders()">
+      Refresh status</button
+    >}<select aria-label="Order status" [(ngModel)]="orderFilter">
+      @for(s of
+      ['All','PENDING','PARTIALLY_FILLED','COMPLETED','CANCELLED'];track s){
+      <option>{{s}}</option>
+      }
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Asset</th>
+          <th>Side</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(o of history;track o.id){
+        <tr>
+          <td>#{{o.id}}</td>
+          <td>{{o.asset?.name||'Unavailable'}}</td>
+          <td [class.negative]="o.side==='SELL'" class="positive">
+            {{o.side}}
+          </td>
+          <td>{{o.quantity}}</td>
+          <td>{{o.price|currency:vm.currency}}</td>
+          <td>{{o.quantity*o.price|currency:vm.currency}}</td>
+          <td>
+            <span class="pill" [class.pending]="o.status==='PENDING'"
+              >{{o.status}}</span
+            >
+          </td>
+        </tr>
+        }@empty{
+        <tr>
+          <td colspan="7">No orders match this filter.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
