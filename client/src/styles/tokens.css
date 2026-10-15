@@ -1,0 +1,51 @@
+:root {
+  color-scheme: dark;
+  --bg: #050505;
+  --panel: #141414;
+  --surface: #0d0d0d;
+  --line: #333333;
+  --chart-grid: #262626;
+  --chart-grid-strong: #333333;
+  --text: #f9f9f9;
+  --muted: #b0b0b0;
+  --orange: #ff6b00;
+  --pink: #ff4d8d;
+  --magenta: #d93cbe;
+  --purple: #9d2bff;
+  --positive: #cba6ff;
+  --negative: #ff8bb5;
+  --button-text: #050505;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f9f9f9;
+  --panel: #ffffff;
+  --surface: #f0f0f0;
+  --line: #d1d1d1;
+  --chart-grid: #d1d1d1;
+  --chart-grid-strong: #d1d1d1;
+  --text: #171717;
+  --muted: #606060;
+  --orange: #ff5500;
+  --pink: #e60067;
+  --magenta: #b812a4;
+  --purple: #7209b7;
+  --positive: #7209b7;
+  --negative: #b00050;
+  --button-text: #050505;
+}
+:root {
+  --brand-gradient: linear-gradient(
+    110deg,
+    var(--orange) 0%,
+    var(--pink) 33%,
+    var(--magenta) 66%,
+    var(--purple) 100%
+  );
+  --orange-wash: color-mix(in srgb, var(--orange) 12%, var(--panel));
+  --pink-wash: color-mix(in srgb, var(--pink) 12%, var(--panel));
+  --purple-wash: color-mix(in srgb, var(--purple) 12%, var(--panel));
+  --accent-line: color-mix(in srgb, var(--purple) 40%, var(--line));
+}
