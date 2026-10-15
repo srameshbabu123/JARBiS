@@ -39,7 +39,7 @@ class HoldingRepositoryTest {
 
         testAccount = new Account(AccountType.INVESTMENT, Currency.USD, 10000.0, user);
 
-        testAsset = new StockAsset("Apple Inc.", 150.00);
+        testAsset = new StockAsset("AAPL");
 
         testHolding = new Holding(testAccount, testAsset, 100.0, 150.00);
     }
@@ -65,7 +65,7 @@ class HoldingRepositoryTest {
         @Test
         @DisplayName("Should save multiple holdings for same account")
         void testSaveMultipleHoldings() {
-            StockAsset asset2 = new StockAsset("Microsoft Corp.", 300.00);
+            StockAsset asset2 = new StockAsset("MSFT");
             Holding holding2 = new Holding(testAccount, asset2, 50.0, 300.00);
 
             when(holdingRepository.save(any(Holding.class))).thenReturn(testHolding, holding2);
@@ -226,4 +226,3 @@ class HoldingRepositoryTest {
         }
     }
 }
-

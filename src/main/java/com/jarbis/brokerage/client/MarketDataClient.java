@@ -3,8 +3,7 @@ package com.jarbis.brokerage.client;
 import com.jarbis.brokerage.entity.Asset;
 
 /**
- * Client interface for fetching market data from external providers.
- * Implementations should handle API calls to stock price providers.
+ * Client interface for fetching the latest market data used by the application.
  */
 public interface MarketDataClient {
 
@@ -15,7 +14,7 @@ public interface MarketDataClient {
 	 *            the asset to get pricing for
 	 * @return the current market price
 	 * @throws RuntimeException
-	 *             if the external API call fails
+	 *             if market data is unavailable
 	 */
 	Double getCurrentPrice(Asset asset);
 }

@@ -11,8 +11,8 @@ public class ETFAsset extends Asset {
 	public ETFAsset() {
 	}
 
-	public ETFAsset(String name, Double price) {
-		super(name, price);
+	public ETFAsset(String name) {
+		super(name);
 	}
 
 	@Override

@@ -47,7 +47,6 @@ class HoldingServiceTest {
 			// Arrange
 			Double currentPrice = 150.0;
 			Double quantity = 10.0;
-			when(asset.getPrice()).thenReturn(currentPrice);
 			when(holding.getAsset()).thenReturn(asset);
 			when(holding.getQuantity()).thenReturn(quantity);
 			when(marketDataClient.getCurrentPrice(asset)).thenReturn(currentPrice);
@@ -66,7 +65,6 @@ class HoldingServiceTest {
 			// Arrange
 			Double currentPrice = 150.0;
 			Double quantity = 0.0;
-			when(asset.getPrice()).thenReturn(currentPrice);
 			when(holding.getAsset()).thenReturn(asset);
 			when(holding.getQuantity()).thenReturn(quantity);
 			when(marketDataClient.getCurrentPrice(asset)).thenReturn(currentPrice);
@@ -84,7 +82,6 @@ class HoldingServiceTest {
 			// Arrange
 			Double currentPrice = 100.0;
 			Double quantity = 2.5;
-			when(asset.getPrice()).thenReturn(currentPrice);
 			when(holding.getAsset()).thenReturn(asset);
 			when(holding.getQuantity()).thenReturn(quantity);
 			when(marketDataClient.getCurrentPrice(asset)).thenReturn(currentPrice);
@@ -102,7 +99,6 @@ class HoldingServiceTest {
 			// Arrange
 			Double currentPrice = 5000.0;
 			Double quantity = 5.0;
-			when(asset.getPrice()).thenReturn(currentPrice);
 			when(holding.getAsset()).thenReturn(asset);
 			when(holding.getQuantity()).thenReturn(quantity);
 			when(marketDataClient.getCurrentPrice(asset)).thenReturn(currentPrice);
