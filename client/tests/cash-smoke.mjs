@@ -19,7 +19,7 @@ try{
  const dispute=page.locator('.dispute-panel');
  const toggle=dispute.getByRole('button',{name:'Dispute an order',exact:true});
  await toggle.waitFor();assert.equal(await toggle.getAttribute('aria-expanded'),'false');
- assert.equal(await dispute.getByLabel('Details',{exact:true}).count(),0);
+ await dispute.getByLabel('Details',{exact:true}).waitFor({state:'detached'});
  await toggle.click();
  await dispute.getByLabel('Order',{exact:true}).selectOption({index:1});
  await dispute.getByLabel('Reason',{exact:true}).selectOption('Incorrect price');
@@ -28,7 +28,7 @@ try{
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await dispute.getByRole('button',{name:'Close dispute',exact:true}).click();
- assert.equal(await dispute.getByLabel('Details',{exact:true}).count(),0);
+ await dispute.getByLabel('Details',{exact:true}).waitFor({state:'detached'});
  await toggle.click();assert.equal(await dispute.getByLabel('Details',{exact:true}).inputValue(),'The execution price looks incorrect.');
  await dispute.getByRole('button',{name:'Cancel',exact:true}).click();
  await toggle.click();assert.equal(await dispute.getByLabel('Details',{exact:true}).inputValue(),'');
