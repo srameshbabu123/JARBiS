@@ -78,7 +78,11 @@
     <div class="dispute-fields">
       <label
         >Order
-        <select name="disputeOrder" [(ngModel)]="disputeOrderId">
+        <select
+          aria-label="Order"
+          name="disputeOrder"
+          [(ngModel)]="disputeOrderId"
+        >
           <option [ngValue]="null" disabled>Select an order</option>
           @for(order of workspace.orders; track order.id){
           <option [ngValue]="order.id">
@@ -90,7 +94,11 @@
       </label>
       <label
         >Reason
-        <select name="disputeReason" [(ngModel)]="disputeReason">
+        <select
+          aria-label="Reason"
+          name="disputeReason"
+          [(ngModel)]="disputeReason"
+        >
           <option value="" disabled>Select a reason</option>
           @for(reason of disputeReasons; track reason){
           <option>{{reason}}</option>
@@ -100,6 +108,7 @@
       <label
         >Details
         <textarea
+          aria-label="Details"
           name="disputeDetails"
           rows="4"
           maxlength="2000"
