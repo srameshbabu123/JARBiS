@@ -41,8 +41,6 @@ Settings:
 | ANALYTICS_ADMIN_USER / ANALYTICS_ADMIN_PASSWORD_HASH | Provisioned internal account and BCrypt hash |
 | ANALYTICS_ALLOWED_ORIGINS | Comma-separated explicit frontend origins; empty means same-origin only |
 | ANALYTICS_SECURE_COOKIE | true behind HTTPS; false only for local HTTP |
-| ANALYTICS_TOPIC | Defaults to trading.settled.v1 |
-| ANALYTICS_CONSUMER_GROUP | Defaults to jarbis-analytics-v1 |
 
 Existing `jdbc:postgresql://` analytics URLs are accepted and normalized during transition. Shared-server connections use host port 8091 for OLAP; database containers on the same Docker network use `postgres-olap:5432`. Java OLTP still uses host port 8090 when connecting through the shared server. These are separate from API port 8082.
 
@@ -186,3 +184,4 @@ pandas insights use case-opened dates, cap input at 10000 cases (larger queries 
 Database-owner/superuser access, retention/backup policy, restore testing, and runtime-role restrictions (including TRUNCATE/DDL) remain deployment responsibilities. The append-only triggers are not a claim of tamper-proof storage against a database administrator. A source audit write failure rolls back its financial transaction; if the database is unavailable even after rollback, durable failure-attempt capture cannot be guaranteed without an external recovery mechanism.
 
 See [BRS/persona coverage](admin-brs-coverage.md) for remaining gaps. Do not describe the platform as fully BRS-compliant based solely on these endpoints.
+
