@@ -21,9 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.math.BigDecimal;
-import com.jarbis.brokerage.enums.OrderSide;
-import com.jarbis.brokerage.enums.OrderStatus;
 
 /**
  * Service layer for Account management. Handles account operations, balance
@@ -199,30 +196,6 @@ public class AccountService {
 		}
 
 		account.setBalance(account.getBalance() - amount);
-		return accountRepository.save(account);
-	}
-
-	/** Changes brokerage cash only; no external bank/payment rail is connected. */
-	public Account changeCash(Long userId, Long accountId, Double amount, boolean withdrawal) {
-		if (amount == null || !Double.isFinite(amount) || amount <= 0
-				|| BigDecimal.valueOf(amount).stripTrailingZeros().scale() > 2) {
-			throw new InvalidAmountException("Enter a positive amount with at most two decimal places");
-		}
-		Account account = accountRepository.findOwnedForCashUpdate(userId, accountId)
-				.orElseThrow(() -> new AccountNotFoundException("Account not found"));
-		double reserved = account.getOrders().stream()
-				.filter(o -> o.getSide() == OrderSide.BUY && (o.getStatus() == OrderStatus.PENDING
-						|| o.getStatus() == OrderStatus.PARTIALLY_FILLED))
-				.mapToDouble(o -> o.getRemainingQuantity() * o.getPrice()).sum();
-		if (withdrawal && amount > Math.max(0, account.getBalance() - reserved)) {
-			throw new InsufficientBalanceException("Amount exceeds cash available after open orders");
-		}
-		BigDecimal balance = BigDecimal.valueOf(account.getBalance());
-		BigDecimal updated = withdrawal ? balance.subtract(BigDecimal.valueOf(amount)) : balance.add(BigDecimal.valueOf(amount));
-		if (!Double.isFinite(updated.doubleValue())) {
-			throw new InvalidAmountException("Amount is too large");
-		}
-		account.setBalance(updated.doubleValue());
 		return accountRepository.save(account);
 	}
 
