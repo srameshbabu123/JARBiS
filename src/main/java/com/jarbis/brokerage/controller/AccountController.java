@@ -6,9 +6,6 @@ import com.jarbis.brokerage.dto.response.AccountResponseDto;
 import com.jarbis.brokerage.entity.Account;
 import com.jarbis.brokerage.service.AccountService;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import com.jarbis.brokerage.dto.request.CashAmountRequestDto;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,29 +23,6 @@ public class AccountController {
 
 	public AccountController(AccountService accountService) {
 		this.accountService = accountService;
-	}
-
-	@GetMapping("/mine")
-	public ResponseEntity<List<AccountResponseDto>> getMyAccounts(@AuthenticationPrincipal Long userId) {
-		return ResponseEntity.ok(accountService.getAccountsByUser(userId).stream()
-				.map(AccountResponseDto::fromAccount).toList());
-	}
-
-	@GetMapping("/mine/{accountId}")
-	public ResponseEntity<AccountResponseDto> getMyAccount(@AuthenticationPrincipal Long userId, @PathVariable Long accountId) {
-		return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.getAccountByUser(userId, accountId)));
-	}
-
-	@PostMapping("/{accountId}/deposit")
-	public ResponseEntity<AccountResponseDto> deposit(@AuthenticationPrincipal Long userId, @PathVariable Long accountId,
-			@RequestBody CashAmountRequestDto request) {
-		return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.changeCash(userId, accountId, request.amount(), false)));
-	}
-
-	@PostMapping("/{accountId}/withdraw")
-	public ResponseEntity<AccountResponseDto> withdraw(@AuthenticationPrincipal Long userId, @PathVariable Long accountId,
-			@RequestBody CashAmountRequestDto request) {
-		return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.changeCash(userId, accountId, request.amount(), true)));
 	}
 
 	@PostMapping
