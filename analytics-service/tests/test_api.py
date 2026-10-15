@@ -12,9 +12,9 @@ class FakeSessions:
         self.rows = {}
     def find(self, raw):
         return self.rows.get(raw)
-    def create(self, username=None):
+    def create(self, username=None, role=None):
         raw = secrets.token_urlsafe(32)
-        session = {"username": username, "csrf_token": secrets.token_urlsafe(32)}
+        session = {"username": username, "csrf_token": secrets.token_urlsafe(32), "role": role or ("ANALYST" if username else None)}
         self.rows[raw] = session
         return raw, session
     def revoke(self, raw):
@@ -82,8 +82,8 @@ def test_reporting_filters_and_no_frontend(client):
     assert login(client).status_code == 204
     assert client.get("/admin/analytics/options").status_code == 200
     assert client.get("/admin/analytics/dashboard?from=2026-03-30&to=2026-03-01").status_code == 400
-    assert client.get("/admin/analytics/trades?page=-1&from=2026-03-01&to=2026-03-02").status_code == 400
-    assert client.get("/admin/analytics/trades").status_code == 400
+    assert client.get("/admin/analytics/trades?page=-1&from=2026-03-01&to=2026-03-02").status_code == 403
+    assert client.get("/admin/analytics/trades").status_code == 403
     response = client.get("/admin/analytics/dashboard?from=2026-03-01&to=2026-03-02")
     assert response.status_code == 200
     assert response.json()["filter"]["from"] == "2026-03-01"

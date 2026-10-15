@@ -17,6 +17,15 @@ class Settings:
     topic: str = "trading.settled.v1"
     group: str = "jarbis-analytics-v1"
 
+    operations_username: str = ""
+    operations_password_hash: str = ""
+
+    def accounts(self):
+        users = {self.username: (self.password_hash, "ANALYST")}
+        if self.operations_username:
+            users[self.operations_username] = (self.operations_password_hash, "OPERATIONS")
+        return users
+
     @classmethod
     def load(cls):
         values = {}
@@ -37,8 +46,14 @@ class Settings:
         password_hash = required("ANALYTICS_ADMIN_PASSWORD_HASH")
         if not password_hash.startswith(("$2a$", "$2b$", "$2y$")) or len(password_hash) != 60:
             raise ValueError("ANALYTICS_ADMIN_PASSWORD_HASH must be a BCrypt hash")
+        operations_user = values.get("ANALYTICS_OPERATIONS_USER", "")
+        operations_hash = values.get("ANALYTICS_OPERATIONS_PASSWORD_HASH", "")
+        if bool(operations_user) != bool(operations_hash):
+            raise ValueError("Configure both operations username and password hash")
+        if operations_user and (operations_user == values.get("ANALYTICS_ADMIN_USER", "admin") or len(operations_hash) != 60 or not operations_hash.startswith(("$2a$", "$2b$", "$2y$"))):
+            raise ValueError("Operations needs a distinct username and BCrypt hash")
         return cls(required("ANALYTICS_DB_URL").removeprefix("jdbc:"), values.get("ANALYTICS_DB_USER", "jarbis_olap_user"),
                    required("ANALYTICS_DB_PASSWORD"), values.get("ANALYTICS_ADMIN_USER", "admin"), password_hash,
                    origins, values.get("ANALYTICS_SECURE_COOKIE", "false").lower() == "true",
                    values.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-                   values.get("ANALYTICS_TOPIC", "trading.settled.v1"), values.get("ANALYTICS_CONSUMER_GROUP", "jarbis-analytics-v1"))
+                   values.get("ANALYTICS_TOPIC", "trading.settled.v1"), values.get("ANALYTICS_CONSUMER_GROUP", "jarbis-analytics-v1"), operations_user, operations_hash)

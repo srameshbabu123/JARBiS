@@ -32,3 +32,10 @@ def project(pool, event: SettlementEvent):
         for side, p in (("BUY", event.buyer), ("SELL", event.seller)):
             conn.execute("INSERT INTO analytics.trade_participants(transaction_id,user_id,account_id,account_type,side) VALUES (%s,%s,%s,%s,%s)",
                          (event.transactionId, p.userId, p.accountId, p.accountType, side))
+
+
+def project_lifecycle(pool, event):
+    from psycopg.types.json import Jsonb
+    with pool.connection() as conn:
+        conn.execute("INSERT INTO analytics.order_events(event_id,audit_sequence,order_id,client_id,account_id,asset_id,event_type,occurred_at,payload) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(event_id) DO NOTHING",
+                     (event.eventId,event.auditSequence,event.orderId,event.clientId,event.accountId,event.assetId,event.eventType,event.occurredAt,Jsonb(event.model_dump(mode="json"))))

@@ -122,6 +122,17 @@ services:
       - jarbis-network
     restart: "no"
 
+  lifecycle-topic-init:
+    image: apache/kafka:3.9.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command: ["--bootstrap-server", "kafka:19092", "--create", "--if-not-exists", "--topic", "trading.order-lifecycle.v1", "--partitions", "1", "--replication-factor", "1"]
+    networks:
+      - jarbis-network
+    restart: "no"
+
   analytics:
     profiles: ["analytics"]
     build: ./analytics-service
@@ -131,6 +142,8 @@ services:
       ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+      ANALYTICS_OPERATIONS_USER: ${ANALYTICS_OPERATIONS_USER:-}
+      ANALYTICS_OPERATIONS_PASSWORD_HASH: ${ANALYTICS_OPERATIONS_PASSWORD_HASH:-}
       ANALYTICS_ADMIN_USER: ${ANALYTICS_ADMIN_USER:-admin}
       ANALYTICS_ADMIN_PASSWORD_HASH: ${ANALYTICS_ADMIN_PASSWORD_HASH:-}
       ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
@@ -140,6 +153,8 @@ services:
       postgres-olap:
         condition: service_healthy
       analytics-topic-init:
+        condition: service_completed_successfully
+      lifecycle-topic-init:
         condition: service_completed_successfully
     networks:
       - jarbis-network
@@ -153,6 +168,8 @@ services:
       ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+      ANALYTICS_OPERATIONS_USER: ${ANALYTICS_OPERATIONS_USER:-}
+      ANALYTICS_OPERATIONS_PASSWORD_HASH: ${ANALYTICS_OPERATIONS_PASSWORD_HASH:-}
       ANALYTICS_ADMIN_USER: ${ANALYTICS_ADMIN_USER:-admin}
       ANALYTICS_ADMIN_PASSWORD_HASH: ${ANALYTICS_ADMIN_PASSWORD_HASH:-}
       ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
@@ -162,6 +179,8 @@ services:
       postgres-olap:
         condition: service_healthy
       analytics-topic-init:
+        condition: service_completed_successfully
+      lifecycle-topic-init:
         condition: service_completed_successfully
     networks:
       - jarbis-network
@@ -181,6 +200,8 @@ services:
       kafka-init:
         condition: service_completed_successfully
       analytics-topic-init:
+        condition: service_completed_successfully
+      lifecycle-topic-init:
         condition: service_completed_successfully
     environment:
       SERVER_PORT: 8080

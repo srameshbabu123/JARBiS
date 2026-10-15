@@ -25,6 +25,7 @@ def pool():
     pool = make_pool(settings)
     pool.open(wait=True)
     with pool.connection() as conn:
+        conn.execute("DROP SCHEMA IF EXISTS operations CASCADE")
         conn.execute("DROP SCHEMA IF EXISTS analytics CASCADE")
         conn.execute("DROP SCHEMA IF EXISTS reporting_migrations CASCADE")
     migrate(pool)
@@ -38,7 +39,7 @@ def clear(request):
     if request.node.get_closest_marker("postgres"):
         pool = request.getfixturevalue("pool")
         with pool.connection() as conn:
-            conn.execute("TRUNCATE analytics.trade_participants,analytics.processed_events,analytics.transaction_facts,analytics.dim_accounts,analytics.dim_users,analytics.dim_assets,analytics.internal_sessions CASCADE")
+            conn.execute("TRUNCATE operations.dispute_events,operations.disputes,operations.access_events,analytics.order_events,analytics.trade_participants,analytics.processed_events,analytics.transaction_facts,analytics.dim_accounts,analytics.dim_users,analytics.dim_assets,analytics.internal_sessions CASCADE")
 
 
 def filt(**kw):
@@ -120,7 +121,7 @@ def test_real_api_startup_login_and_report(pool, event_data):
         response = client.get("/admin/analytics/dashboard?from=2026-03-01&to=2026-03-02")
         assert response.status_code == 200
         assert response.json()["summary"] == {"trades": 1, "value": 20, "clients": 2, "instruments": 1}
-        assert client.get("/admin/analytics/trades?from=2026-03-01&to=2026-03-02").json()["total"] == 1
+        assert client.get("/admin/analytics/trades?from=2026-03-01&to=2026-03-02").status_code == 403
 
 
 def test_adopts_flyway_versions_without_rewriting_live_unknown_currency(pool, event_data):

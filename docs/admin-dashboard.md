@@ -98,7 +98,7 @@ All browser requests must include cookies (`credentials: 'include'` / Angular `w
 4. GET `/session/me`: returns `username` and `roles: ["ROLE_ANALYST"]`; anonymous callers receive 401. Client JWTs do not grant internal access.
 5. POST `/logout`: current CSRF header; returns 204 and invalidates the session.
 
-One provisioned analyst account is supported initially; individual staff accounts/SSO and login rate limiting at the deployment boundary are further production work.
+One analyst and one operations account are supported; individual staff identities/SSO and login rate limiting at the deployment boundary are further production work.
 
 | GET endpoint | Response |
 | --- | --- |
@@ -127,3 +127,65 @@ Unit/API tests need no Kafka or database. Real PostgreSQL tests require TEST_POS
 ## Remaining BRS work
 
 This backend supports BR-16/17 analysis of completed fills. Full legal order-lifecycle audit, current-quote execution, client ownership enforcement, acceptance reservations, Java financial decimal migration, settlement concurrency, client session revocation, status push updates, and BR-18 differentiation remain separate trading work. No frontend, arbitrary natural-language chart generator, or administrative balance/trade editing is included.
+
+## David: investigation and dispute workflow
+
+Configure a separate operations identity with `ANALYTICS_OPERATIONS_USER=david` and `ANALYTICS_OPERATIONS_PASSWORD_HASH` (a separately generated BCrypt hash). These credentials are provisioned internally, never through client registration. Existing ANALYTICS_ADMIN_USER/HASH remain the analyst identity for Priya. Usernames must differ. Sessions now store roles; old analyst sessions are adopted as ANALYST. There is one provisioned identity per persona in this increment; individual staff accounts/SSO are still deployment work.
+
+Permissions:
+
+| Role | Access |
+| --- | --- |
+| ANALYST | Aggregate dashboard/options APIs; no individual-trade, investigation or dispute access |
+| OPERATIONS | Aggregate reporting, individual fills, investigations, evidence exports, and dispute workflow |
+| Client/anonymous | No admin APIs |
+
+Every POST/PATCH under `/admin/` requires the current session's X-CSRF-TOKEN header. CORS now allows PATCH for explicitly configured origins. GET `/session/me` reports ROLE_ANALYST or ROLE_OPERATIONS.
+
+### Source evidence
+
+Java now persists `order_audit_outbox` rows in the same transaction as order submission, status/deletion requests, execution pricing, and successful matched fills. A row has a UUID and a database-generated sequence. Evidence has no cascading order foreign key, so deleting an order does not delete its history. PostgreSQL triggers reject edits/deletes of source evidence, while permitting publication timestamp updates. Startup installs this trigger after Hibernate creates/updates the table; the deployment role must have the required DDL privileges or deploy the same trigger through controlled migrations.
+
+The lifecycle relay publishes `trading.order-lifecycle.v1`, adding the source sequence to the envelope, and acknowledges delivery only after Kafka confirms. Python consumes both lifecycle and completed-trade topics. Lifecycle projection is idempotent by UUID, preserves source sequence, and tolerates out-of-order arrival. An unexpected sequence collision is rejected. Matched-fill evidence includes before/after cash and holding quantities, execution price and actual pricing basis. Failed settlement attempts are recorded after the financial transaction rolls back in a separate transaction; they do not claim that cash/holdings changes committed.
+
+The current engine uses resting-order prices, so evidence explicitly states `marketQuoteRecorded=false` and `priceBasis=RESTING_ORDER_PRICE`. Submission evidence lists the limited checks actually performed and states `fullTradingRuleValidation=false`. No current-quote proof or historical acceptance is fabricated. Old orders can have fill-only evidence; the timeline exposes coverage gaps. Direct execution is labeled separately, including its absence of a matched transaction record.
+
+### Operations endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| GET `/admin/investigations/orders` | Search latest captured lifecycle states by from/to (UTC), clientId, orderId, status and page |
+| GET `/admin/investigations/orders/{id}/timeline` | Sequenced events, fills, source/ingestion timestamps and coverage gaps |
+| GET `/admin/investigations/orders/{id}/export` | pandas CSV evidence export, including gap rows and spreadsheet-formula protection |
+| GET `/admin/investigations/trades/{id}` | Individual recorded fill |
+| POST `/admin/disputes` | Open a case tied to available order evidence |
+| GET `/admin/disputes` | Paginated cases; optional status/clientId/orderId |
+| GET `/admin/disputes/insights?from=...&to=...` | pandas case counts, categories, daily openings, open-age buckets and median resolution hours |
+| GET `/admin/disputes/{id}` | Case with append-only action/note history |
+| GET `/admin/disputes/{id}/evidence` | Frozen evidence captured when the case opened |
+| PATCH `/admin/disputes/{id}` | Assignment or allowed status transition with optimistic version checking |
+| POST `/admin/disputes/{id}/notes` | Add an attributed note |
+
+Order search filters by the latest recorded event date, uses 25-row pages, and covers orders with lifecycle events. Exact order/trade lookups can return older fill-only history. Timeline responses cap events at 2000 and fills at 1000 and explicitly mark truncation; an operational archive extraction is needed above that cap. ProjectionAsOf is an ingestion timestamp, not a completeness guarantee. Lookup returns 404 when evidence is unavailable; this can also mean ingestion has not caught up.
+
+Create request:
+
+```json
+{"requestId":"GENERATE-A-UUID","orderId":2,"category":"EXECUTION_PRICE","reason":"Client disputes the recorded execution price","assignedTo":"david"}
+```
+
+`requestId` is the idempotency key. An identical retry returns the existing case; reuse for a different request returns 409. The client ID is derived from evidence rather than trusted from the request. Category is EXECUTION_PRICE, UNAUTHORIZED_ORDER, CASH_BALANCE, HOLDINGS or OTHER. Assignment is restricted to a provisioned operations user, or null to unassign.
+
+Update request:
+
+```json
+{"expectedVersion":1,"status":"IN_REVIEW","note":"Review started"}
+```
+
+Workflow: OPEN → IN_REVIEW → RESOLVED → CLOSED. Resolving requires a resolution of at least 10 characters. RESOLVED/CLOSED may reopen to IN_REVIEW with a reason in `note`. Closed cases reject notes until reopened. Each mutation increments `version`; stale updates return 409, so the frontend must reload. Notes are `{ "text": "..." }`. Case detail returns up to 1000 action/note records and exposes historyTruncated above that limit. Case origin, original reason, client/order link and frozen evidence cannot be edited; actions/notes and evidence/access records reject UPDATE/DELETE at database level. Case operations never reverse a trade or adjust balances.
+
+pandas insights use case-opened dates, cap input at 10000 cases (larger queries return 400), exclude reopened active cases from resolution-time statistics, and define resolution time as time from opening to latest resolution for currently resolved/closed cases. Only from/to are accepted on dispute insights; trading filters are rejected. CSV export uses an additional logged timeline read. Investigation, case search/detail and insight reads are attributed in `operations.access_events`.
+
+Database-owner/superuser access, retention/backup policy, restore testing, and runtime-role restrictions (including TRUNCATE/DDL) remain deployment responsibilities. The append-only triggers are not a claim of tamper-proof storage against a database administrator. A source audit write failure rolls back its financial transaction; if the database is unavailable even after rollback, durable failure-attempt capture cannot be guaranteed without an external recovery mechanism.
+
+See [BRS/persona coverage](admin-brs-coverage.md) for remaining gaps. Do not describe the platform as fully BRS-compliant based solely on these endpoints.

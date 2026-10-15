@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
-from pydantic import BaseModel, Field, AwareDatetime, model_validator
+from pydantic import BaseModel, Field, AwareDatetime, model_validator, ConfigDict
 
 
 class Participant(BaseModel):
@@ -57,3 +57,50 @@ class ReportFilter(BaseModel):
         if self.segment is not None:
             clause += " AND EXISTS(SELECT 1 FROM analytics.trade_participants s WHERE s.transaction_id=t.transaction_id AND s.account_type=%(segment)s) "
         return clause, params
+
+
+class LifecycleEvent(BaseModel):
+    schemaVersion: Literal[1]
+    eventId: UUID
+    type: Literal["OrderLifecycle"]
+    auditSequence: int = Field(gt=0)
+    occurredAt: AwareDatetime
+    orderId: int = Field(gt=0)
+    clientId: int = Field(gt=0)
+    accountId: int = Field(gt=0)
+    assetId: int = Field(gt=0)
+    eventType: Literal["ORDER_SUBMITTED", "ORDER_STATUS_CHANGED", "EXECUTION_PRICED", "FILL_RECORDED", "SETTLEMENT_FAILED", "ORDER_DELETION_REQUESTED", "DIRECT_EXECUTION_RECORDED"]
+    instrument: str
+    side: Literal["BUY", "SELL"]
+    status: str
+    quantity: Decimal = Field(gt=0, allow_inf_nan=False)
+    remainingQuantity: Decimal = Field(ge=0, allow_inf_nan=False)
+    orderPrice: Decimal = Field(gt=0, allow_inf_nan=False)
+    cashBalance: Decimal = Field(allow_inf_nan=False)
+    currency: str
+    holdingQuantity: Decimal = Field(allow_inf_nan=False)
+    actor: str
+    details: dict
+
+
+class DisputeCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    requestId: UUID
+    orderId: int = Field(gt=0)
+    category: Literal["EXECUTION_PRICE", "UNAUTHORIZED_ORDER", "CASH_BALANCE", "HOLDINGS", "OTHER"]
+    reason: str = Field(min_length=10, max_length=4000)
+    assignedTo: str | None = Field(default=None, max_length=100)
+
+
+class DisputeChange(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    expectedVersion: int = Field(gt=0)
+    status: Literal["OPEN", "IN_REVIEW", "RESOLVED", "CLOSED"] | None = None
+    assignedTo: str | None = Field(default=None, max_length=100)
+    note: str = Field(default="", max_length=4000)
+    resolution: str | None = Field(default=None, min_length=10, max_length=4000)
+
+
+class DisputeNote(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    text: str = Field(min_length=1, max_length=4000)

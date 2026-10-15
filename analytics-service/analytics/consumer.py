@@ -5,15 +5,21 @@ import threading
 from confluent_kafka import Consumer, KafkaException
 from .config import Settings
 from .database import make_pool, migrate
-from .models import SettlementEvent
-from .projector import project
+from .models import SettlementEvent, LifecycleEvent
+from .projector import project, project_lifecycle
 
 log = logging.getLogger(__name__)
 
 
 def process_message(consumer, message, pool):
-    event = SettlementEvent.model_validate_json(message.value())
-    project(pool, event)
+    import json
+    payload = json.loads(message.value())
+    if payload.get("type") == "OrderLifecycle":
+        event = LifecycleEvent.model_validate(payload)
+        project_lifecycle(pool, event)
+    else:
+        event = SettlementEvent.model_validate(payload)
+        project(pool, event)
     consumer.commit(message=message, asynchronous=False)
 
 
@@ -29,7 +35,7 @@ def main():
                          "auto.offset.reset": "earliest", "enable.auto.commit": False, "enable.auto.offset.store": False})
     try:
         migrate(pool)
-        consumer.subscribe([settings.topic])
+        consumer.subscribe([settings.topic, "trading.order-lifecycle.v1"])
         while not stop.is_set():
             message = consumer.poll(1)
             if message is None:

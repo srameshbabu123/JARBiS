@@ -17,14 +17,15 @@ class Sessions:
         if not raw or len(raw) > 128:
             return None
         with self.pool.connection() as conn:
-            return conn.execute("UPDATE analytics.internal_sessions SET expires_at=now()+interval '30 minutes' WHERE token_hash=%s AND expires_at>now() RETURNING username,csrf_token", (self.digest(raw),)).fetchone()
+            return conn.execute("UPDATE analytics.internal_sessions SET expires_at=now()+interval '30 minutes' WHERE token_hash=%s AND expires_at>now() RETURNING username,csrf_token,role", (self.digest(raw),)).fetchone()
 
-    def create(self, username=None):
+    def create(self, username=None, role=None):
+        role = role or ("ANALYST" if username else None)
         raw, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         with self.pool.connection() as conn:
             conn.execute("DELETE FROM analytics.internal_sessions WHERE expires_at<now()")
-            conn.execute("INSERT INTO analytics.internal_sessions(token_hash,csrf_token,username,expires_at) VALUES (%s,%s,%s,now()+interval '30 minutes')", (self.digest(raw), csrf, username))
-        return raw, {"username": username, "csrf_token": csrf}
+            conn.execute("INSERT INTO analytics.internal_sessions(token_hash,csrf_token,username,role,expires_at) VALUES (%s,%s,%s,%s,now()+interval '30 minutes')", (self.digest(raw), csrf, username, role))
+        return raw, {"username": username, "csrf_token": csrf, "role": role}
 
     def revoke(self, raw):
         if raw:
