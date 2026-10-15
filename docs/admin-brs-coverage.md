@@ -35,7 +35,7 @@ Reference: LEAP-BRS-2026-014 v0.9, sections 6, 8, 9 and 11. This is an implement
 
 ## Service expectations and success criteria
 
-- 9.1 trust/continuity: idempotent projection, replay, failure rollback and workflow concurrency are tested. End-to-end Java/Kafka/Python restart/recovery, HA, balance concurrency and backup restore checks remain required.
+- 9.1 trust/continuity: idempotent projection, replay, failure rollback and workflow concurrency are tested. End-to-end Java-to-OLAP restart/recovery, HA, balance concurrency and backup restore checks remain required.
 - 9.2 responsiveness: bounded queries, indexes and pool limits exist. No production latency/capacity target has been measured.
 - 9.3 confidentiality: roles, explicit CORS, CSRF, session rotation/expiry and operations-only detail APIs are implemented. Real staff identity management, secret management, TLS, role grants and client ownership enforcement remain.
 - 9.4 retention/immutability: UPDATE/DELETE protection exists for lifecycle and dispute/access evidence and case origin. Superuser/DDL/TRUNCATE access, archiving, retention durations and backups need operational controls. Existing trading entities are not all converted into an immutable legal ledger.

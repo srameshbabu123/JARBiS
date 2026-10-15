@@ -1,7 +1,6 @@
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
 psycopg[binary,pool]>=3.2,<4
-confluent-kafka>=2.6,<3
 pandas>=2.2,<4
 bcrypt>=4,<6
 python-multipart>=0.0.20,<1

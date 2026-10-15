@@ -5,24 +5,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.kafka.core.KafkaTemplate;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
-import java.util.concurrent.TimeUnit;
+
 
 @Component
 @ConditionalOnProperty(name = "brokerage.analytics.enabled", havingValue = "true", matchIfMissing = false)
 public class AnalyticsOutboxRelay {
     private static final Logger log = LoggerFactory.getLogger(AnalyticsOutboxRelay.class);
     private final JdbcTemplate jdbc;
-    private final KafkaTemplate<String, String> kafka;
+    private final OlapEventWriter writer;
     private final TransactionTemplate transactions;
-    private final String topic;
-    public AnalyticsOutboxRelay(JdbcTemplate jdbc, KafkaTemplate<String, String> kafka,
-            org.springframework.transaction.PlatformTransactionManager manager,
-            @Value("${brokerage.analytics.topic:trading.settled.v1}") String topic) {
-        this.jdbc = jdbc; this.kafka = kafka; this.transactions = new TransactionTemplate(manager); this.topic = topic;
+    public AnalyticsOutboxRelay(JdbcTemplate jdbc, OlapEventWriter writer,
+            org.springframework.transaction.PlatformTransactionManager manager) {
+        this.jdbc=jdbc; this.writer=writer; this.transactions=new TransactionTemplate(manager);
     }
     @Scheduled(fixedDelayString = "${brokerage.analytics.relay-delay-ms:2000}")
     public void publishPending() {
@@ -34,12 +32,7 @@ public class AnalyticsOutboxRelay {
                         + "WHERE published_at IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED");
                     if (rows.isEmpty()) return false;
                     var row = rows.get(0);
-                    try {
-                        kafka.send(topic, row.get("transaction_id").toString(), row.get("payload").toString())
-                            .get(10, TimeUnit.SECONDS);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); throw new IllegalStateException("Relay interrupted", e);
-                    } catch (Exception e) { throw new IllegalStateException("Kafka has not acknowledged settlement event", e); }
+                    writer.write(row.get("payload").toString());
                     jdbc.update("UPDATE analytics_outbox SET published_at = now() WHERE id = ?", row.get("id"));
                     return true;
                 });

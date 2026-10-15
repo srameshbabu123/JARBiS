@@ -6,7 +6,6 @@ import pytest
 from pydantic import ValidationError
 from analytics.models import ReportFilter, SettlementEvent
 from analytics.reports import chart_series
-from analytics.consumer import process_message
 from analytics.config import Settings
 
 
@@ -34,26 +33,9 @@ def test_pandas_fills_days_without_losing_decimal_precision():
 
 
 @pytest.mark.parametrize("updates", [{"schemaVersion": 2}, {"quantity": "NaN"}, {"executionPrice": "-1"}, {"occurredAt": "2026-03-01T00:00:00"}])
-def test_invalid_financial_event_is_rejected(event_data, updates):
+def test_invalid_event(event_data, updates):
     with pytest.raises(ValidationError):
         SettlementEvent.model_validate({**event_data, **updates})
-
-
-def test_offset_commits_only_after_projection_success(event_data):
-    import json
-    consumer, message = Mock(), Mock()
-    message.value.return_value = json.dumps(event_data).encode()
-    order = Mock()
-    consumer.commit.side_effect = lambda **kw: order.committed()
-    with patch("analytics.consumer.project", side_effect=lambda *a: order.projected()):
-        process_message(consumer, message, Mock())
-    assert [c[0] for c in order.mock_calls] == ["projected", "committed"]
-    consumer.commit.assert_called_once_with(message=message, asynchronous=False)
-    consumer.reset_mock()
-    with patch("analytics.consumer.project", side_effect=RuntimeError("database failure")):
-        with pytest.raises(RuntimeError):
-            process_message(consumer, message, Mock())
-    consumer.commit.assert_not_called()
 
 
 def test_properties_and_environment_override(monkeypatch, tmp_path):

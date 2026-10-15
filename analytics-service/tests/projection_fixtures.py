@@ -1,6 +1,6 @@
-"""Project committed events atomically; successful return means the DB commit succeeded."""
+"""Test fixture helpers; production OLAP ingestion is owned by Java OlapEventWriter."""
 from datetime import timezone
-from .models import SettlementEvent
+from analytics.models import SettlementEvent
 
 
 def project(pool, event: SettlementEvent):

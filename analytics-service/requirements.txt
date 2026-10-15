@@ -3,7 +3,6 @@ annotated-types==0.8.0
 anyio==4.15.1
 bcrypt==5.0.0
 click==8.5.0
-confluent-kafka==2.16.0
 fastapi==0.143.2
 h11==0.16.0
 idna==3.20

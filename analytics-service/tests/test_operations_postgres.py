@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 from analytics.models import LifecycleEvent, DisputeCreate, DisputeChange, ReportFilter, SettlementEvent
-from analytics.projector import project_lifecycle, project
+from projection_fixtures import project_lifecycle, project
 from analytics.operations import Operations
 from test_postgres import pool, clear
 

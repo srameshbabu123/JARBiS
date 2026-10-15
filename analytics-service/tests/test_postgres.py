@@ -8,7 +8,7 @@ import pytest
 from analytics.config import Settings
 from analytics.database import make_pool, migrate
 from analytics.models import ReportFilter, SettlementEvent
-from analytics.projector import project
+from projection_fixtures import project
 from analytics.reports import Reports
 from analytics.sessions import Sessions
 

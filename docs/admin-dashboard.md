@@ -5,13 +5,13 @@ The client-facing trading backend remains Java. Only `analytics-service/` has mo
 ## Architecture and responsibilities
 
 1. Java settlement commits holdings/cash/trade changes and an outbox event together.
-2. The Java outbox relay publishes `trading.settled.v1`. It marks delivery after Kafka acknowledgement.
-3. `python -m analytics.consumer` validates events with Pydantic and writes OLAP facts plus a processed-event marker in one PostgreSQL transaction. Kafka offsets commit only after the database transaction succeeds. Replays do not duplicate fills. Invalid events stop the consumer without acknowledging that offset; the Compose restart policy retries. Investigate persistent failures rather than skipping financial events.
+2. The Java outbox relays write completed trades and order evidence directly to OLAP through `OlapEventWriter`. No analytics Kafka topics or Python consumer are used.
+3. Each OLAP write commits independently before the OLTP delivery timestamp is updated. Failed writes stay pending. Event UUIDs and transaction IDs make retries idempotent.
 4. FastAPI serves the reporting API. It queries only OLAP, using a bounded psycopg pool. PostgreSQL calculates the summaries, distinct-client counts, currency filters, and rankings.
 5. pandas prepares the bounded daily activity dataset, filling missing days with zero while preserving Decimal values internally. Raw trade tables are not loaded wholesale into pandas. Empty datasets still return an empty activity array.
 6. The teammate's frontend draws interactive charts from JSON. No server-generated chart images are implemented; Plotly/Matplotlib or report exports can be added later if required.
 
-The HTTP process and consumer are separate containers built from the same Python code. This lets ingestion restart independently of HTTP. Keep one consumer group for this projection, and stop the old Java analytics process before switching deployments. Redis remains the Java market-quote cache and is not the source of trade analytics.
+Python runs only the HTTP analytics/operations API. Java owns trading-data ingestion. Redis remains the market-quote cache. Python still writes sessions, dispute cases, notes and access history; it does not ingest trading events.
 
 ## Files to walk through
 
@@ -21,8 +21,7 @@ The HTTP process and consumer are separate containers built from the same Python
 | `analytics/api.py` | HTTP routes, validation, CORS, login, session and CSRF behavior |
 | `analytics/sessions.py` | Revocable PostgreSQL-backed sessions, idle expiry, hashed cookie tokens |
 | `analytics/models.py` | Event schema and report-filter validation |
-| `analytics/consumer.py` | Kafka polling, fail-without-ack behavior, commit ordering |
-| `analytics/projector.py` | Atomic, idempotent OLAP writes |
+| Java `messaging/OlapEventWriter.java` | Atomic, idempotent direct OLAP writes |
 | `analytics/reports.py` | SQL reporting and pandas chart preparation |
 | `analytics/database.py` | Connection pooling and checksummed migrations |
 | `migrations/` | Additive SQL; original tables retained, session table added |
@@ -42,7 +41,6 @@ Settings:
 | ANALYTICS_ADMIN_USER / ANALYTICS_ADMIN_PASSWORD_HASH | Provisioned internal account and BCrypt hash |
 | ANALYTICS_ALLOWED_ORIGINS | Comma-separated explicit frontend origins; empty means same-origin only |
 | ANALYTICS_SECURE_COOKIE | true behind HTTPS; false only for local HTTP |
-| KAFKA_BOOTSTRAP_SERVERS | Kafka address reachable from the consumer |
 | ANALYTICS_TOPIC | Defaults to trading.settled.v1 |
 | ANALYTICS_CONSUMER_GROUP | Defaults to jarbis-analytics-v1 |
 
@@ -67,7 +65,6 @@ Configure the settings above, then start the two processes in separate terminals
 
 ```bash
 uvicorn analytics.api:create_app --factory --host 127.0.0.1 --port 8082
-python -m analytics.consumer
 ```
 
 For Docker, copy `.env.analytics.example` to `.env.analytics`, replace all credential placeholders and the BCrypt hash, and run from the repository root:
@@ -76,9 +73,9 @@ For Docker, copy `.env.analytics.example` to `.env.analytics`, replace all crede
 docker compose --env-file .env.analytics --profile analytics up -d --build
 ```
 
-Compose uses the env file to populate container settings; Python itself does not read that file. Both `analytics` (HTTP) and `analytics-consumer` (Kafka ingestion) use only the OLAP database. The example trading URL uses local Compose PostgreSQL; explicitly set the shared-server URLs when deploying centrally. Bindings default to localhost; use a tunnel or TLS reverse proxy for remote access.
+Compose uses the env file to populate container settings; Python itself does not read that file. The `analytics` HTTP service uses only OLAP. Start it once before enabling Java delivery so it applies migrations. The example trading URL uses local Compose PostgreSQL; explicitly set the shared-server URLs when deploying centrally. Bindings default to localhost; use a tunnel or TLS reverse proxy for remote access.
 
-Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated Java deployment. Every relay for one shared OLTP must use the same Kafka cluster, not separate teammate-local brokers.
+Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated Java deployment. All relays for one shared OLTP must target the same OLAP database. Configure Java `brokerage.analytics.db-url`, `brokerage.analytics.db-user`, and `brokerage.analytics.db-password` in application.properties or their BROKERAGE_ANALYTICS_DB_* environment equivalents. Host URL: jdbc:postgresql://localhost:8091/jarbis_olap; Docker URL: jdbc:postgresql://postgres-olap:5432/jarbis_olap. Stop the old Python consumer before switching. To replay previously Kafka-delivered rows safely, reset published_at to NULL in analytics_outbox and order_audit_outbox during a maintenance window; existing OLAP event IDs prevent duplicate inserts. Delivery retries if migrations are not yet applied.
 
 ## Existing database migration
 
@@ -105,13 +102,13 @@ One analyst and one operations account are supported; individual staff identitie
 | `/admin/analytics/options` | instruments, segments (account type), currencies, datasets with first/last dates |
 | `/admin/analytics/dashboard` | summary, previous, activity, instruments, clients, ingestion, filter |
 | `/admin/analytics/trades` | rows, page, pageSize (25), total |
-| `/actuator/health` | public database reachability check; not proof of Kafka consumer freshness |
+| `/actuator/health` | public database reachability check; not proof of delivery freshness |
 
 Dashboard/trades filters: inclusive UTC `from` and `to` ISO dates (maximum 367 days), optional numeric `instrumentId`, optional `segment` from options, `currency` (default USD), `dataset` (LIVE default or LEGACY). Dashboard defaults to the last 30 days; trades requires dates and accepts zero-based `page`. Invalid parameters return 400.
 
 `summary`/`previous` contain `trades`, `value`, `clients`, `instruments`. `activity` contains `day`, `trades`, `value`; pandas adds zero days inside nonempty ranges. `instruments` contains `id`, `name`, `trades`, `value`. `clients` contains `day`, `clients` and remains sparse. `ingestion` contains `last_event_at`, `last_ingested_at`, `processed_events`. Monetary values remain JSON numbers. Each trade row contains `id`, `instrument`, `quantity`, `price`, `value`, `currency`, `executed_at`, `buy_order_id`, `sell_order_id` and sorts newest first.
 
-A fill counts once per transaction. Active clients are distinct across buyer/seller participation; a selected account-type segment counts only clients in that segment, while trade value includes a matching trade once. Currencies are never summed together; UNKNOWN cannot be interpreted as a valid monetary reporting total. Preceding comparisons use the adjacent equal-length period; a zero baseline has no meaningful percentage growth. No names, emails, or passwords are exposed. The latest ingestion timestamp is the latest received event, not proof that Kafka is caught up.
+A fill counts once per transaction. Active clients are distinct across buyer/seller participation; a selected account-type segment counts only clients in that segment, while trade value includes a matching trade once. Currencies are never summed together; UNKNOWN cannot be interpreted as a valid monetary reporting total. Preceding comparisons use the adjacent equal-length period; a zero baseline has no meaningful percentage growth. No names, emails, or passwords are exposed. The latest ingestion timestamp is the latest received event, not proof that delivery is caught up.
 
 ## Tests
 
@@ -122,7 +119,7 @@ mvn test
 python -m pytest -q
 ```
 
-Unit/API tests need no Kafka or database. Real PostgreSQL tests require TEST_POSTGRES_URL pointing to a disposable database whose name is exactly `admin_dashboard_test`, plus TEST_POSTGRES_USER/PASSWORD. These tests DROP analytics schemas; never target shared data. Both postgresql:// and legacy jdbc:postgresql:// test URLs work. CI provisions its own PostgreSQL and runs migration, replay, rollback, reporting, session-expiry and real API tests. A consumer unit test verifies DB-before-Kafka-offset ordering. A full deployed Java settlement-to-Kafka-to-Python smoke test remains a deployment check.
+Unit/API tests need no Kafka or database. Real PostgreSQL tests require TEST_POSTGRES_URL pointing to a disposable database whose name is exactly `admin_dashboard_test`, plus TEST_POSTGRES_USER/PASSWORD. These tests DROP analytics schemas; never target shared data. Both postgresql:// and legacy jdbc:postgresql:// test URLs work. CI provisions its own PostgreSQL and runs migration, replay, rollback, reporting, session-expiry and real API tests. Java relay tests verify OLAP-before-delivery-mark ordering and retention on failure. A deployed Java-to-OLAP outage/recovery smoke test remains a deployment check. Python projection helpers are test fixtures only; production projection lives in Java.
 
 ## Remaining BRS work
 
@@ -146,7 +143,7 @@ Every POST/PATCH under `/admin/` requires the current session's X-CSRF-TOKEN hea
 
 Java now persists `order_audit_outbox` rows in the same transaction as order submission, status/deletion requests, execution pricing, and successful matched fills. A row has a UUID and a database-generated sequence. Evidence has no cascading order foreign key, so deleting an order does not delete its history. PostgreSQL triggers reject edits/deletes of source evidence, while permitting publication timestamp updates. Startup installs this trigger after Hibernate creates/updates the table; the deployment role must have the required DDL privileges or deploy the same trigger through controlled migrations.
 
-The lifecycle relay publishes `trading.order-lifecycle.v1`, adding the source sequence to the envelope, and acknowledges delivery only after Kafka confirms. Python consumes both lifecycle and completed-trade topics. Lifecycle projection is idempotent by UUID, preserves source sequence, and tolerates out-of-order arrival. An unexpected sequence collision is rejected. Matched-fill evidence includes before/after cash and holding quantities, execution price and actual pricing basis. Failed settlement attempts are recorded after the financial transaction rolls back in a separate transaction; they do not claim that cash/holdings changes committed.
+The lifecycle relay adds the source sequence and writes directly to OLAP through Java. Delivery is acknowledged only after OLAP commits. UUID deduplication preserves source sequence and supports retry; unexpected sequence collisions are rejected. Matched-fill evidence includes before/after cash and holding quantities, execution price and actual pricing basis. Failed settlement attempts are recorded after the financial transaction rolls back in a separate transaction; they do not claim that cash/holdings changes committed.
 
 The current engine uses resting-order prices, so evidence explicitly states `marketQuoteRecorded=false` and `priceBasis=RESTING_ORDER_PRICE`. Submission evidence lists the limited checks actually performed and states `fullTradingRuleValidation=false`. No current-quote proof or historical acceptance is fabricated. Old orders can have fill-only evidence; the timeline exposes coverage gaps. Direct execution is labeled separately, including its absence of a matched transaction record.
 

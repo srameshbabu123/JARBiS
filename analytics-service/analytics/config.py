@@ -13,10 +13,6 @@ class Settings:
     password_hash: str
     origins: tuple[str, ...] = ()
     secure_cookie: bool = False
-    kafka_servers: str = "localhost:9092"
-    topic: str = "trading.settled.v1"
-    group: str = "jarbis-analytics-v1"
-
     operations_username: str = ""
     operations_password_hash: str = ""
 
@@ -55,5 +51,4 @@ class Settings:
         return cls(required("ANALYTICS_DB_URL").removeprefix("jdbc:"), values.get("ANALYTICS_DB_USER", "jarbis_olap_user"),
                    required("ANALYTICS_DB_PASSWORD"), values.get("ANALYTICS_ADMIN_USER", "admin"), password_hash,
                    origins, values.get("ANALYTICS_SECURE_COOKIE", "false").lower() == "true",
-                   values.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-                   values.get("ANALYTICS_TOPIC", "trading.settled.v1"), values.get("ANALYTICS_CONSUMER_GROUP", "jarbis-analytics-v1"), operations_user, operations_hash)
+                   operations_user, operations_hash)
