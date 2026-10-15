@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: jarbis_password
     command: ["postgres", "-c", "max_connections=200"]
     ports:
-      - "5432:5432"
+      - "8090:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -20,6 +20,29 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    restart: unless-stopped
+
+  # Separate PostgreSQL instance for OLAP and reporting
+  postgres-olap:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres-olap
+    environment:
+      POSTGRES_DB: jarbis_olap
+      POSTGRES_USER: jarbis_olap_user
+      POSTGRES_PASSWORD: jarbis_olap_password
+    ports:
+      - "8091:5432"
+    volumes:
+      - postgres_olap_data:/var/lib/postgresql/data
+      - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
 
   # Redis market-data store
@@ -97,6 +120,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-olap:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka-init:
@@ -104,7 +129,8 @@ services:
     environment:
       SERVER_PORT: 8080
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
+      # Shared development master database hosted on the Linux server.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://10.18.67.77:8090/jarbis_db
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: jarbis_password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -142,6 +168,8 @@ volumes:
   kafka_data:
     driver: local
   postgres_data:
+    driver: local
+  postgres_olap_data:
     driver: local
   redis_data:
     driver: local
