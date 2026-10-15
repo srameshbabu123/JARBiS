@@ -1,4 +1,3 @@
-import { CashTransferComponent } from "../../components/funding/cash-transfer/cash-transfer";
 import { ChangeDetectionStrategy } from "@angular/core";
 import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
@@ -12,7 +11,6 @@ import { MarketNewsComponent } from "../../components/market/market-news/market-
   styles: [":host { display: block; }"],
   selector: "app-overview-page",
   imports: [
-    CashTransferComponent,
     CommonModule,
     FormsModule,
     PortfolioSummaryComponent,

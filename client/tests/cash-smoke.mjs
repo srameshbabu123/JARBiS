@@ -12,6 +12,27 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||u
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const origin=`http://127.0.0.1:${server.address().port}`;
+ await page.goto(origin+'/#/overview');
+ await page.locator('app-overview-page').waitFor();
+ assert.equal(await page.locator('.cash-panel').count(),0);
+ await page.goto(origin+'/#/order-history');
+ const dispute=page.locator('.dispute-panel');
+ const toggle=dispute.getByRole('button',{name:'Dispute an order',exact:true});
+ await toggle.waitFor();assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+ assert.equal(await dispute.getByLabel('Details',{exact:true}).count(),0);
+ await toggle.click();
+ await dispute.getByLabel('Order',{exact:true}).selectOption({index:1});
+ await dispute.getByLabel('Reason',{exact:true}).selectOption('Incorrect price');
+ await dispute.getByLabel('Details',{exact:true}).fill('The execution price looks incorrect.');
+ assert.match(await dispute.innerText(),/will not be sent or saved/);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await dispute.getByRole('button',{name:'Close dispute',exact:true}).click();
+ assert.equal(await dispute.getByLabel('Details',{exact:true}).count(),0);
+ await toggle.click();assert.equal(await dispute.getByLabel('Details',{exact:true}).inputValue(),'The execution price looks incorrect.');
+ await dispute.getByRole('button',{name:'Cancel',exact:true}).click();
+ await toggle.click();assert.equal(await dispute.getByLabel('Details',{exact:true}).inputValue(),'');
+ await page.setViewportSize({width:1440,height:1100});
  await page.goto(origin+'/#/profile');
  const panel=page.locator('.cash-panel');const amount=panel.getByRole('spinbutton',{name:'Cash amount'});
  await panel.getByRole('heading',{name:'Manage cash'}).waitFor();

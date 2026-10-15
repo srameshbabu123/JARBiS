@@ -51,3 +51,72 @@
     </table>
   </div>
 </section>
+
+<section class="panel dispute-panel">
+  <div class="panel-heading">
+    <div>
+      <h3>Order disputes</h3>
+      <p class="muted">Have a question or notice an issue with an order?</p>
+    </div>
+    <button
+      type="button"
+      class="outline"
+      [attr.aria-expanded]="disputeOpen()"
+      aria-controls="dispute-form"
+      (click)="disputeOpen.set(!disputeOpen())"
+    >
+      {{disputeOpen() ? 'Close dispute' : 'Dispute an order'}}
+    </button>
+  </div>
+  @if(disputeOpen()){
+  <div id="dispute-form">
+    <p class="muted">
+      Online dispute submission is not connected yet. You can prepare the
+      details below, but they will not be sent or saved.
+    </p>
+    @if(workspace.orders.length){
+    <div class="dispute-fields">
+      <label
+        >Order
+        <select name="disputeOrder" [(ngModel)]="disputeOrderId">
+          <option [ngValue]="null" disabled>Select an order</option>
+          @for(order of workspace.orders; track order.id){
+          <option [ngValue]="order.id">
+            #{{order.id}} · {{order.asset?.name || 'Unavailable'}} ·
+            {{order.side}} · {{order.status}}
+          </option>
+          }
+        </select>
+      </label>
+      <label
+        >Reason
+        <select name="disputeReason" [(ngModel)]="disputeReason">
+          <option value="" disabled>Select a reason</option>
+          @for(reason of disputeReasons; track reason){
+          <option>{{reason}}</option>
+          }
+        </select>
+      </label>
+      <label
+        >Details
+        <textarea
+          name="disputeDetails"
+          rows="4"
+          maxlength="2000"
+          [(ngModel)]="disputeDetails"
+          aria-describedby="dispute-details-help"
+        ></textarea>
+      </label>
+      <small id="dispute-details-help" class="muted"
+        >Describe the issue in up to 2,000 characters.</small
+      >
+      <button type="button" class="text-button" (click)="resetDispute()">
+        Cancel
+      </button>
+    </div>
+    } @else {
+    <p class="muted">No orders available to dispute.</p>
+    }
+  </div>
+  }
+</section>
