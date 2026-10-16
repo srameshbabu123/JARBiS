@@ -12,13 +12,18 @@ import java.time.Instant;
 public class PortfolioSnapshotRelay {
     private final JdbcTemplate source;
     private final OlapEventWriter target;
+    private Instant lastSuccess=Instant.EPOCH;
+    @org.springframework.beans.factory.annotation.Value("${brokerage.analytics.portfolio-delay-ms:3600000}")
+    private long snapshotInterval=3600000;
     public PortfolioSnapshotRelay(JdbcTemplate source,OlapEventWriter target) {this.source=source;this.target=target;}
-    @Scheduled(fixedDelayString="${brokerage.analytics.portfolio-delay-ms:3600000}")
+    @Scheduled(fixedDelay=60000)
     public void snapshot() {
         try {
             Instant capturedAt=Instant.now();
+            if(capturedAt.isBefore(lastSuccess.plusMillis(Math.max(60000,snapshotInterval))))return;
             var rows=source.queryForList("SELECT a.owner_id AS user_id,a.currency,COALESCE(SUM(h.quantity::numeric*h.average_price::numeric),0) AS holdings_cost FROM accounts a LEFT JOIN holdings h ON h.account_id=a.id GROUP BY a.owner_id,a.currency");
             target.writePortfolios(rows,capturedAt);
+            lastSuccess=capturedAt;
         } catch(RuntimeException failure) {
             org.slf4j.LoggerFactory.getLogger(getClass()).warn("Portfolio snapshot delayed; next scheduled run will retry");
         }

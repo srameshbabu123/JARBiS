@@ -38,4 +38,5 @@ def test_portfolio_boundaries_activity_and_same_client_matching(pool,event_data)
     assert sum(r['clients'] for r in match['clients'])==1
     # BUY participant is small, SELL participant is CHECKING. Different sides cannot satisfy separate filters.
     assert reports.dashboard(f(portfolioSize='UNDER_10K',segment='CHECKING',activityLevel='ACTIVE'))['summary']['trades']==0
+    assert reports.dashboard(f(portfolioSize='UNDER_10K',dataset='LEGACY'))['portfolioCoverage']['clients']==0
     assert reports.trades(f(activityLevel='OCCASIONAL'),0)['total']==1

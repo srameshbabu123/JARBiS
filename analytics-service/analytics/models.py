@@ -58,7 +58,7 @@ class ReportFilter(BaseModel):
             bands = {"UNDER_10K": "v.holdings_cost < 10000",
                      "BETWEEN_10K_100K": "v.holdings_cost >= 10000 AND v.holdings_cost <= 100000",
                      "OVER_100K": "v.holdings_cost > 100000"}
-            parts.append(f"EXISTS (SELECT 1 FROM (SELECT holdings_cost FROM analytics.client_portfolio_snapshots WHERE user_id={alias}.user_id AND currency=%(currency)s AND captured_at < %(end)s ORDER BY captured_at DESC LIMIT 1) v WHERE {bands[self.portfolioSize]})")
+            parts.append(f"EXISTS (SELECT 1 FROM (SELECT holdings_cost FROM analytics.client_portfolio_snapshots WHERE user_id={alias}.user_id AND currency=%(currency)s AND data_source=%(dataset)s AND captured_at < %(end)s ORDER BY captured_at DESC LIMIT 1) v WHERE {bands[self.portfolioSize]})")
         if self.activityLevel:
             last = f"(SELECT MAX(h.transaction_timestamp) FROM analytics.trade_participants hp JOIN analytics.transaction_facts h ON h.transaction_id=hp.transaction_id WHERE hp.user_id={alias}.user_id AND h.status='COMPLETED' AND h.data_source=%(dataset)s AND h.transaction_timestamp < %(end)s)"
             if self.activityLevel == "ACTIVE":
