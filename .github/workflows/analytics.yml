@@ -1,7 +1,7 @@
 name: Analytics checks
 on:
   push:
-    branches: [feature/admin-analytics-backend]
+    branches: [feature/admin-analytics-backend, feature/admin-dashboard-ui]
   pull_request:
     branches: [development]
 jobs:
@@ -36,3 +36,8 @@ jobs:
       - run: pip install -r analytics-service/requirements-dev.txt
       - run: python -m pytest -q
         working-directory: analytics-service
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check admin-ui/app.js
+      - run: node --test admin-ui/tests/*.test.mjs

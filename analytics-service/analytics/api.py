@@ -151,7 +151,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
         try:
             start = q.get("from") or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
             return ReportFilter(**{"from": start, "to": end, "instrumentId": q.get("instrumentId"),
-                                  "segment": q.get("segment"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "LIVE")})
+                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "ALL")})
         except (ValueError, ValidationError):
             raise HTTPException(400, "Invalid reporting filters")
 
@@ -171,7 +171,16 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
                 raise ValueError()
         except ValueError:
             raise HTTPException(400, "Invalid page")
-        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page)))
+        extra = {}
+        for key, field in (("clientId", "client_id"), ("orderId", "order_id"), ("tradeId", "trade_id")):
+            if key in request.query_params:
+                try:
+                    value = int(request.query_params[key])
+                    if value <= 0: raise ValueError()
+                    extra[field] = value
+                except ValueError:
+                    raise HTTPException(400, "Use positive numeric client, order and trade IDs")
+        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page, **extra)))
 
     def actor(request):
         return request.state.session["username"]
@@ -223,7 +232,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
     @app.get("/admin/disputes/insights")
     def case_insights(request: Request):
         # Case insights filter by opened date only; reject unrelated trading filters rather than ignore them.
-        if any(k in request.query_params for k in ("instrumentId", "segment", "currency", "dataset")):
+        if any(k in request.query_params for k in ("instrumentId", "segment", "portfolioSize", "activityLevel", "currency", "dataset")):
             raise HTTPException(400, "Dispute insights accept from/to dates only")
         return JSONResponse(jsonable_encoder(operations.insights(parse_filter(request), actor(request))))
 

@@ -29,6 +29,10 @@ class OlapEventWriterPostgresTest {
             "buyer":{"orderId":2,"accountId":10,"userId":1,"accountType":"INVESTMENT","currency":"USD"},
             "seller":{"orderId":3,"accountId":20,"userId":2,"accountType":"CHECKING","currency":"USD"}}
             """;
+        var captured=java.time.Instant.parse("2026-10-16T12:00:00Z");
+        var portfolios=java.util.List.of(java.util.Map.<String,Object>of("user_id",1L,"currency","USD","holdings_cost",new java.math.BigDecimal("10000")));
+        writer.writePortfolios(portfolios,captured);writer.writePortfolios(portfolios,captured);
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM analytics.client_portfolio_snapshots",Integer.class));
         writer.write(payload); writer.write(payload);
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM analytics.transaction_facts WHERE transaction_id=987654",Integer.class));
         assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM analytics.trade_participants WHERE transaction_id=987654",Integer.class));
