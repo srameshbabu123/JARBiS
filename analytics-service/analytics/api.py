@@ -151,7 +151,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
         try:
             start = q.get("from") or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
             return ReportFilter(**{"from": start, "to": end, "instrumentId": q.get("instrumentId"),
-                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "LIVE")})
+                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "ALL")})
         except (ValueError, ValidationError):
             raise HTTPException(400, "Invalid reporting filters")
 

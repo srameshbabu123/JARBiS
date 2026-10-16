@@ -143,7 +143,7 @@ def main():
             result=seed(conn,assignee=settings.operations_username or None)
         import json
         print(json.dumps(result,indent=2))
-        print('Select LEGACY in the dashboard. Recent charts show active/occasional clients; use 180 days for dormant history.')
+        print('Refresh the dashboard. Reports include all OLAP records. Use 180 days for dormant history.')
     finally:
         pool.close()
 

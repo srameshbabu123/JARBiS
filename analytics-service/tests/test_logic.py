@@ -16,7 +16,7 @@ def test_previous_period_is_adjacent_equal_length():
     assert f.previous().instrumentId == 12
 
 
-@pytest.mark.parametrize("updates", [{"to": "2025-12-31"}, {"to": "2028-01-01"}, {"segment": "x' OR 1=1"}, {"dataset": "ALL"}, {"currency": "usd"}])
+@pytest.mark.parametrize("updates", [{"to": "2025-12-31"}, {"to": "2028-01-01"}, {"segment": "x' OR 1=1"}, {"dataset": "INVALID"}, {"currency": "usd"}])
 def test_invalid_filters(updates):
     with pytest.raises(ValidationError):
         ReportFilter(**{"from": "2026-01-01", "to": "2026-01-02", **updates})

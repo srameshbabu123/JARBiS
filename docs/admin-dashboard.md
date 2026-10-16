@@ -102,7 +102,7 @@ One analyst and one operations account are supported; individual staff identitie
 | `/admin/analytics/trades` | rows, page, pageSize (25), total |
 | `/actuator/health` | public database reachability check; not proof of delivery freshness |
 
-Dashboard/trades filters: inclusive UTC `from` and `to` ISO dates (maximum 367 days), optional numeric `instrumentId`, optional `segment` from options, `currency` (default USD), `dataset` (LIVE default or LEGACY). Dashboard defaults to the last 30 days; trades requires dates and accepts zero-based `page`. Invalid parameters return 400.
+Dashboard/trades filters: inclusive UTC `from` and `to` ISO dates (maximum 367 days), optional numeric `instrumentId`, optional `segment` from options, `currency` (default USD), `dataset` (ALL by default; explicit LIVE/LEGACY remain for older API clients). Dashboard defaults to the last 30 days; trades requires dates and accepts zero-based `page`. Invalid parameters return 400.
 
 `summary`/`previous` contain `trades`, `value`, `clients`, `instruments`. `activity` contains `day`, `trades`, `value`; pandas adds zero days inside nonempty ranges. `instruments` contains `id`, `name`, `trades`, `value`. `clients` contains `day`, `clients` and remains sparse. `ingestion` contains `last_event_at`, `last_ingested_at`, `processed_events`. Monetary values remain JSON numbers. Each trade row contains `id`, `instrument`, `quantity`, `price`, `value`, `currency`, `executed_at`, `buy_order_id`, `sell_order_id` and sorts newest first.
 
@@ -121,7 +121,7 @@ Unit/API tests need no Kafka or database. Real PostgreSQL tests require TEST_POS
 
 ## Remaining BRS work
 
-This backend supports BR-16/17 analysis of completed fills. Full legal order-lifecycle audit, current-quote execution, client ownership enforcement, acceptance reservations, Java financial decimal migration, settlement concurrency, client session revocation, status push updates, and BR-18 differentiation remain separate trading work. No frontend, arbitrary natural-language chart generator, or administrative balance/trade editing is included.
+This backend supports BR-16/17 analysis of completed fills. Full legal order-lifecycle audit, current-quote execution, client ownership enforcement, acceptance reservations, Java financial decimal migration, settlement concurrency, client session revocation, status push updates, and BR-18 differentiation remain separate trading work. The separate admin-ui frontend is included; arbitrary natural-language chart generation and administrative balance/trade editing are not implemented.
 
 ## David: investigation and dispute workflow
 
@@ -191,3 +191,7 @@ See [BRS/persona coverage](admin-brs-coverage.md) for remaining gaps. Do not des
 The `admin-ui` Compose service provides analyst reporting and operations investigations/disputes. Two validated query parameters, `portfolioSize` and `activityLevel`, apply across dashboard summaries, daily series, rankings, client counts and trade queries. Definitions and boundaries are documented in `admin-ui/README.md`. V5 adds per-client/currency cost-basis portfolio snapshots delivered by Java; Python continues to query OLAP only. Missing snapshots are excluded when filtering by size.
 
 **API metric change:** `value` now means total traded quantity. Monetary totals are under `notional`. The UI explicitly labels both. Each matched fill is counted once. Client counts restrict to matching participants. Daily pandas filling preserves Decimals for both fields. A zero preceding baseline has no percentage growth.
+
+## Unified OLAP reporting
+
+The admin UI no longer exposes a dataset selector. Requests omit dataset and the API defaults to ALL, combining existing/imported, newly ingested and demo records for this environment. Size and activity cohorts also consider the combined history, and latest portfolio snapshots are selected across sources. Dates, currencies and instrument filters still apply. Stored source tags are retained for duplicate/collision safety and provenance; no migration or reload is needed. Older API callers can still explicitly request a source.

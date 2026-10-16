@@ -36,3 +36,11 @@ test('date validation explains oversized historical ranges before a request',()=
  assert.throws(()=>validateDates('2024-03-01','2026-10-16'),/367 days/);
  assert.throws(()=>validateDates('2026-10-16','2026-10-01'),/on or after/);
 });
+
+test('dashboard does not ask users to distinguish OLAP data sources',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/name="dataset"/);
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ assert.doesNotMatch(app,/elements\.dataset/);
+});

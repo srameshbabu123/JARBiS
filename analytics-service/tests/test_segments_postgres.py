@@ -40,3 +40,26 @@ def test_portfolio_boundaries_activity_and_same_client_matching(pool,event_data)
     assert reports.dashboard(f(portfolioSize='UNDER_10K',segment='CHECKING',activityLevel='ACTIVE'))['summary']['trades']==0
     assert reports.dashboard(f(portfolioSize='UNDER_10K',dataset='LEGACY'))['portfolioCoverage']['clients']==0
     assert reports.trades(f(activityLevel='OCCASIONAL'),0)['total']==1
+
+
+def test_combined_history_counts_both_sources_and_classifies_clients_together(pool,event_data):
+    first=deepcopy(event_data)
+    first.update(occurredAt='2026-09-12T12:00:00Z')
+    project(pool,SettlementEvent.model_validate(first))
+    second=deepcopy(event_data)
+    second.update(eventId=str(uuid4()),transactionId=2,occurredAt='2026-10-12T12:00:00Z',quantity='3')
+    project(pool,SettlementEvent.model_validate(second))
+    with pool.connection() as conn:
+        conn.execute("UPDATE analytics.transaction_facts SET data_source='LEGACY' WHERE transaction_id=2")
+        conn.execute("INSERT INTO analytics.client_portfolio_snapshots VALUES (1,'USD','2026-09-01',9999,'LIVE'),(1,'USD','2026-10-01',250000,'LEGACY')")
+    filters={'from':'2026-09-01','to':'2026-10-16'}
+    reports=Reports(pool)
+    report=reports.dashboard(ReportFilter(**filters))
+    assert report['summary']['trades']==2
+    assert report['summary']['value']==Decimal('5')
+    assert report['summary']['clients']==2
+    assert reports.dashboard(ReportFilter(**filters,activityLevel='ACTIVE'))['summary']['trades']==2
+    assert reports.dashboard(ReportFilter(**filters,portfolioSize='OVER_100K'))['summary']['clients']==1
+    assert reports.trades(ReportFilter(**filters),0)['total']==2
+    # Optional explicit source query stays backward compatible; UI never sends it.
+    assert reports.dashboard(ReportFilter(**filters,dataset='LIVE',activityLevel='ACTIVE'))['summary']['trades']==0

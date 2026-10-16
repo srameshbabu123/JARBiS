@@ -47,8 +47,8 @@ class Reports:
                     "ingestion": ingestion, "filter": f.model_dump(by_alias=True),
                     "definitions": {"value": "Total quantity of instruments traded; each matched fill counted once",
                                     "portfolio": "Holdings at purchase cost, excluding cash; per selected currency; latest snapshot on/before period end",
-                                    "activity": "As of period end (UTC): active this calendar month, occasional within 90 days but not this month, dormant otherwise. All instruments/currencies within selected dataset."},
-                    "portfolioCoverage": conn.execute("SELECT COUNT(DISTINCT user_id) AS clients,MAX(captured_at) AS latest_snapshot FROM analytics.client_portfolio_snapshots WHERE currency=%(currency)s AND data_source=%(dataset)s AND captured_at < %(end)s", p).fetchone()}
+                                    "activity": "As of period end (UTC): active this calendar month, occasional within 90 days but not this month, dormant otherwise. All instruments/currencies across the included OLAP history."},
+                    "portfolioCoverage": conn.execute("SELECT COUNT(DISTINCT user_id) AS clients,MAX(captured_at) AS latest_snapshot FROM analytics.client_portfolio_snapshots WHERE currency=%(currency)s AND (%(dataset)s='ALL' OR data_source=%(dataset)s) AND captured_at < %(end)s", p).fetchone()}
 
     def trades(self, f, page, client_id=None, order_id=None, trade_id=None):
         where, p = f.sql()
