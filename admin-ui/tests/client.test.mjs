@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Api,query,change,csv,escapeHtml} from '../client.mjs';
+import {Api,query,change,csv,escapeHtml} from '../client.js';
 test('both independent segment filters reach the API',()=>{
  const p=new URLSearchParams(query({portfolioSize:'UNDER_10K',activityLevel:'ACTIVE',instrumentId:'',currency:'USD'}));
  assert.equal(p.get('portfolioSize'),'UNDER_10K');assert.equal(p.get('activityLevel'),'ACTIVE');assert.equal(p.has('instrumentId'),false);
@@ -19,4 +19,14 @@ test('login retains cookies and rotates CSRF before mutations',async()=>{
 test('conflict errors remain visible for versioned case updates',async()=>{
  const api=new Api(async()=>({ok:false,status:409,json:async()=>({detail:'Dispute changed; reload before updating'})}));
  await assert.rejects(api.request('/admin/disputes/id',{method:'PATCH',body:{expectedVersion:1}}),e=>e.status===409&&e.message.includes('reload'));
+});
+
+// A failed module load must never fall back to putting credentials in a GET URL.
+test('login defaults to POST and waits for JavaScript initialization',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/<form id="login-form"[^>]*method="post"[^>]*action="\/login"/);
+ assert.match(html,/<button id="sign-in"[^>]*disabled/);
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ assert.match(app,/from '\.\/client\.js'/);
 });

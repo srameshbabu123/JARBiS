@@ -1,4 +1,4 @@
-import {Api,escapeHtml as esc,query,change,csv} from './client.mjs';
+import {Api,escapeHtml as esc,query,change,csv} from './client.js';
 const $=id=>document.getElementById(id), api=new Api();
 let user, report, metric='value', reportGeneration=0, orderPage=0, casePage=0, currentCase;
 const fmt=value=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(Number(value??0));
@@ -68,6 +68,7 @@ $('export-report').onclick=()=>{if(report)download(csv(report.activity.map(r=>({
 $('order-search').onsubmit=e=>{e.preventDefault();run(()=>loadOrders(0));};
 $('exact-order').onclick=()=>{const id=$('order-search').elements.orderId.value;if(!id)return error('Enter an order ID to open exact evidence.');run(()=>openOrder(id));};
 $('case-filter').onsubmit=e=>{e.preventDefault();run(()=>loadCases(0));};$('refresh-cases').onclick=()=>run(()=>loadCases(casePage));
+$('sign-in').disabled=false;
 (async()=>{try{const me=await api.request('/session/me');await api.token();await enter(me);}catch(e){loginScreen();if(e.status!==401)$('login-error').textContent=e.message;}})();
 
 $('exact-trade').onclick=()=>{const id=$('order-search').elements.tradeId.value;if(!id)return error('Enter a trade ID first.');run(()=>openTrade(id));};
