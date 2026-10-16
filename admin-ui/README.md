@@ -58,3 +58,18 @@ BR-16/17: historical period/instrument/client segments, quantity/activity/instru
 ## David's investigation workspace
 
 Operations users land directly on Trade Operations. A searchable completed-trade list and adjacent details panel expose quantity, execution price, currency, time and both client/order sides. Choose the affected client's order to review human-readable lifecycle facts, actor/time, cash/holding changes and explicit coverage gaps, then open a dispute with the existing frozen-evidence API. Legacy fills can be browsed even without lifecycle events; unavailable stages are never fabricated. Switch record type to search latest order lifecycle states. Dates/dataset/currency scopes are stated alongside filters; dates over 367 days are explained before an API request. Initial operations dates use the latest available dataset window, with LEGACY selected only when LIVE is absent.
+
+## Load more demo data
+
+The opt-in loader adds synthetic records to **OLAP only**, in LEGACY. Nothing is sent to Kafka or the trading database. Start/update the analytics container first so migrations are applied, then run from the repository root:
+
+```bash
+docker compose --env-file .env.analytics --profile analytics up -d --build analytics admin-ui
+docker compose --env-file .env.analytics --profile analytics exec analytics python -m analytics.demo --allow-demo-data
+```
+
+It adds one batch per UTC day: 216 completed trades, 54 synthetic clients, six DEMO instruments, USD/EUR/INR, all portfolio-size/activity combinations, 54 historical LEGACY portfolio snapshots, 1,314 explicitly synthetic lifecycle events (including pending and failed-attempt examples), and eight disputes covering all four statuses. Disputes are attributed to DEMO_SEED and assigned to the configured operations username when available. Viewed records generate normal access-audit entries. The loader prints example trade/order IDs.
+
+Select **Legacy history**, USD (or EUR/INR), all instruments, and last 30 days for recent charts. Use the last 180 days/custom range to see dormant historical activity. David can use Completed trades or Order lifecycle history, inspect a DEMO record and open another dispute. Synthetic instrument names, reason text and evidence identify the data clearly. These fixtures illustrate the workflow, not real market quotes, real customers or proof that live ingestion works.
+
+Rerunning on the same UTC day does not duplicate, rewrite or restore records you have edited. A different day appends another batch. The entire load commits or rolls back together; reserved-ID collisions fail rather than overwrite. It never deletes evidence, updates existing rows or changes live-ingestion markers. Use a demo environment where possible: LEGACY metrics will include these fixtures. No automatic startup seeding and no destructive cleanup are provided because evidence retention protections remain in force.
