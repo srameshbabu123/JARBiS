@@ -54,3 +54,7 @@ PostgreSQL tests require the disposable `admin_dashboard_test` database document
 ## Requirements
 
 BR-16/17: historical period/instrument/client segments, quantity/activity/instrument insights, isolated reporting. BR-14/15: operations screens expose existing durable evidence and gaps; a screen does not repair missing source quote/history. BR-18 candidate: dispute case management adds documented evidence, assignment and resolution. Existing gaps in `docs/admin-brs-coverage.md` still apply. No automated refunds, risk engine or compliance-certification claim.
+
+## David's investigation workspace
+
+Operations users land directly on Trade Operations. A searchable completed-trade list and adjacent details panel expose quantity, execution price, currency, time and both client/order sides. Choose the affected client's order to review human-readable lifecycle facts, actor/time, cash/holding changes and explicit coverage gaps, then open a dispute with the existing frozen-evidence API. Legacy fills can be browsed even without lifecycle events; unavailable stages are never fabricated. Switch record type to search latest order lifecycle states. Dates/dataset/currency scopes are stated alongside filters; dates over 367 days are explained before an API request. Initial operations dates use the latest available dataset window, with LEGACY selected only when LIVE is absent.

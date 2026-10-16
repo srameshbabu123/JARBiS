@@ -63,6 +63,10 @@ def test_duplicate_delivery_currency_dates_clients_and_pandas(pool, event_data):
     assert reports.dashboard(filt(segment="INVESTMENT"))["summary"]["clients"] == 1
     assert len(dashboard["activity"]) == 2
     assert reports.trades(filt(), 0)["total"] == 2
+    assert reports.trades(filt(), 0, trade_id=2)["total"] == 1
+    assert reports.trades(filt(), 0, client_id=3)["total"] == 1
+    assert reports.trades(filt(), 0, order_id=4)["total"] == 1
+    assert reports.trades(filt(), 0, trade_id=2, client_id=999)["total"] == 0
     assert dashboard["ingestion"]["processed_events"] == 5
     assert reports.options()["instruments"][0]["name"] == "AAPL"
 

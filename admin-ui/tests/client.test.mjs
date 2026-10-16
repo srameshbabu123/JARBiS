@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Api,query,change,csv,escapeHtml} from '../client.js';
+import {Api,query,change,csv,escapeHtml,validateDates} from '../client.js';
 test('both independent segment filters reach the API',()=>{
  const p=new URLSearchParams(query({portfolioSize:'UNDER_10K',activityLevel:'ACTIVE',instrumentId:'',currency:'USD'}));
  assert.equal(p.get('portfolioSize'),'UNDER_10K');assert.equal(p.get('activityLevel'),'ACTIVE');assert.equal(p.has('instrumentId'),false);
@@ -29,4 +29,10 @@ test('login defaults to POST and waits for JavaScript initialization',async()=>{
  assert.match(html,/<button id="sign-in"[^>]*disabled/);
  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
  assert.match(app,/from '\.\/client\.js'/);
+});
+
+test('date validation explains oversized historical ranges before a request',()=>{
+ assert.doesNotThrow(()=>validateDates('2026-01-01','2026-12-31'));
+ assert.throws(()=>validateDates('2024-03-01','2026-10-16'),/367 days/);
+ assert.throws(()=>validateDates('2026-10-16','2026-10-01'),/on or after/);
 });

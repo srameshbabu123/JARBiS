@@ -35,3 +35,10 @@ export class Api {
   async token() {this.csrf=(await this.request('/session/csrf')).token;}
   async login(username,password) {await this.token();await this.request('/login',{method:'POST',form:true,body:{username,password}});await this.token();return this.request('/session/me');}
 }
+
+export function validateDates(from,to) {
+  const start=Date.parse(from+'T00:00:00Z'),end=Date.parse(to+'T00:00:00Z');
+  if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error('Choose a valid From and To date.');
+  if(end<start)throw new Error('The To date must be on or after the From date.');
+  if((end-start)/86400000>366)throw new Error('Choose a date range of at most 367 days. Search older history one year at a time.');
+}

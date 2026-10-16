@@ -50,11 +50,20 @@ class Reports:
                                     "activity": "As of period end (UTC): active this calendar month, occasional within 90 days but not this month, dormant otherwise. All instruments/currencies within selected dataset."},
                     "portfolioCoverage": conn.execute("SELECT COUNT(DISTINCT user_id) AS clients,MAX(captured_at) AS latest_snapshot FROM analytics.client_portfolio_snapshots WHERE currency=%(currency)s AND data_source=%(dataset)s AND captured_at < %(end)s", p).fetchone()}
 
-    def trades(self, f, page):
+    def trades(self, f, page, client_id=None, order_id=None, trade_id=None):
         where, p = f.sql()
+        if client_id is not None:
+            where += " AND (t.buyer_user_id=%(client_id)s OR t.seller_user_id=%(client_id)s)"
+            p["client_id"] = client_id
+        if order_id is not None:
+            where += " AND (t.buy_order_id=%(order_id)s OR t.sell_order_id=%(order_id)s)"
+            p["order_id"] = order_id
+        if trade_id is not None:
+            where += " AND t.transaction_id=%(trade_id)s"
+            p["trade_id"] = trade_id
         with self.pool.connection() as conn:
             conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-            rows = conn.execute("SELECT t.transaction_id AS id,COALESCE(a.asset_name,t.ticker) AS instrument,t.quantity,t.execution_price AS price,t.quantity AS value,t.quantity*t.execution_price AS notional,t.currency,t.transaction_timestamp AS executed_at,t.buy_order_id,t.sell_order_id FROM analytics.transaction_facts t LEFT JOIN analytics.dim_assets a ON a.asset_id=t.asset_id WHERE " + where + " ORDER BY t.transaction_timestamp DESC,t.transaction_id DESC LIMIT 25 OFFSET %(offset)s", {**p, "offset": page * 25}).fetchall()
+            rows = conn.execute("SELECT t.transaction_id AS id,COALESCE(a.asset_name,t.ticker) AS instrument,t.quantity,t.execution_price AS price,t.quantity AS value,t.quantity*t.execution_price AS notional,t.currency,t.transaction_timestamp AS executed_at,t.buy_order_id,t.sell_order_id,t.buyer_user_id,t.seller_user_id,t.status FROM analytics.transaction_facts t LEFT JOIN analytics.dim_assets a ON a.asset_id=t.asset_id WHERE " + where + " ORDER BY t.transaction_timestamp DESC,t.transaction_id DESC LIMIT 25 OFFSET %(offset)s", {**p, "offset": page * 25}).fetchall()
             total = conn.execute("SELECT COUNT(*) AS n FROM analytics.transaction_facts t WHERE " + where, p).fetchone()["n"]
             return {"rows": rows, "page": page, "pageSize": 25, "total": total}
 

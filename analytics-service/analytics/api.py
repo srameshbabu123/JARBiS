@@ -171,7 +171,16 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
                 raise ValueError()
         except ValueError:
             raise HTTPException(400, "Invalid page")
-        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page)))
+        extra = {}
+        for key, field in (("clientId", "client_id"), ("orderId", "order_id"), ("tradeId", "trade_id")):
+            if key in request.query_params:
+                try:
+                    value = int(request.query_params[key])
+                    if value <= 0: raise ValueError()
+                    extra[field] = value
+                except ValueError:
+                    raise HTTPException(400, "Use positive numeric client, order and trade IDs")
+        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page, **extra)))
 
     def actor(request):
         return request.state.session["username"]
