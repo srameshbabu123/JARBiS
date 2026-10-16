@@ -42,3 +42,7 @@ export function validateDates(from,to) {
   if(end<start)throw new Error('The To date must be on or after the From date.');
   if((end-start)/86400000>366)throw new Error('Choose a date range of at most 367 days. Search older history one year at a time.');
 }
+
+export function instrumentLabel(value) {
+  return String(value ?? '').replace(/^DEMO(?:-\s*|\s*·\s*)/, '');
+}

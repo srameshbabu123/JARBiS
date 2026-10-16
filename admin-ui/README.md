@@ -68,3 +68,5 @@ python -m pytest -v
 Database tests require the disposable admin_dashboard_test database. CI includes Java, PostgreSQL, mixed-source reporting, segment, demo rollback/replay and frontend checks. Browser visual QA and deployed end-to-end testing remain manual checks.
 
 BR-16/17: isolated period/instrument/client analysis and business insights. BR-14/15: expose captured durable evidence and its gaps. BR-18 candidate: documented dispute workflow. Original source/valuation/retention/risk gaps in docs/admin-brs-coverage.md remain; the frontend does not establish full compliance.
+
+Instrument labels omit the fixture prefix in dropdowns, rankings, results and readable trade/order details (DEMO-AAPL → AAPL, DEMO · Apple → Apple). Stored evidence and raw exports retain original values.
