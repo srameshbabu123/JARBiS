@@ -22,7 +22,7 @@ Restart/build the Java backend with `BROKERAGE_ANALYTICS_ENABLED=true` and its O
 
 ## User workflows
 
-- Analyst: sign in, select period/instrument/currency/dataset and two independent client filters, apply, switch quantity/trades/notional chart, inspect daily data, export CSV. Dataset defaults to LIVE; select LEGACY explicitly for historical fixtures.
+- Analyst: sign in, select period/instrument/currency/dataset and two independent client filters, apply, switch quantity/trades/notional chart, inspect daily data, export CSV. “Recorded trades (OLAP)” uses the internal dataset code LIVE; this is copied OLAP history, never a live trading connection. Dataset defaults to LIVE; select LEGACY explicitly for historical fixtures.
 - Operations: all reporting plus order/client/status/date searches, exact order/trade lookup, full captured timeline and before/after evidence, coverage warnings, CSV evidence, open a case with frozen evidence, review, assign/unassign to a provisioned operations user, add notes, resolve, close or reopen with a reason. A stale version is rejected; reload the case before retrying.
 - All data comes from the API. Authentication expiry returns to sign-in. Analysts cannot access operations endpoints even by direct requests.
 
@@ -73,3 +73,5 @@ It adds one batch per UTC day: 216 completed trades, 54 synthetic clients, six D
 Select **Legacy history**, USD (or EUR/INR), all instruments, and last 30 days for recent charts. Use the last 180 days/custom range to see dormant historical activity. David can use Completed trades or Order lifecycle history, inspect a DEMO record and open another dispute. Synthetic instrument names, reason text and evidence identify the data clearly. These fixtures illustrate the workflow, not real market quotes, real customers or proof that live ingestion works.
 
 Rerunning on the same UTC day does not duplicate, rewrite or restore records you have edited. A different day appends another batch. The entire load commits or rolls back together; reserved-ID collisions fail rather than overwrite. It never deletes evidence, updates existing rows or changes live-ingestion markers. Use a demo environment where possible: LEGACY metrics will include these fixtures. No automatic startup seeding and no destructive cleanup are provided because evidence retention protections remain in force.
+
+The demo loader uses explicit insert column lists so existing OLAP schemas with a different physical column order are supported. A failed load rolls back all its rows and batch marker; rerun after updating. The dashboard requires only analytics/admin-ui to view existing history or demos. No Java trading backend restart is needed for demo loading. The market-data API-key warning is unrelated to the OLAP-only demo command.

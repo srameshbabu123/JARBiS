@@ -10,6 +10,11 @@ pytestmark=pytest.mark.postgres
 
 def test_demo_is_atomic_idempotent_and_supports_all_segments_and_cases(pool):
     at=datetime(2026,10,16,14,0,tzinfo=timezone.utc)
+    # Existing shared OLAP installations may have a different physical column order.
+    with pool.connection() as conn:
+        conn.execute('ALTER TABLE analytics.order_facts DROP COLUMN quantity CASCADE')
+        conn.execute('ALTER TABLE analytics.order_facts ADD COLUMN quantity NUMERIC(18,8) NOT NULL')
+        conn.execute('ALTER TABLE analytics.dim_assets ADD COLUMN optional_external_metadata TEXT')
     with pytest.raises(RuntimeError):
         with pool.connection() as conn:
             seed(conn,now=at,assignee='david')

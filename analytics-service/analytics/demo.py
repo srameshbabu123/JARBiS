@@ -43,13 +43,13 @@ def seed(conn, *, now=None, assignee=None):
                  ('NVDA','Nvidia','STOCK','130'),('TSLA','Tesla','STOCK','240'),
                  ('SPY','S&P 500 ETF','ETF','560'),('BTC','Bitcoin','CRYPTO','62000')]
     for i,(ticker,name,kind,price) in enumerate(instruments):
-        conn.execute('INSERT INTO analytics.dim_assets VALUES (%s,%s,%s,%s)',
+        conn.execute('INSERT INTO analytics.dim_assets(asset_id,ticker,asset_name,asset_type) VALUES (%s,%s,%s,%s)',
                      (base+100+i,'DEMO-'+ticker,'DEMO · '+name,kind))
     for client in range(54):
         uid=base+200+client; account=base+300+client
         currency=('USD','EUR','INR')[(client//2)%3]
-        conn.execute("INSERT INTO analytics.dim_users VALUES (%s,%s,'')",(uid,'DEMO Client '+str(client+1)))
-        conn.execute('INSERT INTO analytics.dim_accounts VALUES (%s,%s,%s,%s)',(account,uid,'INVESTMENT',currency))
+        conn.execute("INSERT INTO analytics.dim_users(user_id,full_name,email) VALUES (%s,%s,'')",(uid,'DEMO Client '+str(client+1)))
+        conn.execute('INSERT INTO analytics.dim_accounts(account_id,user_id,account_type,currency) VALUES (%s,%s,%s,%s)',(account,uid,'INVESTMENT',currency))
         band=((client//2)//3)%3
         cost=(Decimal('7500'),Decimal('45000'),Decimal('250000'))[band]
         if band==1 and client%2==0: cost=Decimal('10000')
@@ -87,8 +87,8 @@ def seed(conn, *, now=None, assignee=None):
                          (trade,asset,'DEMO-'+instruments[index%6][0],buy,sell,base+300+buyer,base+300+seller,
                           base+200+buyer,base+200+seller,quantity,price,at,at.date(),currency))
             for order,client,side in [(buy,buyer,'BUY'),(sell,seller,'SELL')]:
-                conn.execute('INSERT INTO analytics.trade_participants VALUES (%s,%s,%s,%s,%s)',(trade,base+200+client,base+300+client,'INVESTMENT',side))
-                conn.execute('INSERT INTO analytics.order_facts VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                conn.execute('INSERT INTO analytics.trade_participants(transaction_id,user_id,account_id,account_type,side) VALUES (%s,%s,%s,%s,%s)',(trade,base+200+client,base+300+client,'INVESTMENT',side))
+                conn.execute('INSERT INTO analytics.order_facts(order_id,asset_id,ticker,account_id,user_id,side,status,quantity,price,order_timestamp,event_date) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
                              (order,asset,'DEMO-'+instruments[index%6][0],base+300+client,base+200+client,side,'COMPLETED',quantity,price,at-timedelta(seconds=30),at.date()))
                 lifecycle(order,client,asset,side,quantity,price,currency,at-timedelta(seconds=30),'ORDER_SUBMITTED','PENDING',{'fullTradingRuleValidation':False})
                 lifecycle(order,client,asset,side,quantity,price,currency,at-timedelta(seconds=5),'EXECUTION_PRICED','PENDING',
