@@ -24,6 +24,21 @@ public class OlapEventWriter {
             @Value("${brokerage.analytics.db-password}") String password) {
         this.mapper=mapper; this.url=url; this.user=user; this.password=password;
     }
+    public void writePortfolios(java.util.List<java.util.Map<String,Object>> rows, java.time.Instant capturedAt) {
+        var properties=new java.util.Properties();
+        properties.setProperty("user",user); properties.setProperty("password",password);
+        properties.setProperty("connectTimeout","5"); properties.setProperty("socketTimeout","15");
+        try(var connection=DriverManager.getConnection(url,properties)) {
+            connection.setAutoCommit(false);
+            try {
+                var jdbc=new JdbcTemplate(new SingleConnectionDataSource(connection,true));
+                jdbc.setQueryTimeout(10);
+                for(var row:rows) jdbc.update("INSERT INTO analytics.client_portfolio_snapshots(user_id,currency,captured_at,holdings_cost) VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
+                    row.get("user_id"),row.get("currency"),java.sql.Timestamp.from(capturedAt),row.get("holdings_cost"));
+                connection.commit();
+            } catch(Exception failure) {connection.rollback();throw failure;}
+        } catch(Exception failure) {throw new IllegalStateException("Portfolio snapshot delivery failed",failure);}
+    }
     public void write(String payload) {
         var properties=new java.util.Properties();
         properties.setProperty("user",user); properties.setProperty("password",password);

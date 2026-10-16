@@ -151,7 +151,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
         try:
             start = q.get("from") or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
             return ReportFilter(**{"from": start, "to": end, "instrumentId": q.get("instrumentId"),
-                                  "segment": q.get("segment"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "LIVE")})
+                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "LIVE")})
         except (ValueError, ValidationError):
             raise HTTPException(400, "Invalid reporting filters")
 
@@ -223,7 +223,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
     @app.get("/admin/disputes/insights")
     def case_insights(request: Request):
         # Case insights filter by opened date only; reject unrelated trading filters rather than ignore them.
-        if any(k in request.query_params for k in ("instrumentId", "segment", "currency", "dataset")):
+        if any(k in request.query_params for k in ("instrumentId", "segment", "portfolioSize", "activityLevel", "currency", "dataset")):
             raise HTTPException(400, "Dispute insights accept from/to dates only")
         return JSONResponse(jsonable_encoder(operations.insights(parse_filter(request), actor(request))))
 

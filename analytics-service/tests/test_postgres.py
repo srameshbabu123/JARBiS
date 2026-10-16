@@ -39,7 +39,7 @@ def clear(request):
     if request.node.get_closest_marker("postgres"):
         pool = request.getfixturevalue("pool")
         with pool.connection() as conn:
-            conn.execute("TRUNCATE operations.dispute_events,operations.disputes,operations.access_events,analytics.order_events,analytics.trade_participants,analytics.processed_events,analytics.transaction_facts,analytics.dim_accounts,analytics.dim_users,analytics.dim_assets,analytics.internal_sessions CASCADE")
+            conn.execute("TRUNCATE analytics.client_portfolio_snapshots,operations.dispute_events,operations.disputes,operations.access_events,analytics.order_events,analytics.trade_participants,analytics.processed_events,analytics.transaction_facts,analytics.dim_accounts,analytics.dim_users,analytics.dim_assets,analytics.internal_sessions CASCADE")
 
 
 def filt(**kw):
@@ -59,7 +59,7 @@ def test_duplicate_delivery_currency_dates_clients_and_pandas(pool, event_data):
         project(pool, SettlementEvent.model_validate(payload))
     reports = Reports(pool)
     dashboard = reports.dashboard(filt())
-    assert dashboard["summary"] == {"trades": 2, "value": Decimal("80"), "clients": 3, "instruments": 1}
+    assert dashboard["summary"] == {"trades": 2, "value": Decimal("5"), "notional": Decimal("80"), "clients": 3, "instruments": 1}
     assert reports.dashboard(filt(segment="INVESTMENT"))["summary"]["clients"] == 1
     assert len(dashboard["activity"]) == 2
     assert reports.trades(filt(), 0)["total"] == 2
@@ -120,7 +120,7 @@ def test_real_api_startup_login_and_report(pool, event_data):
         assert client.post("/login", data={"username": "analyst", "password": "test-only"}, headers={"X-CSRF-TOKEN": csrf}).status_code == 204
         response = client.get("/admin/analytics/dashboard?from=2026-03-01&to=2026-03-02")
         assert response.status_code == 200
-        assert response.json()["summary"] == {"trades": 1, "value": 20, "clients": 2, "instruments": 1}
+        assert response.json()["summary"] == {"trades": 1, "value": 2, "notional": 20, "clients": 2, "instruments": 1}
         assert client.get("/admin/analytics/trades?from=2026-03-01&to=2026-03-02").status_code == 403
 
 

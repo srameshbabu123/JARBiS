@@ -43,3 +43,7 @@ Reference: LEAP-BRS-2026-014 v0.9, sections 6, 8, 9 and 11. This is an implement
 - Section 11: isolated reporting and dispute-support backend are available, but full client end-to-end behavior, complete traceability for every trade and deployment acceptance are not yet all demonstrated.
 
 Conclusion: David's investigation and case-management backend and Priya's reporting backend are substantially implemented. It would be inaccurate to confirm that the entire admin dashboard/platform meets every BRS requirement today. The highest-priority blockers remain current-quote execution evidence, complete source lifecycle coverage, client isolation and production retention/recovery controls.
+
+## Admin frontend addition
+
+`admin-ui/` provides both persona workflows connected to the existing API: analyst charts/filters/exports and operations investigations, evidence, case notes, assignments and versioned resolutions. Portfolio size is explicitly cost basis (no market valuation source); activity definitions and coverage limitations are visible. V5/Java snapshots support size segmentation without dashboard OLTP queries. Trade quantity replaces monetary `value`, with separate `notional`. BR-16/17 coverage improves, but original source evidence and deployment/retention gaps remain; no full compliance claim is made.

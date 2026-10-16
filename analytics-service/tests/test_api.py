@@ -89,3 +89,13 @@ def test_reporting_filters_and_no_frontend(client):
     assert response.json()["filter"]["from"] == "2026-03-01"
     assert response.headers["cache-control"] == "no-store"
     assert client.get("/").status_code == 404
+
+
+def test_independent_segments_are_validated_and_forwarded(client):
+    login(client)
+    response=client.get('/admin/analytics/dashboard?portfolioSize=UNDER_10K&activityLevel=ACTIVE')
+    assert response.status_code==200
+    assert response.json()['filter']['portfolioSize']=='UNDER_10K'
+    assert response.json()['filter']['activityLevel']=='ACTIVE'
+    assert client.get('/admin/analytics/dashboard?portfolioSize=madeup').status_code==400
+    assert client.get('/admin/analytics/dashboard?activityLevel=madeup').status_code==400

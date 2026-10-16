@@ -1,6 +1,6 @@
 # Python internal analytics backend
 
-The client-facing trading backend remains Java. Only `analytics-service/` has moved from Spring Boot to Python 3.12. There are no frontend pages or chart assets. Your teammate connects their frontend to the HTTP endpoints below.
+The client-facing trading backend remains Java. Only `analytics-service/` has moved from Spring Boot to Python 3.12. The separate `admin-ui/` frontend connects to these endpoints through a same-origin nginx proxy. See `admin-ui/README.md` for running it on port 8083.
 
 ## Architecture and responsibilities
 
@@ -185,3 +185,9 @@ Database-owner/superuser access, retention/backup policy, restore testing, and r
 
 See [BRS/persona coverage](admin-brs-coverage.md) for remaining gaps. Do not describe the platform as fully BRS-compliant based solely on these endpoints.
 
+
+## Admin frontend and segment filters
+
+The `admin-ui` Compose service provides analyst reporting and operations investigations/disputes. Two validated query parameters, `portfolioSize` and `activityLevel`, apply across dashboard summaries, daily series, rankings, client counts and trade queries. Definitions and boundaries are documented in `admin-ui/README.md`. V5 adds per-client/currency cost-basis portfolio snapshots delivered by Java; Python continues to query OLAP only. Missing snapshots are excluded when filtering by size.
+
+**API metric change:** `value` now means total traded quantity. Monetary totals are under `notional`. The UI explicitly labels both. Each matched fill is counted once. Client counts restrict to matching participants. Daily pandas filling preserves Decimals for both fields. A zero preceding baseline has no percentage growth.
