@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from "@angular/common/http";
 import { ThemeToggleComponent } from "../../components/branding/theme-toggle/theme-toggle";
 import { BrandLogoComponent } from "../../components/branding/brand-logo/brand-logo";
 import { finalize } from "rxjs";
@@ -63,7 +64,8 @@ export class LoginPageComponent {
       return;
     }
     this.workspace.busy = true;
-    const request = this.signup
+    const isSignup = this.signup;
+    const request = isSignup
       ? this.workspace.api.createUser({
           fullName: this.fullName.trim(),
           email: this.email.trim(),
@@ -90,11 +92,24 @@ export class LoginPageComponent {
           this.workspace.notice =
             "Signed in. Your brokerage accounts will appear below.";
         },
-        error: () => {
+        error: (err: HttpErrorResponse) => {
           this.workspace.busy = false;
           this.password = "";
-          this.workspace.error =
-            "Sign-in or registration failed. Check your credentials and that the current development API is running.";
+          if (isSignup) {
+            this.workspace.error =
+              err.status === 409
+                ? (typeof err.error?.message === "string"
+                    ? err.error.message
+                    : "Email is already taken.")
+                : (typeof err.error?.message === "string"
+                    ? err.error.message
+                    : "Registration failed. Check your details.");
+          } else {
+            this.workspace.error =
+              typeof err.error?.message === "string"
+                ? err.error.message
+                : "Sign-in failed. Check your credentials.";
+          }
         },
       });
   }
