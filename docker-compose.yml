@@ -152,8 +152,6 @@ services:
       dockerfile: Dockerfile
     container_name: jarbis-backend
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       kafka-init:
@@ -165,8 +163,8 @@ services:
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      # Set BROKERAGE_DB_URL explicitly when using a shared development database.
-      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:-jdbc:postgresql://postgres:5432/jarbis_db}
+      # The backend uses the shared development database; no local fallback.
+      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:?Set BROKERAGE_DB_URL}
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
