@@ -2,16 +2,32 @@ We have decided on GitFlow Based branching strategy because we want to ensure we
 
 ## Team setup
 
-This project uses one shared development database hosted on the Linux server.
-Team members do not need to set a password or datasource variable manually.
+This project uses shared development OLTP and OLAP databases hosted on the
+Linux server. Each team member needs a local, untracked `.env.analytics` file.
+Create it from the committed example and replace the secret placeholders:
+
+```bash
+cp .env.analytics.example .env.analytics
+```
+
+The important shared database settings are:
+
+```env
+BROKERAGE_DB_URL=jdbc:postgresql://10.18.67.77:8090/jarbis_db
+BROKERAGE_ANALYTICS_DB_URL=jdbc:postgresql://10.18.67.77:8091/jarbis_olap
+ANALYTICS_DB_URL=postgresql://10.18.67.77:8091/jarbis_olap
+```
+
+Do not commit `.env.analytics`. It contains database passwords, JWT secrets,
+and the Fauxnance API key.
 
 ### 1. Start the application
 
 From the repository root:
 
 ```bash
-docker-compose up -d --build
-docker-compose ps
+docker-compose --env-file .env.analytics --profile analytics up -d --build
+docker-compose --env-file .env.analytics ps
 ```
 
 The local backend is available at:
@@ -87,21 +103,22 @@ analytics.daily_transaction_metrics
 
 ### Important database rule
 
-Running `docker-compose up` starts a local PostgreSQL container, but the
-backend is configured to use the shared Linux database at `10.18.67.77:8090`.
-The local PostgreSQL container is not the shared master.
+Running the command above starts local PostgreSQL containers for Compose
+health checks and local tooling, but the backend and analytics services use
+the shared databases at `10.18.67.77:8090` and `10.18.67.77:8091`.
+The local PostgreSQL containers are not the shared master databases.
 
 This command accesses the local database on your own machine:
 
 ```bash
-docker-compose exec postgres psql -U jarbis_user -d jarbis_db
+docker-compose --env-file .env.analytics exec postgres psql -U jarbis_user -d jarbis_db
 ```
 
 Use pgAdmin or the remote `psql` command above when you need to view or edit
 the shared master database. Multiple team members can connect at the same
 time, but everyone is using the same development data.
 
-Do not run `docker-compose down -v` on the shared Linux server. It deletes
+Do not run `docker-compose --env-file .env.analytics down -v` on the shared Linux server. It deletes
 Docker database volumes.
 
 ## Run the container stack
@@ -109,9 +126,9 @@ Docker database volumes.
 From the repository root:
 
 ```bash
-docker compose up -d --build
-docker compose ps -a
-docker compose logs --tail=100 kafka jarbis-backend
+docker-compose --env-file .env.analytics --profile analytics up -d --build
+docker-compose --env-file .env.analytics ps -a
+docker-compose --env-file .env.analytics logs --tail=100 kafka jarbis-backend analytics
 ```
 
 The API is available at http://localhost:8081 and its health endpoint is
@@ -136,11 +153,11 @@ The two instances have separate credentials, Docker volumes, and schemas:
 | OLTP | `localhost` | `8090` | `jarbis_db` | `jarbis_user` |
 | OLAP | `localhost` | `8091` | `jarbis_olap` | `jarbis_olap_user` |
 
-The backend is configured to use the shared development OLTP master at
-`10.18.67.77:8090`. Team members can run `docker-compose up` without setting
-datasource variables manually, provided their device can route to that
-private IP. The local `postgres` service is still available for inspection,
-but it is not the backend datasource dependency.
+The backend uses the shared development OLTP master at `10.18.67.77:8090` and
+the analytics service uses the shared OLAP database at `10.18.67.77:8091`.
+Team members must use the `.env.analytics` file and their device must route to
+that private IP. The local `postgres` and `postgres-olap` services are still
+available for inspection, but they are not the application datasource.
 
 The OLAP initialization script creates the `analytics.order_facts` table and
 the `analytics.daily_order_metrics` materialized view. It is intentionally
@@ -151,18 +168,18 @@ fact table.
 To inspect the OLAP database:
 
 ```bash
-docker compose exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
+docker-compose --env-file .env.analytics exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
 	-c "SELECT current_database(), current_schema();"
 ```
 
 To refresh its aggregate view after loading facts:
 
 ```bash
-docker compose exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
+docker-compose --env-file .env.analytics exec postgres-olap psql -U jarbis_olap_user -d jarbis_olap \
 	-c "REFRESH MATERIALIZED VIEW analytics.daily_order_metrics;"
 ```
 
-Do not use `docker compose down -v` when you want to retain either database.
+Do not use `docker-compose --env-file .env.analytics down -v` when you want to retain either database.
 Remove only `jarbis_postgres_olap_data` when you intentionally want to
 recreate the OLAP instance from its initialization script.
 
@@ -176,8 +193,8 @@ copied into the shared master.
 To inspect the exact database used by the container backend:
 
 ```bash
-docker compose exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT current_database();"
-docker compose exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT id, name, price, asset_type FROM assets ORDER BY id;"
+docker-compose --env-file .env.analytics exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT current_database();"
+docker-compose --env-file .env.analytics exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT id, name, price, asset_type FROM assets ORDER BY id;"
 ```
 
 Use the numeric assets.id from this result as assetId in POST /orders.
@@ -192,7 +209,7 @@ docker-compose.yml. If you run the backend outside Docker against this
 database, override its datasource URL and credentials accordingly.
 
 The existing postgres_data volume is retained when rebuilding the backend.
-Do not use docker compose down -v if you want to retain database and Kafka
+Do not use `docker-compose --env-file .env.analytics down -v` if you want to retain database and Kafka
 data. Changing POSTGRES_DB does not rename or migrate an existing database.
 
 ## Order settlement
