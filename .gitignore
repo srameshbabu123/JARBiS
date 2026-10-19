@@ -38,7 +38,6 @@ src/test/resources/application-test.properties
 
 
 # Analytics configuration and build output
-.env.analytics
 analytics-service/target/
 
 # Python analytics
