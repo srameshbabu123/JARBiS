@@ -129,7 +129,7 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-jdbc:postgresql://10.18.67.77:8091/jarbis_olap}
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       ANALYTICS_OPERATIONS_USER: ${ANALYTICS_OPERATIONS_USER:-}
@@ -159,12 +159,12 @@ services:
     environment:
       SERVER_PORT: 8080
       BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-false}
-      BROKERAGE_ANALYTICS_DB_URL: ${BROKERAGE_ANALYTICS_DB_URL:-jdbc:postgresql://postgres-olap:5432/jarbis_olap}
+      BROKERAGE_ANALYTICS_DB_URL: ${BROKERAGE_ANALYTICS_DB_URL:-jdbc:postgresql://10.18.67.77:8091/jarbis_olap}
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      # The backend uses the shared development database; no local fallback.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://10.18.67.77:8090/jarbis_db
+      # Backend DB target is controlled via env file (master or local).
+      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:-jdbc:postgresql://10.18.67.77:8090/jarbis_db}
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
