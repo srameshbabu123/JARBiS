@@ -88,8 +88,8 @@ export class LoginPageComponent {
           this.workspace.userId = r.user.id;
           this.workspace.profileName = r.user.fullName;
           this.workspace.profileEmail = r.user.email;
-          this.workspace.discoverAccounts();
           this.workspace.go("Profile");
+          this.workspace.discoverAccounts();
           this.workspace.notice =
             "Signed in. Your brokerage accounts will appear below.";
         },
