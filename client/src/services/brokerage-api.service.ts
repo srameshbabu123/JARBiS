@@ -11,46 +11,10 @@ import {
   CreateOrder,
   MarketDataEvent,
 } from "../models/brokerage.models";
-import { INSTRUMENTS_DIRECTORY } from "../data/sample-market";
 
 const FAUXNANCE_API_KEY = "fnx_dev_ynMH4HwnxqC9EljRB9BjjtbRyPLUgPOP";
 const FAUXNANCE_BASE_URL =
   "https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1";
-
-export const KNOWN_TICKER_ASSET_MAP: Record<string, number> = {
-  AAPL: 58,
-  MSFT: 59,
-  NVDA: 60,
-  GOOGL: 61,
-  TSLA: 62,
-  AMZN: 63,
-  META: 64,
-  NFLX: 65,
-  AMD: 66,
-  PLTR: 67,
-  COIN: 68,
-  DIS: 69,
-  INTC: 70,
-  SPY: 71,
-  QQQ: 72,
-  BTC: 73,
-  ETH: 74,
-  JPM: 75,
-  V: 76,
-  WMT: 77,
-  BABA: 78,
-  CRM: 79,
-  ORCL: 80,
-  CSCO: 81,
-  AVGO: 82,
-  ADBE: 83,
-};
-
-for (const item of INSTRUMENTS_DIRECTORY) {
-  if (item.symbol && item.id) {
-    KNOWN_TICKER_ASSET_MAP[item.symbol.toUpperCase()] = item.id;
-  }
-}
 
 interface CachedQuote {
   event: MarketDataEvent;
