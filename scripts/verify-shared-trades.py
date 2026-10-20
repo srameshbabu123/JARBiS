@@ -27,15 +27,15 @@ SELECT t.id,t.asset_id,t.quantity,t.execution_price,t.buy_order_id,t.sell_order_
        ba.owner_id AS buyer_user_id,sa.owner_id AS seller_user_id,ba.currency
 FROM transactions t JOIN orders b ON b.id=t.buy_order_id JOIN orders s ON s.id=t.sell_order_id
 JOIN accounts ba ON ba.id=b.account_id JOIN accounts sa ON sa.id=s.account_id
-WHERE t.id BETWEEN 9007001 AND 9007006 ORDER BY t.id
+WHERE (t.id BETWEEN 9007001 AND 9007006 OR t.id BETWEEN 9009001 AND 9009094) ORDER BY t.id
 """)
-assert len(source) == 6, 'Expected six source trades'
+assert len(source) == 100, 'Expected 100 source trades'
 # Wait for the same asynchronous delivery path used for application-created trades.
 deadline = time.monotonic() + 90
 while True:
     pending = query('postgres', """
-SELECT (SELECT count(*) FROM analytics_outbox WHERE transaction_id BETWEEN 9007001 AND 9007006 AND published_at IS NULL)
-     + (SELECT count(*) FROM order_audit_outbox WHERE (order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103) AND published_at IS NULL) AS n
+SELECT (SELECT count(*) FROM analytics_outbox WHERE (transaction_id BETWEEN 9007001 AND 9007006 OR transaction_id BETWEEN 9009001 AND 9009094) AND published_at IS NULL)
+     + (SELECT count(*) FROM order_audit_outbox WHERE (order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103 OR order_id BETWEEN 9010001 AND 9010188) AND published_at IS NULL) AS n
 """)[0]['n']
     if pending == 0:
         break
@@ -45,12 +45,12 @@ projected = query('postgres-olap', """
 SELECT transaction_id AS id,asset_id,quantity,execution_price,buy_order_id,sell_order_id,status,
        extract(epoch FROM transaction_timestamp) AS executed_at,
        buyer_account_id,seller_account_id,buyer_user_id,seller_user_id,currency
-FROM analytics.transaction_facts WHERE transaction_id BETWEEN 9007001 AND 9007006 ORDER BY transaction_id
+FROM analytics.transaction_facts WHERE (transaction_id BETWEEN 9007001 AND 9007006 OR transaction_id BETWEEN 9009001 AND 9009094) ORDER BY transaction_id
 """)
 assert source == projected, 'OLTP and OLAP trades differ'
-orders = query('postgres', "SELECT * FROM orders WHERE id BETWEEN 9005001 AND 9005012 OR id BETWEEN 9005101 AND 9005103")
-assert len(orders) == 15
-assert sorted(o['status'] for o in orders).count('COMPLETED') == 12
+orders = query('postgres', "SELECT * FROM orders WHERE id BETWEEN 9005001 AND 9005012 OR id BETWEEN 9005101 AND 9005103 OR id BETWEEN 9010001 AND 9010188")
+assert len(orders) == 203
+assert sorted(o['status'] for o in orders).count('COMPLETED') == 200
 by_id = {o['id']: o for o in orders}
 for trade in source:
     buy, sell = by_id[trade['buy_order_id']], by_id[trade['sell_order_id']]
@@ -68,9 +68,10 @@ assert not query('postgres-olap', 'SELECT transaction_id FROM analytics.transact
 
 # Recompute cash, shares, and weighted-average acquisition costs from the opening positions.
 cash = {i: 25000.0 for i in [9003101, 9003102, 9003103, 9003104]}
+cash.update({i: 100000.0 for i in range(9008101, 9008109)})
 assets = query('postgres', "SELECT DISTINCT s.id,s.name FROM assets s JOIN orders o ON o.asset_id=s.id WHERE o.id BETWEEN 9005001 AND 9005012")
 initial_cost = {'GOOGL': 170, 'AMZN': 180, 'SPY': 540}
-positions = {(account, asset['id']): [20.0, float(initial_cost[asset['name']])] for account in cash for asset in assets}
+positions = {(account, asset['id']): [20.0 if account < 9008100 else 200.0, float(initial_cost[asset['name']])] for account in cash for asset in assets}
 for trade in sorted(source, key=lambda t: t['executed_at']):
     buyer, seller = trade['buyer_account_id'], trade['seller_account_id']
     quantity, price = trade['quantity'], trade['execution_price']
@@ -83,19 +84,19 @@ for trade in sorted(source, key=lambda t: t['executed_at']):
     buy[1] = (buy[0] * buy[1] + quantity * price) / (buy[0] + quantity)
     buy[0] += quantity
     sell[0] -= quantity
-for account in query('postgres', 'SELECT id,balance FROM accounts WHERE id BETWEEN 9003101 AND 9003104'):
+for account in query('postgres', 'SELECT id,balance FROM accounts WHERE (id BETWEEN 9003101 AND 9003104 OR id BETWEEN 9008101 AND 9008108)'):
     assert math.isclose(account['balance'], cash[account['id']], abs_tol=1e-8)
-for holding in query('postgres', 'SELECT account_id,asset_id,quantity,average_price FROM holdings WHERE account_id BETWEEN 9003101 AND 9003104'):
+for holding in query('postgres', 'SELECT account_id,asset_id,quantity,average_price FROM holdings WHERE (account_id BETWEEN 9003101 AND 9003104 OR account_id BETWEEN 9008101 AND 9008108)'):
     expected = positions[holding['account_id'], holding['asset_id']]
     assert math.isclose(holding['quantity'], expected[0], abs_tol=1e-8)
     assert math.isclose(holding['average_price'], expected[1], abs_tol=1e-8)
-assert sum(cash.values()) == 100000
+assert math.isclose(sum(cash.values()), 900000, abs_tol=1e-7)
 
 # Every order-history event must arrive unaltered, including pending/cancelled orders.
-events = query('postgres', "SELECT event_id,payload::jsonb AS payload FROM order_audit_outbox WHERE order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103 ORDER BY event_id")
-projected_events = query('postgres-olap', "SELECT event_id,payload-'auditSequence' AS payload FROM analytics.order_events WHERE order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103 ORDER BY event_id")
-assert len(events) == 28 and events == projected_events
-names = query('postgres-olap', 'SELECT full_name,email FROM analytics.dim_users WHERE user_id BETWEEN 9003001 AND 9003004 ORDER BY user_id')
-assert names == query('postgres', 'SELECT full_name,email FROM users WHERE id BETWEEN 9003001 AND 9003004 ORDER BY id')
-assert query('postgres-olap', 'SELECT count(*) AS n FROM analytics.trade_participants WHERE transaction_id BETWEEN 9007001 AND 9007006')[0]['n'] == 12
-print('PASS: 6 identical completed trades, 15 coherent orders, 28 matching audit events, cash/share/cost-basis reconciliation, and 12 OLAP participants')
+events = query('postgres', "SELECT event_id,payload::jsonb AS payload FROM order_audit_outbox WHERE order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103 OR order_id BETWEEN 9010001 AND 9010188 ORDER BY event_id")
+projected_events = query('postgres-olap', "SELECT event_id,payload-'auditSequence' AS payload FROM analytics.order_events WHERE order_id BETWEEN 9005001 AND 9005012 OR order_id BETWEEN 9005101 AND 9005103 OR order_id BETWEEN 9010001 AND 9010188 ORDER BY event_id")
+assert len(events) == 404 and events == projected_events
+names = query('postgres-olap', 'SELECT full_name,email FROM analytics.dim_users WHERE (user_id BETWEEN 9003001 AND 9003004 OR user_id BETWEEN 9008001 AND 9008008) ORDER BY user_id')
+assert names == query('postgres', 'SELECT full_name,email FROM users WHERE (id BETWEEN 9003001 AND 9003004 OR id BETWEEN 9008001 AND 9008008) ORDER BY id')
+assert query('postgres-olap', 'SELECT count(*) AS n FROM analytics.trade_participants WHERE (transaction_id BETWEEN 9007001 AND 9007006 OR transaction_id BETWEEN 9009001 AND 9009094)')[0]['n'] == 200
+print('PASS: 100 identical completed trades, 203 coherent orders, 404 matching audit events, cash/share/cost-basis reconciliation, and 200 OLAP participants')

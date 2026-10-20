@@ -31,7 +31,7 @@ application code. Then run the startup command. Volumes are preserved.
 ## Add shared data or change schema
 
 1. Add a new OLTP file under `db/oltp`, using the next unused version number:
-   `V4__add_shared_assets.sql`, for example. Schema and data changes can both
+   `V5__add_shared_assets.sql`, for example. Schema and data changes can both
    use versioned SQL. Coordinate version numbers when merging branches.
 2. For an entity change, update the Java entity AND add the matching SQL migration.
    Docker uses `ddl-auto=validate`; Hibernate no longer silently changes tables.
@@ -104,7 +104,7 @@ and independently polled live prices can differ; they are not exported to Git.
 ## Linked trading scenario (V3)
 
 Four additional users (`cara@example.test`, `dan@example.test`,
-`emma@example.test`, `finn@example.test`) use password `LocalDev123!`.
+`emma@example.test`, `finn@example.test`) use the local fixture credentials.
 Each starts with USD 25,000 and opening inventory of 20 shares each of GOOGL,
 AMZN, and SPY (average costs 170, 180, and 540). These are opening positions,
 not additional unreported executions. Six dated settlements then move money
@@ -145,3 +145,44 @@ The verifier checks trade IDs, instruments, sides, counterparties, prices,
 quantities, timestamps, cash, inventory, cost basis, names, and audit history
 across both databases. It is also run by Docker CI before and after repeated
 startup. Newly added fixtures run once; local changes are not reset on `up`.
+
+
+## Expanded scenario (V4): 100 completed trades
+
+V4 adds 94 settlements without changing V1–V3 or the earlier clients' balances.
+Eight additional clients (Grace, Hari, Iris, Jon, Kai, Lena, Maya, and Noah)
+receive their own USD investment accounts and opening inventories. Their emails
+are lowercase first names at `example.test`; they inherit Cara's local fixture credentials. Each begins with USD 100,000 and 200 shares each of GOOGL,
+AMZN, and SPY, at the same opening costs defined in V3.
+
+The 94 dated trades span October 1–19, 2026. Sizes range from 1–10 shares;
+counterparties follow a repeatable rotation and are always different clients.
+Every settlement checks funding and seller inventory, updates balances and
+weighted acquisition costs, and creates two filled orders plus four audit events.
+The resting sell limit remains the execution price. Prices are illustrative
+historical fixture values, not current market quotes.
+
+Combined baseline after V4:
+
+| Record | Count |
+| --- | --- |
+| Clients / accounts | 14 / 14 |
+| Holdings rows | 38 |
+| Completed trades | 100 |
+| Completed BUY/SELL orders | 200 |
+| Pending / cancelled orders | 2 / 1 |
+| Order-history events | 404 |
+| OLAP trade participants | 200 |
+
+The eight new accounts conserve their USD 800,000 opening cash total and
+1,600 shares of each symbol. Trades 9009001–9009094 reference orders
+9010001–9010188; event IDs are stable and identity sequences are advanced above
+reserved IDs. All 100 trades use the normal outbox delivery path, so OLAP is
+not populated from a second independent trade generator.
+
+Run the same Compose update command and `python scripts/verify-shared-trades.py`.
+Initial delivery of the larger audit history may take around a minute; the
+verifier waits for delivery and checks all 100 trades and all 404 audit events.
+The three earlier unfilled/cancelled orders remain without executions. The
+verifier checks the untouched shared baseline; trading through those sample
+accounts afterward will naturally change their balances and holdings.

@@ -42,7 +42,7 @@ Do not import the root `database.sql`; it is an obsolete historical schema.
 
 The initial local fixtures include Alice and Bob, investment accounts with
 USD 10,000 each, AAPL/MSFT/NVDA assets, and example holdings. Development logins:
-`alice@example.test` or `bob@example.test`, password `LocalDev123!`.
+`alice@example.test` or `bob@example.test`; use your local fixture credentials.
 These public fixtures are for local development only.
 
 V3 adds Cara, Dan, Emma, and Finn with funded opening portfolios, 6 completed
@@ -52,7 +52,13 @@ order histories flow from OLTP outboxes into OLAP, with matching IDs, quantities
 prices, and counterparties. See the linked scenario table in the workflow guide.
 `BROKERAGE_ANALYTICS_ENABLED` defaults to true; keep it enabled for delivery.
 
-A teammate adds a new file such as `db/oltp/V4__add_shared_assets.sql`, commits
+V4 expands this to **100 completed trades**, **200 filled orders**, and **14
+clients with 14 accounts**, while retaining the 2 pending and 1 cancelled order.
+Eight new funded clients support the additional 94 settlements. The verifier
+checks all trades, portfolio movements, and 404 audit events against OLAP.
+
+
+A teammate adds a new file such as `db/oltp/V5__add_shared_assets.sql`, commits
 it, and everyone pulls and runs the startup command above. Never edit an
 already-applied versioned file. Migrations retain balances, trades, and other
 local changes unless a new migration explicitly changes them. App-created data

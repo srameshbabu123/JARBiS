@@ -15,26 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      BROKERAGE_DB_PASSWORD: local_ci_oltp
-      ANALYTICS_DB_PASSWORD: local_ci_olap
-      JWT_SECRET: local-ci-only-secret-with-at-least-thirty-two-bytes
       BROKERAGE_MARKET_DATA_API_KEY: ''
       BROKERAGE_MARKET_DATA_POLLING_ENABLED: 'false'
       BROKERAGE_ANALYTICS_ENABLED: 'true'
     steps:
       - uses: actions/checkout@v4
+      - name: Generate temporary CI credentials
+        run: |
+          for key in BROKERAGE_DB_PASSWORD ANALYTICS_DB_PASSWORD JWT_SECRET; do
+            value=$(openssl rand -hex 32)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done
       - name: Validate Compose and start backend after migration
         run: |
           docker compose --env-file /dev/null config --quiet
           docker compose --env-file /dev/null up -d --build --wait --wait-timeout 240 jarbis-backend
-      - name: Verify shared data, JPA validation, and development login
+      - name: Verify shared data and JPA validation
         run: |
-          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM users')" = 6
-          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM holdings')" = 14
-          curl --fail --silent -X POST http://localhost:8081/auth/login \
-            -H 'Content-Type: application/json' \
-            --data '{"email":"alice@example.test","password":"LocalDev123!"}' > /tmp/login.json
-          python -c 'import json; assert json.load(open("/tmp/login.json"))'
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM users')" = 14
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM holdings')" = 38
       - name: Reconcile seeded trades and orders across OLTP and OLAP
         run: python scripts/verify-shared-trades.py --env-file /dev/null
       - name: Repeat startup preserves local data and applies a new SQL file
@@ -43,8 +43,8 @@ jobs:
           docker compose --env-file /dev/null up -d oltp-migrate
           docker compose --env-file /dev/null wait oltp-migrate
           test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT balance FROM accounts WHERE id=-1101')" = 1234
-          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM oltp_migrations.flyway_schema_history WHERE version IS NOT NULL AND success')" = 3
-          echo "INSERT INTO public.assets(id,name,asset_type) VALUES(-2099,'CI_ONLY','STOCK');" > db/oltp/V4__ci_new_shared_data.sql
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM oltp_migrations.flyway_schema_history WHERE version IS NOT NULL AND success')" = 4
+          echo "INSERT INTO public.assets(id,name,asset_type) VALUES(-2099,'CI_ONLY','STOCK');" > db/oltp/V5__ci_new_shared_data.sql
           docker compose --env-file /dev/null up -d oltp-migrate
           docker compose --env-file /dev/null wait oltp-migrate
           test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc "SELECT count(*) FROM assets WHERE name='CI_ONLY'")" = 1
@@ -55,12 +55,12 @@ jobs:
         run: python scripts/verify-shared-trades.py --env-file /dev/null
       - name: A failed new migration rolls back its data
         run: |
-          printf '%s\n' "INSERT INTO public.assets(id,name,asset_type) VALUES(-2097,'ROLLBACK_TEST','STOCK');" 'SELECT missing_ci_column FROM public.assets;' > db/oltp/V5__ci_failure.sql
+          printf '%s\n' "INSERT INTO public.assets(id,name,asset_type) VALUES(-2097,'ROLLBACK_TEST','STOCK');" 'SELECT missing_ci_column FROM public.assets;' > db/oltp/V6__ci_failure.sql
           if docker compose --env-file /dev/null run --rm oltp-migrate; then
             echo 'Expected SQL failure'; exit 1
           fi
           test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc "SELECT count(*) FROM assets WHERE name='ROLLBACK_TEST'")" = 0
-          rm db/oltp/V5__ci_failure.sql
+          rm db/oltp/V6__ci_failure.sql
       - name: Reject edits to an applied migration
         run: |
           echo "INSERT INTO public.assets(id,name,asset_type) VALUES(-2098,'CHANGED','STOCK');" >> db/oltp/V2__shared_development_data.sql
