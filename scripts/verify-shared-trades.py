@@ -10,13 +10,37 @@ parser.add_argument('--env-file', default='.env.analytics')
 args = parser.parse_args()
 
 
+def detect_compose():
+    errors = []
+    for command in (['docker', 'compose'], ['docker-compose']):
+        try:
+            result = subprocess.run(command + ['version'], text=True,
+                                    capture_output=True, timeout=15)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            errors.append(' '.join(command) + ': ' + str(error))
+            continue
+        if result.returncode == 0:
+            return command
+        errors.append(' '.join(command) + ': ' + (result.stderr or result.stdout).strip())
+    raise SystemExit("No working Docker Compose command found:\n" + "\n".join(errors))
+
+
+compose_command = detect_compose()
+
+
 def query(service, sql):
     user, database = ('jarbis_user', 'jarbis_db') if service == 'postgres' else ('jarbis_olap_user', 'jarbis_olap')
     wrapped = "SELECT COALESCE(json_agg(row_to_json(r)), '[]'::json)::text FROM (" + sql + ") r"
-    result = subprocess.run(
-        ['docker', 'compose', '--env-file', args.env_file, 'exec', '-T', service,
-         'psql', '-v', 'ON_ERROR_STOP=1', '-U', user, '-d', database, '-Atc', wrapped],
-        check=True, text=True, capture_output=True, timeout=30)
+    try:
+        result = subprocess.run(
+            compose_command + ['--env-file', args.env_file, 'exec', '-T', service,
+             'psql', '-v', 'ON_ERROR_STOP=1', '-U', user, '-d', database, '-Atc', wrapped],
+            check=True, text=True, capture_output=True, timeout=30)
+    except subprocess.CalledProcessError as error:
+        detail = (error.stderr or error.stdout or str(error)).strip()
+        raise SystemExit(f"{service} query failed (exit {error.returncode}):\n{detail}") from None
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SystemExit(f"{service} query could not run: {error}") from None
     return json.loads(result.stdout)
 
 
