@@ -7,7 +7,7 @@ import {
   DestroyRef,
 } from "@angular/core";
 import { Router } from "@angular/router";
-import { STOCKS, INSTRUMENTS_DIRECTORY, MarketStock } from "../data/sample-market";
+import { MarketStock } from "../data/sample-market";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { SessionService } from "./session.service";
 import { MarketDataEvent } from "../models/brokerage.models";
@@ -33,7 +33,7 @@ export class MarketService {
     "Cryptocurrency",
   ];
 
-  private readonly stocksState = signal<MarketStock[]>(INSTRUMENTS_DIRECTORY);
+  private readonly stocksState = signal<MarketStock[]>([]);
   get stocks(): MarketStock[] {
     return this.stocksState();
   }
@@ -41,7 +41,7 @@ export class MarketService {
     this.stocksState.set(value);
   }
 
-  private readonly selectedState = signal<MarketStock>(INSTRUMENTS_DIRECTORY[0]);
+  private readonly selectedState = signal<MarketStock>({ id: 0, symbol: "", name: "", price: 0, change: 0, sector: "Unknown", cap: 0, color: "var(--purple)" });
   get selected(): MarketStock {
     return this.selectedState();
   }
@@ -73,7 +73,7 @@ export class MarketService {
                 !this.stocks.some((s) => s.symbol === clean)
               ) {
                 const newStock: MarketStock = {
-                  id: 200 + this.stocks.length,
+                  id: 0,
                   symbol: clean,
                   name: clean,
                   price: Math.round(e.price * 100) / 100,
@@ -81,8 +81,8 @@ export class MarketService {
                     typeof e.changePercent === "number"
                       ? Math.round(e.changePercent * 100) / 100
                       : 0,
-                  sector: "Technology",
-                  cap: 50,
+                  sector: "Unknown",
+                  cap: 0,
                   color: "var(--purple)",
                 };
                 this.stocks = [newStock, ...this.stocks];
@@ -178,12 +178,11 @@ export class MarketService {
     try {
       const v = JSON.parse(
         localStorage.getItem("velocity-watchlist") ||
-          localStorage.getItem("jarbis-watchlist") ||
-          '["NVDA","AAPL","TSLA","MSFT"]',
+          "[]",
       );
       return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
     } catch {
-      return ["NVDA", "AAPL", "TSLA", "MSFT"];
+      return [];
     }
   }
 
@@ -216,12 +215,15 @@ export class MarketService {
   }
 
   refreshQuotes() {
-    const symbols = this.stocks.map((s) => s.symbol);
+    const symbols = [...new Set([...this.stocks.map((s) => s.symbol), ...this.watched])];
+    if (!symbols.length) return;
     this.api.fetchBatchFauxnanceQuotes(symbols).subscribe({
       next: (events) => {
         if (!Array.isArray(events) || !events.length) return;
         const eventMap = new Map(events.map((e) => [e.symbol, e]));
-        this.stocks = this.stocks.map((s) => {
+        const existing = new Set(this.stocks.map(s => s.symbol));
+        const fetched = events.filter(e => !existing.has(e.symbol) && typeof e.price === "number").map(e => ({ id: 0, symbol: e.symbol, name: e.symbol, price: e.price, change: e.changePercent ?? 0, sector: "Unknown", cap: 0, color: "var(--purple)" }));
+        this.stocks = [...this.stocks.map((s) => {
           const e = eventMap.get(s.symbol);
           if (e && typeof e.price === "number") {
             const changePct =
@@ -235,7 +237,8 @@ export class MarketService {
             };
           }
           return s;
-        });
+        }),
+        ...fetched];
         const selEvent = eventMap.get(this.selected.symbol);
         if (selEvent && typeof selEvent.price === "number") {
           const changePct =
