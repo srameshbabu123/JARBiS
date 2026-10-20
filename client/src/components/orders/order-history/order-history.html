@@ -1,0 +1,131 @@
+@let vm = workspace;
+
+<section class="panel">
+  <div class="panel-heading">
+    <h3>Order history <span class="count">{{history.length}}</span></h3>
+    @if(vm.live){<button class="outline" (click)="vm.refreshOrders()">
+      Refresh status</button
+    >}<select aria-label="Order status" [(ngModel)]="orderFilter">
+      @for(s of
+      ['All','PENDING','PARTIALLY_FILLED','COMPLETED','CANCELLED'];track s){
+      <option>{{s}}</option>
+      }
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Asset</th>
+          <th>Side</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(o of history;track o.id){
+        <tr>
+          <td>#{{o.id}}</td>
+          <td>{{o.asset?.name||'Unavailable'}}</td>
+          <td [class.negative]="o.side==='SELL'" class="positive">
+            {{o.side}}
+          </td>
+          <td>{{o.quantity}}</td>
+          <td>{{o.price|currency:vm.currency}}</td>
+          <td>{{o.quantity*o.price|currency:vm.currency}}</td>
+          <td>
+            <span class="pill" [class.pending]="o.status==='PENDING'"
+              >{{o.status}}</span
+            >
+          </td>
+        </tr>
+        }@empty{
+        <tr>
+          <td colspan="7">No orders match this filter.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel dispute-panel">
+  <div class="panel-heading">
+    <div>
+      <h3>Order disputes</h3>
+      <p class="muted">Have a question or notice an issue with an order?</p>
+    </div>
+    <button
+      type="button"
+      class="outline"
+      [attr.aria-expanded]="disputeOpen()"
+      aria-controls="dispute-form"
+      (click)="disputeOpen.set(!disputeOpen())"
+    >
+      {{disputeOpen() ? 'Close dispute' : 'Dispute an order'}}
+    </button>
+  </div>
+  @if(disputeOpen()){
+  <div id="dispute-form">
+    <p class="muted">
+      Online dispute submission is not connected yet. You can prepare the
+      details below, but they will not be sent or saved.
+    </p>
+    @if(workspace.orders.length){
+    <div class="dispute-fields">
+      <label
+        >Order
+        <select
+          aria-label="Order"
+          name="disputeOrder"
+          [(ngModel)]="disputeOrderId"
+        >
+          <option [ngValue]="null" disabled>Select an order</option>
+          @for(order of workspace.orders; track order.id){
+          <option [ngValue]="order.id">
+            #{{order.id}} · {{order.asset?.name || 'Unavailable'}} ·
+            {{order.side}} · {{order.status}}
+          </option>
+          }
+        </select>
+      </label>
+      <label
+        >Reason
+        <select
+          aria-label="Reason"
+          name="disputeReason"
+          [(ngModel)]="disputeReason"
+        >
+          <option value="" disabled>Select a reason</option>
+          @for(reason of disputeReasons; track reason){
+          <option>{{reason}}</option>
+          }
+        </select>
+      </label>
+      <label
+        >Details
+        <textarea
+          aria-label="Details"
+          name="disputeDetails"
+          rows="4"
+          maxlength="2000"
+          [(ngModel)]="disputeDetails"
+          aria-describedby="dispute-details-help"
+        ></textarea>
+      </label>
+      <small id="dispute-details-help" class="muted"
+        >Describe the issue in up to 2,000 characters.</small
+      >
+      <button type="button" class="text-button" (click)="resetDispute()">
+        Cancel
+      </button>
+    </div>
+    } @else {
+    <p class="muted">No orders available to dispute.</p>
+    }
+  </div>
+  }
+</section>

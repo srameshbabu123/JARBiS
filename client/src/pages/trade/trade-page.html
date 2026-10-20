@@ -1,0 +1,9 @@
+@let vm = workspace;
+<app-trade
+  [account]="vm.loadedAccount"
+  [cash]="vm.cash"
+  [holdings]="vm.holdings"
+  [orders]="vm.orders"
+  (submitted)="vm.orderSubmitted($event)"
+  (navigate)="vm.go($event)"
+/>

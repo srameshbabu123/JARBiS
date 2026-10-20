@@ -22,29 +22,28 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Runs on every compose up, including against an existing PostgreSQL volume.
-  oltp-migrate:
-    image: flyway/flyway:10.20.1
-    command: ["migrate"]
+  # Separate PostgreSQL instance for OLAP and reporting
+  postgres-olap:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres-olap
     environment:
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/jarbis_db
-      FLYWAY_USER: jarbis_user
-      FLYWAY_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
-      FLYWAY_LOCATIONS: filesystem:/flyway/sql
-      # Keep migration history separate; application tables remain in public.
-      FLYWAY_DEFAULT_SCHEMA: oltp_migrations
-      FLYWAY_SCHEMAS: oltp_migrations
-      FLYWAY_CONNECT_RETRIES: 30
-      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
-      FLYWAY_CLEAN_DISABLED: "true"
+      POSTGRES_DB: jarbis_olap
+      POSTGRES_USER: jarbis_olap_user
+      POSTGRES_PASSWORD: jarbis_olap_password
+    ports:
+      - "8091:5432"
     volumes:
-      - ./db/oltp:/flyway/sql:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres_olap_data:/var/lib/postgresql/data
+      - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
     networks:
       - jarbis-network
-    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   # Redis market-data store
   redis:
@@ -199,10 +198,10 @@ services:
       dockerfile: Dockerfile
     container_name: jarbis-backend
     depends_on:
-      oltp-migrate:
-        condition: service_completed_successfully
-      olap-migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      postgres-olap:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka-init:
@@ -214,15 +213,8 @@ services:
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      BROKERAGE_KAFKA_TOPICS_ORDER_SUBMITTED: orders.submitted
-      SPRING_KAFKA_CONSUMER_GROUP_ID: jarbis-settlement
-      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
-      SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER: org.apache.kafka.common.serialization.StringDeserializer
-      SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER: org.apache.kafka.common.serialization.StringDeserializer
-      SPRING_KAFKA_PRODUCER_KEY_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
-      SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
-      # Container-to-container connection to each developer's local OLTP.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
+      # Shared development master database hosted on the Linux server.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://10.18.67.77:8090/jarbis_db
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -263,6 +255,8 @@ volumes:
   kafka_data:
     driver: local
   postgres_data:
+    driver: local
+  postgres_olap_data:
     driver: local
   redis_data:
     driver: local
