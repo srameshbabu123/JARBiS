@@ -84,10 +84,11 @@ export class LoginPageComponent {
         next: (r) => {
           this.workspace.busy = false;
           this.password = "";
-          this.workspace.resetDemo();
+          this.workspace.clearAccountState();
           this.workspace.userId = r.user.id;
           this.workspace.profileName = r.user.fullName;
           this.workspace.profileEmail = r.user.email;
+          this.workspace.discoverAccounts();
           this.workspace.go("Profile");
           this.workspace.notice =
             "Signed in. Your brokerage accounts will appear below.";
