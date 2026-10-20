@@ -15,6 +15,7 @@ import com.jarbis.brokerage.entity.RefreshToken;
 import com.jarbis.brokerage.entity.User;
 import com.jarbis.brokerage.repository.RefreshTokenRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class RefreshTokenService {
 	private final Clock clock;
 	private final SecureRandom secureRandom = new SecureRandom();
 
+	@Autowired
 	public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
 			@Value("${jwt.refresh-expiration-ms:2592000000}") long refreshTokenExpirationMs) {
 		this(refreshTokenRepository, Duration.ofMillis(refreshTokenExpirationMs), Clock.systemUTC());
