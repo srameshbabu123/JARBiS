@@ -170,7 +170,6 @@ export class WorkspaceService {
                   userId: user.id,
                   accountType: "INVESTMENT",
                   currency: "USD",
-                  initialBalance: 50000,
                 })
                 .subscribe({
                   next: (acc) => {
