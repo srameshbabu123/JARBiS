@@ -283,98 +283,13 @@ export class MarketService {
         if (Array.isArray(events) && events.length >= 2) {
           this.historyState.set(events);
         } else {
-          this.historyState.set(this.generateAnchoredHistory(symbol, range));
+          this.historyState.set([]);
         }
       },
       error: () => {
-        this.historyState.set(this.generateAnchoredHistory(symbol, range));
+        this.historyState.set([]);
       },
     });
-  }
-
-  private generateAnchoredHistory(
-    symbol: string,
-    range: string,
-  ): MarketDataEvent[] {
-    const stock =
-      this.stocks.find(
-        (s) => s.symbol.toUpperCase() === symbol.toUpperCase(),
-      ) || this.selected;
-    const currentPrice = stock?.price || 100;
-    const changePct = stock?.change || 0;
-
-    const numPoints = 60;
-    const now = Date.now();
-    let durationMs = 24 * 60 * 60 * 1000;
-
-    switch (range) {
-      case "1D":
-        durationMs = 24 * 60 * 60 * 1000;
-        break;
-      case "1W":
-        durationMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "1M":
-        durationMs = 30 * 24 * 60 * 60 * 1000;
-        break;
-      case "3M":
-        durationMs = 90 * 24 * 60 * 60 * 1000;
-        break;
-      case "1Y":
-        durationMs = 365 * 24 * 60 * 60 * 1000;
-        break;
-      case "ALL":
-        durationMs = 3 * 365 * 24 * 60 * 60 * 1000;
-        break;
-    }
-
-    const rangeMultiplier =
-      range === "1D"
-        ? 1
-        : range === "1W"
-          ? 2.2
-          : range === "1M"
-            ? 4.5
-            : range === "3M"
-              ? 7
-              : range === "1Y"
-                ? 12
-                : 18;
-
-    const totalTrendPct = (changePct * rangeMultiplier) / 100;
-    const startPrice = Math.max(0.5, currentPrice / (1 + totalTrendPct));
-    const seed = (symbol || "STOCK")
-      .split("")
-      .reduce((acc, c) => acc + c.charCodeAt(0), 0);
-
-    const events: MarketDataEvent[] = [];
-    for (let i = 0; i < numPoints; i++) {
-      const progress = i / (numPoints - 1);
-      const pointTime = new Date(
-        now - (1 - progress) * durationMs,
-      ).toISOString();
-      const basePrice = startPrice + (currentPrice - startPrice) * progress;
-      const fluctuation =
-        Math.sin(i * 0.45 + seed) *
-        Math.cos(i * 0.28 + (seed % 7)) *
-        (1 - progress) *
-        (currentPrice * 0.02);
-      const price = Math.max(
-        0.01,
-        Math.round((basePrice + fluctuation) * 100) / 100,
-      );
-
-      events.push({
-        symbol: symbol.toUpperCase(),
-        price: i === numPoints - 1 ? currentPrice : price,
-        change: changePct,
-        changePercent: changePct,
-        currency: "USD",
-        capturedAt: pointTime,
-      });
-    }
-
-    return events;
   }
 
   get path() {
@@ -392,11 +307,6 @@ export class MarketService {
         })
         .join(" ");
     }
-    const r = ["1D", "1W", "1M", "3M", "1Y", "ALL"].indexOf(this.range);
-    return Array.from(
-      { length: 80 },
-      (_, i) =>
-        `${i === 0 ? "M" : "L"} ${i * 10} ${205 - i * 1.65 + Math.sin(i * 1.7 + r) * 13 + Math.cos(i * 0.53 + r) * 20}`,
-    ).join(" ");
+    return "";
   }
 }
