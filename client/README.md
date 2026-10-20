@@ -12,7 +12,28 @@ npm ci
 npm start
 ```
 
-Open http://localhost:4200/#/overview or http://localhost:4200/#/trade. The existing hash URLs also resolve. The dev proxy forwards `/api` to http://localhost:8080 and strips `/api`. Production needs an equivalent same-origin reverse proxy. `npm run build` writes `dist/client/browser`.
+Open http://localhost:4200/#/overview or http://localhost:4200/#/trade. The existing hash URLs also resolve. The dev proxy forwards `/api/**` to http://127.0.0.1:8081 and strips `/api`. Docker publishes the backend on host port 8081; port 8080 is internal to its container. Production needs an equivalent same-origin reverse proxy. `npm run build` writes `dist/client/browser`.
+
+## Local backend connection
+
+From the repository root, start the backend and check health:
+
+```sh
+docker-compose --env-file .env.analytics --profile analytics up -d --build
+curl --fail http://127.0.0.1:8081/actuator/health
+```
+
+Then run `npm start` from `client`. The browser calls `/api/auth/login`,
+which the proxy sends to `http://127.0.0.1:8081/auth/login`.
+Default `ng serve` also loads the proxy configuration from `angular.json`.
+
+Restart the frontend after changing the proxy (Ctrl+C, then `npm start`).
+If logs still show a remote IP, check your checked-out branch, local proxy
+edits, and explicit `--proxy-config` overrides.
+
+Localhost is relative to the machine running the frontend development server.
+These defaults assume that dev server and Docker backend run on the same host.
+A separately containerized dev server needs a Docker network target instead.
 
 ## Architecture
 
