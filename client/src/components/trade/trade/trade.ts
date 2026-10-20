@@ -51,9 +51,9 @@ export class TradeComponent implements OnInit, OnChanges {
 
   side: "BUY" | "SELL" = "BUY";
   ticker = "AAPL";
-  assetId: number | null = 58;
+  assetId: number | null = null;
   quantity: number | null = 1;
-  price: number | null = 344.1;
+  price: number | null = null;
   reviewing: CreateOrder | null = null;
   submitting = false;
   error = "";
@@ -354,6 +354,7 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   get validation() {
+    if (!this.connected) return "Sign in and load your account before placing an order.";
     if (!this.ticker || !this.ticker.trim()) {
       return "Enter a stock ticker symbol.";
     }
@@ -388,7 +389,7 @@ export class TradeComponent implements OnInit, OnChanges {
     if (this.error) return;
     this.receipt = null;
     this.reviewing = {
-      accountId: this.account?.id || 1,
+      accountId: this.account!.id,
       assetId: this.assetId!,
       side: this.side,
       quantity: this.quantity!,
@@ -407,20 +408,6 @@ export class TradeComponent implements OnInit, OnChanges {
     this.submitting = true;
     this.error = "";
 
-    if (!this.connected) {
-      const order: Order = {
-        id: Math.max(1048, ...this.orders.map((o) => o.id)) + 1,
-        asset: { id: request.assetId, name: this.assetLabel },
-        side: request.side,
-        quantity: request.quantity,
-        remainingQuantity: request.quantity,
-        price: request.price,
-        status: "PENDING",
-      };
-      this.success(order);
-      return;
-    }
-
     if (this.account!.ownerId !== this.session.currentUser!.id) {
       this.submitting = false;
       this.error = "Load an account belonging to the signed-in user.";
@@ -435,26 +422,6 @@ export class TradeComponent implements OnInit, OnChanges {
         error: (e: HttpErrorResponse) => {
           this.changeDetector.markForCheck();
           this.submitting = false;
-
-          const isRecursionError =
-            e.status === 500 &&
-            typeof e.error?.message === "string" &&
-            (e.error.message.includes("Document nesting depth") ||
-              e.error.message.includes("Infinite recursion"));
-
-          if (isRecursionError) {
-            const syntheticOrder: Order = {
-              id: Date.now() % 1000000,
-              asset: { id: request.assetId, name: this.assetLabel },
-              side: request.side,
-              quantity: request.quantity,
-              remainingQuantity: request.quantity,
-              price: request.price,
-              status: "PENDING",
-            };
-            this.success(syntheticOrder);
-            return;
-          }
 
           if (e.status === 0 || e.status >= 500) {
             this.uncertain = true;
