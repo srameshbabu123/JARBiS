@@ -1,0 +1,5 @@
+name: Local database startup
+
+# Disabled for pull requests and pushes. Retained only for optional manual runs.
+on:
+  workflow_dispatch:

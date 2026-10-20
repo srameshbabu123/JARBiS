@@ -1,3 +1,5 @@
+-- HISTORICAL REFERENCE ONLY: this schema predates the current JPA entities.
+-- Docker now uses db/oltp/V*.sql. See docs/local-databases.md.
 CREATE TABLE users (
     user_id INT PRIMARY KEY CHECK (user_id BETWEEN 100000000 AND 999999999),
     first_name VARCHAR(100) NOT NULL,

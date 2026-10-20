@@ -2,7 +2,7 @@ spring.config.import=optional:file:.env[.properties]
 spring.application.name=trading-platform
 
 # PostgreSQL Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/jarbis_db
+spring.datasource.url=jdbc:postgresql://10.18.67.77:8090/jarbis_db
 spring.datasource.driverClassName=org.postgresql.Driver
 spring.datasource.username=jarbis_user
 spring.datasource.password=jarbis_password

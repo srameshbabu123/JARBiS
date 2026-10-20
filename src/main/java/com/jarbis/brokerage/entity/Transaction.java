@@ -37,6 +37,12 @@ public class Transaction {
 	@Enumerated(EnumType.STRING)
 	private TransactionStatus status;
 
+	@Column
+	private java.time.Instant executedAt;
+
+	public java.time.Instant getExecutedAt() { return executedAt; }
+	public void setExecutedAt(java.time.Instant executedAt) { this.executedAt = executedAt; }
+
 	public Transaction() {
 	}
 

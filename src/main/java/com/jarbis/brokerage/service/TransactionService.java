@@ -30,13 +30,16 @@ public class TransactionService {
 	private final TransactionRepository transactionRepository;
 	private final OrderService orderService;
 	private final TransactionFailureService transactionFailureService;
+	private final com.jarbis.brokerage.messaging.SettlementEventWriter settlementEvents;
 
 	@Autowired
 	public TransactionService(TransactionRepository transactionRepository, OrderService orderService,
-			TransactionFailureService transactionFailureService) {
+			TransactionFailureService transactionFailureService,
+			com.jarbis.brokerage.messaging.SettlementEventWriter settlementEvents) {
 		this.transactionRepository = transactionRepository;
 		this.orderService = orderService;
 		this.transactionFailureService = transactionFailureService;
+		this.settlementEvents = settlementEvents;
 	}
 
 	// ==================== Transaction Creation ====================
@@ -127,6 +130,10 @@ public class TransactionService {
 	 *            the new transaction status
 	 */
 	public void updateTransactionStatus(Long transactionId, TransactionStatus newStatus) {
+		if (newStatus == TransactionStatus.COMPLETED) {
+			completeTransaction(transactionId);
+			return;
+		}
 		Transaction transaction = getTransactionById(transactionId);
 		transaction.setStatus(newStatus);
 		transactionRepository.save(transaction);
@@ -140,7 +147,15 @@ public class TransactionService {
 	 *            the transaction ID
 	 */
 	public void completeTransaction(Long transactionId) {
-		updateTransactionStatus(transactionId, TransactionStatus.COMPLETED);
+		Transaction trade = getTransactionById(transactionId);
+		if (trade.getStatus() == TransactionStatus.COMPLETED) return;
+		if (trade.getStatus() != TransactionStatus.PENDING) {
+			throw new InvalidOrderStateException("Only pending transactions can be completed");
+		}
+		trade.setStatus(TransactionStatus.COMPLETED);
+		trade.setExecutedAt(java.time.Instant.now());
+		transactionRepository.save(trade);
+		settlementEvents.record(trade);
 	}
 
 	/**

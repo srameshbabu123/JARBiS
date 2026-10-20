@@ -52,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		// Skip filter for public endpoints
 		String path = request.getRequestURI();
 		return path.startsWith("/actuator") || path.equals("/auth/register") || path.equals("/auth/login")
+				|| path.equals("/auth/refresh") || path.equals("/auth/logout")
 				|| path.contains("health");
 	}
 }

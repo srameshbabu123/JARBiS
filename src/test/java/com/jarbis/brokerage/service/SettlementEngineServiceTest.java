@@ -36,7 +36,7 @@ class SettlementEngineServiceTest {
 		transactionService = mock(TransactionService.class);
 		accountService = mock(AccountService.class);
 		settlementEngineService = new SettlementEngineService(orderService, transactionService, accountService,
-				new OrderBookService());
+				new OrderBookService(), mockAudit());
 
 		when(orderService.saveOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}
@@ -160,6 +160,12 @@ class SettlementEngineServiceTest {
 		verify(transactionService).createPendingTransaction(asset, 5.0, 105.0, buyOrder, sellOrder);
 		verify(transactionService).completeTransaction(202L);
 	}
+
+    private com.jarbis.brokerage.messaging.OrderAuditWriter mockAudit() {
+        var audit=mock(com.jarbis.brokerage.messaging.OrderAuditWriter.class);
+        when(audit.snapshot(any(Order.class))).thenReturn(java.util.Map.of("recorded",true));
+        return audit;
+    }
 
 	private Order orderWithId(Long id, Asset asset, Account account, OrderSide side, Double quantity, Double price) {
 		Order order = new Order(asset, account, OrderStatus.PENDING);
