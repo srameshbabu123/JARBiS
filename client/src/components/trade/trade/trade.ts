@@ -181,7 +181,7 @@ export class TradeComponent implements OnInit, OnChanges {
 
     if (matchingHolding) {
       this.assetId = matchingHolding.assetId;
-    } else if (matchingStock) {
+    } else {
       this.assetId = null;
     }
 
@@ -297,8 +297,19 @@ export class TradeComponent implements OnInit, OnChanges {
 
   get assetLabel() {
     const sym = this.assetSymbol;
-    const stock =
-      this.market.stocks.find((s) => s.symbol.toUpperCase() === sym);
+    const stock = this.market.stocks.find(s => s.symbol.toUpperCase() === sym);
+    if (stock) return `${stock.name} (${stock.symbol})`;
+    const holding = this.holding;
+    if (holding) return `${holding.assetName} (${sym})`;
+    return sym ? `${sym} (Stock)` : "Enter a ticker";
+  }
+
+  get total() {
+    return (this.quantity || 0) * (this.price || 0);
+  }
+
+  get pending() {
+    return this.orders.filter(o => o.status === "PENDING" || o.status === "PARTIALLY_FILLED");
   }
 
   get availableCash() {
