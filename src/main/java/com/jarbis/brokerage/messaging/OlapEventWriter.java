@@ -81,7 +81,8 @@ public class OlapEventWriter {
         j.update("INSERT INTO analytics.dim_assets(asset_id,ticker,asset_name,asset_type) VALUES (?,?,?,?) ON CONFLICT(asset_id) DO UPDATE SET ticker=excluded.ticker,asset_name=excluded.asset_name,asset_type=excluded.asset_type",asset,ticker,instrument,e.required("assetType").asText());
         JsonNode buyer=e.required("buyer"),seller=e.required("seller");
         for(JsonNode participant:new JsonNode[]{buyer,seller}) {
-            j.update("INSERT INTO analytics.dim_users(user_id,full_name,email) VALUES (?,'','') ON CONFLICT DO NOTHING",participant.required("userId").asLong());
+            j.update("INSERT INTO analytics.dim_users(user_id,full_name,email) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET full_name=COALESCE(NULLIF(excluded.full_name,''),analytics.dim_users.full_name),email=COALESCE(NULLIF(excluded.email,''),analytics.dim_users.email)",
+                participant.required("userId").asLong(),participant.path("fullName").asText(""),participant.path("email").asText(""));
             j.update("INSERT INTO analytics.dim_accounts(account_id,user_id,account_type,currency) VALUES (?,?,?,?) ON CONFLICT(account_id) DO UPDATE SET account_type=excluded.account_type,currency=excluded.currency",participant.required("accountId").asLong(),participant.required("userId").asLong(),participant.required("accountType").asText(),participant.required("currency").asText());
         }
         j.update("INSERT INTO analytics.transaction_facts(transaction_id,asset_id,ticker,buy_order_id,sell_order_id,buyer_account_id,seller_account_id,buyer_user_id,seller_user_id,status,quantity,execution_price,transaction_timestamp,event_date,currency,data_source,ingested_at) VALUES (?,?,?,?,?,?,?,?,?,'COMPLETED',?,?,?,?,?,'LIVE',now())",

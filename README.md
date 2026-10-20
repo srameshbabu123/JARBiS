@@ -45,7 +45,14 @@ USD 10,000 each, AAPL/MSFT/NVDA assets, and example holdings. Development logins
 `alice@example.test` or `bob@example.test`, password `LocalDev123!`.
 These public fixtures are for local development only.
 
-A teammate adds a new file such as `db/oltp/V3__add_shared_assets.sql`, commits
+V3 adds Cara, Dan, Emma, and Finn with funded opening portfolios, 6 completed
+trades, 12 matched completed orders, 2 non-crossing pending orders, and 1
+cancelled order. GOOGL/AMZN/SPY are added to polling. The same settlements and
+order histories flow from OLTP outboxes into OLAP, with matching IDs, quantities,
+prices, and counterparties. See the linked scenario table in the workflow guide.
+`BROKERAGE_ANALYTICS_ENABLED` defaults to true; keep it enabled for delivery.
+
+A teammate adds a new file such as `db/oltp/V4__add_shared_assets.sql`, commits
 it, and everyone pulls and runs the startup command above. Never edit an
 already-applied versioned file. Migrations retain balances, trades, and other
 local changes unless a new migration explicitly changes them. App-created data

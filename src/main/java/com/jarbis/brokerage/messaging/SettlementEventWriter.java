@@ -41,7 +41,10 @@ public class SettlementEventWriter {
     }
     private Map<String, Object> participant(Order order) {
         Account account = order.getAccount();
-        return Map.of("orderId", order.getId(), "accountId", account.getId(), "userId", account.getOwner().getId(),
-            "accountType", account.getAccountType().name(), "currency", account.getCurrency().name());
+        Map<String, Object> result = new LinkedHashMap<>(Map.of("orderId", order.getId(), "accountId", account.getId(),
+            "userId", account.getOwner().getId(), "accountType", account.getAccountType().name(), "currency", account.getCurrency().name()));
+        if (account.getOwner().getFullName() != null) result.put("fullName", account.getOwner().getFullName());
+        if (account.getOwner().getEmail() != null) result.put("email", account.getOwner().getEmail());
+        return result;
     }
 }

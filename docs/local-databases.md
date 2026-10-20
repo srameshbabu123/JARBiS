@@ -17,10 +17,11 @@ so a new SQL file does not need a backend image rebuild. The exited migration
 job runs again on the next `up`, including when the volume already exists.
 `docker compose restart` alone does not run migrations: use `up` after pulling.
 
-With the analytics profile, `olap-migrate` uses the existing checksummed Python
-SQL runner before the analytics API starts. Its SQL folder is also bind-mounted.
-Without that profile, OLTP migration and backend startup still work; OLAP API
-and its migration job are not started.
+The `olap-migrate` job uses the existing checksummed Python SQL runner before
+the backend starts, even without the analytics profile. The profile adds the
+analytics API and admin UI. OLAP SQL is also bind-mounted. Analytics delivery
+is enabled by default; explicitly setting `BROKERAGE_ANALYTICS_ENABLED=false`
+disables outbox delivery, leaving source events pending for later replay.
 
 The normal `up --build` command handles application code changes as well as SQL.
 If changing schema while a stack is already running, first run `docker compose
@@ -30,7 +31,7 @@ application code. Then run the startup command. Volumes are preserved.
 ## Add shared data or change schema
 
 1. Add a new OLTP file under `db/oltp`, using the next unused version number:
-   `V3__add_shared_assets.sql`, for example. Schema and data changes can both
+   `V4__add_shared_assets.sql`, for example. Schema and data changes can both
    use versioned SQL. Coordinate version numbers when merging branches.
 2. For an entity change, update the Java entity AND add the matching SQL migration.
    Docker uses `ddl-auto=validate`; Hibernate no longer silently changes tables.
@@ -46,8 +47,9 @@ VALUES (-2004, 'GOOGL', 'STOCK');
 ```
 
 Qualify application tables with `public.` because Flyway stores its bookkeeping
-in `oltp_migrations`, a separate schema. Negative IDs are reserved for shared
-fixtures; normal identity-generated IDs stay positive. Keep IDs and fixture
+in `oltp_migrations`, a separate schema. The original V2 fixtures have negative IDs. The V3 trading scenario reserves
+positive IDs beginning with 900 so the analytics investigation routes can
+open them. Its migration advances identity sequences to prevent collisions. Keep IDs and fixture
 emails unique, and use explicit foreign keys when adding dependent rows.
 
 For OLAP schema/shared-data additions, add the next `V*.sql` file under
@@ -97,3 +99,49 @@ new SQL on a persistent volume, checksum rejection, and the OLAP migration chain
 
 Everyone receives the same committed starting data. Local trades, app inserts,
 and independently polled live prices can differ; they are not exported to Git.
+
+
+## Linked trading scenario (V3)
+
+Four additional users (`cara@example.test`, `dan@example.test`,
+`emma@example.test`, `finn@example.test`) use password `LocalDev123!`.
+Each starts with USD 25,000 and opening inventory of 20 shares each of GOOGL,
+AMZN, and SPY (average costs 170, 180, and 540). These are opening positions,
+not additional unreported executions. Six dated settlements then move money
+and shares between these accounts:
+
+| Trade | Buyer | Seller | Symbol | Quantity | Execution price |
+| --- | --- | --- | --- | --- | --- |
+| 9007001 | Cara | Dan | GOOGL | 5 | 180 |
+| 9007002 | Emma | Finn | AMZN | 3 | 190 |
+| 9007003 | Dan | Emma | SPY | 8 | 550 |
+| 9007004 | Finn | Cara | GOOGL | 4 | 182 |
+| 9007005 | Cara | Emma | AMZN | 2 | 192 |
+| 9007006 | Emma | Dan | SPY | 6 | 552 |
+
+Each has a matched BUY/SELL pair and follows the engine's resting-order price
+rule. Completed orders have zero remaining quantity. A GOOGL buy at 150 and
+sell at 220 remain pending because they do not cross. A cancelled AMZN buy
+has no execution. Initial cash totals USD 100,000 and share totals are 80 per
+symbol; the settlements conserve both and update acquisition averages.
+Alice and Bob's existing data is not modified.
+
+The migration records 6 settlement events and 28 order-history events in the
+OLTP outboxes. The normal Java relays deliver these same events to OLAP;
+there is no separate invented OLAP dataset. Delivery is asynchronous (normally
+seconds), retried after failure, and duplicate-safe across restarts. Keep
+`BROKERAGE_ANALYTICS_ENABLED=true` to populate OLAP. The additional symbols
+are also included in Fauxnance polling, but fixture execution prices remain
+fixed historical examples rather than current quotes.
+
+Before changing the sample accounts through the app, verify the complete
+scenario and its projection:
+
+```bash
+python scripts/verify-shared-trades.py
+```
+
+The verifier checks trade IDs, instruments, sides, counterparties, prices,
+quantities, timestamps, cash, inventory, cost basis, names, and audit history
+across both databases. It is also run by Docker CI before and after repeated
+startup. Newly added fixtures run once; local changes are not reset on `up`.

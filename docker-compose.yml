@@ -149,7 +149,6 @@ services:
 
   # Apply OLAP SQL additions on each up, even when the API image is unchanged.
   olap-migrate:
-    profiles: ["analytics"]
     image: jarbis-analytics:local
     build: ./analytics-service
     command: ["python", "-m", "analytics.migrate"]
@@ -202,13 +201,15 @@ services:
     depends_on:
       oltp-migrate:
         condition: service_completed_successfully
+      olap-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
     environment:
       SERVER_PORT: 8080
-      BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-false}
+      BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-true}
       BROKERAGE_ANALYTICS_DB_URL: jdbc:postgresql://postgres-olap:5432/jarbis_olap
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}

@@ -26,7 +26,7 @@ class OlapEventWriterPostgresTest {
             {"schemaVersion":1,"eventId":"11111111-1111-1111-1111-111111111111","type":"TradeSettled",
             "occurredAt":"2026-03-01T00:00:00Z","transactionId":987654,"assetId":8,"instrument":"AAPL",
             "assetType":"STOCK","quantity":"2","executionPrice":"10","currency":"USD",
-            "buyer":{"orderId":2,"accountId":10,"userId":1,"accountType":"INVESTMENT","currency":"USD"},
+            "buyer":{"orderId":2,"accountId":10,"userId":1,"accountType":"INVESTMENT","currency":"USD","fullName":"Buyer Example","email":"buyer@example.test"},
             "seller":{"orderId":3,"accountId":20,"userId":2,"accountType":"CHECKING","currency":"USD"}}
             """;
         var captured=java.time.Instant.parse("2026-10-16T12:00:00Z");
@@ -34,6 +34,8 @@ class OlapEventWriterPostgresTest {
         writer.writePortfolios(portfolios,captured);writer.writePortfolios(portfolios,captured);
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM analytics.client_portfolio_snapshots",Integer.class));
         writer.write(payload); writer.write(payload);
+        assertEquals("Buyer Example",jdbc.queryForObject("SELECT full_name FROM analytics.dim_users WHERE user_id=1",String.class));
+        assertEquals("buyer@example.test",jdbc.queryForObject("SELECT email FROM analytics.dim_users WHERE user_id=1",String.class));
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM analytics.transaction_facts WHERE transaction_id=987654",Integer.class));
         assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM analytics.trade_participants WHERE transaction_id=987654",Integer.class));
         String broken=payload.replace("11111111-1111-1111-1111-111111111111","22222222-2222-2222-2222-222222222222").replace("987654","987655").replace("\"quantity\":\"2\"","\"quantity\":\"invalid\"");
