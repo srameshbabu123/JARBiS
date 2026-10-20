@@ -22,6 +22,30 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Runs on every compose up, including against an existing PostgreSQL volume.
+  oltp-migrate:
+    image: flyway/flyway:10.20.1
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/jarbis_db
+      FLYWAY_USER: jarbis_user
+      FLYWAY_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      # Keep migration history separate; application tables remain in public.
+      FLYWAY_DEFAULT_SCHEMA: oltp_migrations
+      FLYWAY_SCHEMAS: oltp_migrations
+      FLYWAY_CONNECT_RETRIES: 30
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_CLEAN_DISABLED: "true"
+    volumes:
+      - ./db/oltp:/flyway/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - jarbis-network
+    restart: "no"
+
   # Redis market-data store
   redis:
     image: redis:7-alpine
@@ -123,13 +147,33 @@ services:
       - jarbis-network
     restart: unless-stopped
 
+  # Apply OLAP SQL additions on each up, even when the API image is unchanged.
+  olap-migrate:
+    profiles: ["analytics"]
+    image: jarbis-analytics:local
+    build: ./analytics-service
+    command: ["python", "-m", "analytics.migrate"]
+    environment:
+      ANALYTICS_DB_URL: postgresql://postgres-olap:5432/jarbis_olap
+      ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+    volumes:
+      - ./analytics-service/migrations:/app/migrations:ro
+    depends_on:
+      postgres-olap:
+        condition: service_healthy
+    networks:
+      - jarbis-network
+    restart: "no"
+
   analytics:
     profiles: ["analytics"]
+    image: jarbis-analytics:local
     build: ./analytics-service
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-jdbc:postgresql://10.18.67.77:8091/jarbis_olap}
+      ANALYTICS_DB_URL: postgresql://postgres-olap:5432/jarbis_olap
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       ANALYTICS_OPERATIONS_USER: ${ANALYTICS_OPERATIONS_USER:-}
@@ -138,7 +182,11 @@ services:
       ANALYTICS_ADMIN_PASSWORD_HASH: ${ANALYTICS_ADMIN_PASSWORD_HASH:-}
       ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
       ANALYTICS_SECURE_COOKIE: ${ANALYTICS_SECURE_COOKIE:-false}
+    volumes:
+      - ./analytics-service/migrations:/app/migrations:ro
     depends_on:
+      olap-migrate:
+        condition: service_completed_successfully
       postgres-olap:
         condition: service_healthy
     networks:
@@ -152,6 +200,8 @@ services:
       dockerfile: Dockerfile
     container_name: jarbis-backend
     depends_on:
+      oltp-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka-init:
@@ -159,24 +209,24 @@ services:
     environment:
       SERVER_PORT: 8080
       BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-false}
-      BROKERAGE_ANALYTICS_DB_URL: ${BROKERAGE_ANALYTICS_DB_URL:-jdbc:postgresql://10.18.67.77:8091/jarbis_olap}
+      BROKERAGE_ANALYTICS_DB_URL: jdbc:postgresql://postgres-olap:5432/jarbis_olap
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      # Backend DB target is controlled via env file (master or local).
-      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:-jdbc:postgresql://10.18.67.77:8090/jarbis_db}
+      # Container-to-container connection to each developer's local OLTP.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_JPA_SHOW_SQL: 'false'
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       # Redis is accessed through services; repositories belong to JPA/PostgreSQL.
       SPRING_DATA_REDIS_REPOSITORIES_ENABLED: "false"
-      BROKERAGE_MARKET_DATA_POLLING_ENABLED: "true"
+      BROKERAGE_MARKET_DATA_POLLING_ENABLED: ${BROKERAGE_MARKET_DATA_POLLING_ENABLED:-true}
       BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY}
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
