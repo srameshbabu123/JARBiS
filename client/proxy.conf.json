@@ -1,7 +1,11 @@
 {
   "/api": {
-    "target": "http://localhost:8081",
+    "target": "http://10.18.67.77:8081",
     "secure": false,
-    "pathRewrite": { "^/api": "" }
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": ""
+    }
   }
 }

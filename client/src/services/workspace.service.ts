@@ -155,8 +155,36 @@ export class WorkspaceService {
       .subscribe({
         next: (accounts) => {
           this.accounts.set(accounts);
-          if (accounts.length === 1 && !this.loadedAccount)
-            this.selectAccount(accounts[0].id);
+          if (accounts.length > 0) {
+            let targetId = accounts[0].id;
+            try {
+              const savedAccId = localStorage.getItem("velocity-account-id");
+              const matched = accounts.find((a) => a.id === Number(savedAccId));
+              if (matched) targetId = matched.id;
+            } catch {}
+            this.selectAccount(targetId);
+          } else {
+            const user = this.session.currentUser;
+            if (user) {
+              this.api
+                .createAccount({
+                  userId: user.id,
+                  accountType: "INVESTMENT",
+                  currency: "USD",
+                  initialBalance: 50000,
+                })
+                .subscribe({
+                  next: (acc) => {
+                    this.accounts.set([acc]);
+                    this.selectAccount(acc.id);
+                  },
+                  error: () => {
+                    this.error =
+                      "Could not load or initialize your brokerage account.";
+                  },
+                });
+            }
+          }
         },
         error: () =>
           (this.error =
@@ -166,6 +194,9 @@ export class WorkspaceService {
   selectAccount(id: number) {
     if (this.cashBusy() || this.busy) return;
     this.accountId = id;
+    try {
+      localStorage.setItem("velocity-account-id", String(id));
+    } catch {}
     this.connect();
   }
   applyCash(account: Account) {
@@ -178,6 +209,13 @@ export class WorkspaceService {
   }
   constructor() {
     this.resetDemo();
+    const currentUser = this.session.currentUser;
+    if (currentUser) {
+      this.userId = currentUser.id;
+      this.profileName = currentUser.fullName;
+      this.profileEmail = currentUser.email;
+      this.discoverAccounts();
+    }
   }
 
   go(p: string) {

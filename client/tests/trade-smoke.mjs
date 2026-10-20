@@ -4,8 +4,10 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { chromium } from 'playwright';
 
+import { fileURLToPath } from 'node:url';
+
 // Serve the production build; all /api requests below are intercepted in the browser.
-const root=new URL('../dist/client/browser/',import.meta.url).pathname;
+const root=fileURLToPath(new URL('../dist/client/browser/',import.meta.url));
 const server=createServer(async(req,res)=>{
  try {const file=join(root,req.url==='/'?'index.html':req.url.split('?')[0]);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.html':'text/html'})[extname(file)]||'application/octet-stream');res.end(await readFile(file))}
  catch {res.writeHead(404).end()}
@@ -22,7 +24,7 @@ try {
  assert.match(await page.title(),/Velocity/);
  await page.waitForFunction(()=>[...document.querySelectorAll('app-brand-logo img')].length===2 && [...document.querySelectorAll('app-brand-logo img')].every(img=>img.complete && img.naturalWidth>0));
  assert.equal(await page.getByText('JARBiS',{exact:false}).count(),0);
- await page.screenshot({path:new URL('../test-results/trade.png',import.meta.url).pathname,fullPage:true});
+ await page.screenshot({path:fileURLToPath(new URL('../test-results/trade.png',import.meta.url)),fullPage:true});
  // Exact palettes, theme-specific artwork, and saved mode across a reload.
  const palette=()=>page.evaluate(()=>{const style=getComputedStyle(document.documentElement);return Object.fromEntries(['bg','chart-grid','orange','pink','magenta','purple'].map(key=>[key,style.getPropertyValue('--'+key).trim().toLowerCase()]))});
  assert.deepEqual(await palette(),{bg:'#050505','chart-grid':'#262626',orange:'#ff6b00',pink:'#ff4d8d',magenta:'#d93cbe',purple:'#9d2bff'});
@@ -32,7 +34,7 @@ try {
  await page.waitForFunction(()=>[...document.querySelectorAll('app-brand-logo img')].every(img=>img.src.endsWith('velocity-logo-light.jpg') && img.complete && img.naturalWidth>0));
  assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(249, 249, 249)');
  await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- await page.screenshot({path:new URL('../test-results/trade-light.png',import.meta.url).pathname,fullPage:true});
+ await page.screenshot({path:fileURLToPath(new URL('../test-results/trade-light.png',import.meta.url)),fullPage:true});
  await page.reload();await page.getByRole('heading',{name:'Order ticket'}).waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
  await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();
@@ -91,7 +93,7 @@ try {
    assert.equal(req.headers().authorization,'Bearer test-session-only');
    if(path==='/api/users/9')body={id:9,fullName:'Test User',email:'test@example.com'};
    else if(path==='/api/accounts/mine')body=[{id:42,ownerId:9,balance:10000,accountType:'INVESTMENT',currency:'USD'}];
-   else if(path==='/api/accounts/mine/42')body={id:42,ownerId:9,balance:10000,accountType:'BROKERAGE',currency:'USD'};
+   else if(path==='/api/accounts/mine/42'||path==='/api/accounts/42')body={id:42,ownerId:9,balance:10000,accountType:'BROKERAGE',currency:'USD'};
    else if(path==='/api/holdings/account/42')body=[holding];
    else if(path==='/api/orders/account/42')body=[];
    else if(path==='/api/orders'&&req.method()==='POST'){
@@ -99,7 +101,9 @@ try {
     await new Promise(resolve=>setTimeout(resolve,150));
     if(failMode){await route.fulfill({status:503,json:{message:'test unavailable'}});return}
     body={id:700,asset:{id:77,name:'Test Asset'},side:postedBody.side,quantity:postedBody.quantity,price:postedBody.price,remainingQuantity:postedBody.quantity,status:'PENDING'};
-   } else throw Error('Unexpected request '+path);
+   } else if(path.startsWith('/api/market-data/'))body={symbol:path.split('/')[3],price:100,changePercent:0};
+   else if(path.startsWith('/api/assets/'))body={id:77,name:'Test Asset'};
+   else throw Error('Unexpected request '+path);
   }
   await route.fulfill({json:body});
  });
@@ -110,7 +114,7 @@ try {
  assert.equal(await page.getByLabel('Account ID',{exact:true}).count(),0);
  await page.locator('nav button').filter({hasText:'Trade'}).click();
  await page.getByRole('heading',{name:'Order ticket',exact:true}).waitFor();
- await page.getByLabel('Asset from your holdings').selectOption({label:'Test Asset · #77'});
+ await page.getByLabel('Stock ticker symbol').fill('Test Asset');
  await page.getByLabel('Quantity',{exact:true}).fill('2');
  await page.getByRole('button',{name:'Review buy order'}).click();
  await page.getByRole('button',{name:'Submit order',exact:true}).dblclick();
@@ -129,7 +133,7 @@ try {
  assert.match(await page.locator('.mode').innerText(),/Demo/);
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- await page.screenshot({path:new URL('../test-results/trade-mobile.png',import.meta.url).pathname,fullPage:true});
+ await page.screenshot({path:fileURLToPath(new URL('../test-results/trade-mobile.png',import.meta.url)),fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('PASS: buy/sell demo orders, invalid quantities, cash/holdings checks, fractional units, review, history, JWT requests, exact order payload, duplicate prevention, ambiguous failure, sign-out, mobile layout.');
 } finally {await browser.close();server.close()}

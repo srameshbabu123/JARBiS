@@ -4,6 +4,7 @@
   ><span class="nav-label">WORKSPACE</span>
   <nav>
     @for(item of vm.nav;track item;let i=$index){<button
+      [routerLink]="'/' + item.toLowerCase().replace(' ', '-')"
       [class.active]="vm.page===item.toLowerCase().replace(' ','-')"
       (click)="vm.go(item)"
     >

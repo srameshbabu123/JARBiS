@@ -44,3 +44,19 @@ export interface CreateOrder {
   quantity: number;
   price: number;
 }
+export interface MarketDataEvent {
+  symbol: string;
+  price: number;
+  bid?: number;
+  ask?: number;
+  spreadBps?: number;
+  currency?: string;
+  change?: number;
+  changePercent?: number;
+  previousClose?: number;
+  source?: string;
+  stale?: boolean;
+  marketState?: string;
+  asOf?: string;
+  capturedAt?: string;
+}

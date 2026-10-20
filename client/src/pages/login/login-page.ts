@@ -98,12 +98,12 @@ export class LoginPageComponent {
           if (isSignup) {
             this.workspace.error =
               err.status === 409
-                ? (typeof err.error?.message === "string"
-                    ? err.error.message
-                    : "Email is already taken.")
-                : (typeof err.error?.message === "string"
-                    ? err.error.message
-                    : "Registration failed. Check your details.");
+                ? typeof err.error?.message === "string"
+                  ? err.error.message
+                  : "Email is already taken."
+                : typeof err.error?.message === "string"
+                  ? err.error.message
+                  : "Registration failed. Check your details.";
           } else {
             this.workspace.error =
               typeof err.error?.message === "string"

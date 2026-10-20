@@ -6,7 +6,7 @@
       {{vm.page==='watchlist'?'My watchlist':vm.page==='charts'?'Explore
       symbols':'Market screener'}}
     </h3>
-    <span class="sample-tag">Sample market universe</span>
+    <span class="sample-tag">Live market universe</span>
   </div>
   <div class="filters">
     <input
@@ -17,8 +17,7 @@
       aria-label="Sector"
       [(ngModel)]="market.sector"
     >
-      @for(s of ['All
-      sectors','Technology','Automotive','Consumer','Financials'];track s){
+      @for(s of market.availableSectors;track s){
       <option>{{s}}</option>
       }</select
     ><label class="check"

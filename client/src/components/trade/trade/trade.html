@@ -13,7 +13,7 @@
         [class.chosen]="side==='BUY'"
         [disabled]="submitting"
         [attr.aria-pressed]="side==='BUY'"
-        (click)="side='BUY';edit()"
+        (click)="setSide('BUY')"
       >
         ↗ Buy</button
       ><button
@@ -22,51 +22,91 @@
         [class.chosen]="side==='SELL'"
         [disabled]="submitting"
         [attr.aria-pressed]="side==='SELL'"
-        (click)="side='SELL';edit()"
+        (click)="setSide('SELL')"
       >
         ↘ Sell
       </button>
     </div>
     <form (ngSubmit)="review()">
       <fieldset [disabled]="submitting||reviewing!==null">
-        <label for="trade-asset">Asset from your holdings</label>
-        <select
-          id="trade-asset"
-          [ngModel]="assetId"
-          (ngModelChange)="chooseAsset($event)"
-          name="asset"
-        >
-          <option [ngValue]="null">Choose an asset</option>
-          @for(h of holdings;track h.assetId){
-          <option [ngValue]="h.assetId">
-            {{h.assetName}} · #{{h.assetId}}
-          </option>
+        <label for="trade-ticker">Stock ticker symbol</label>
+        <div class="ticker-box">
+          <input
+            id="trade-ticker"
+            name="ticker"
+            type="text"
+            placeholder="e.g. AAPL, NVDA, TSLA, MSFT"
+            autocomplete="off"
+            spellcheck="false"
+            [ngModel]="ticker"
+            (ngModelChange)="onTickerChange($event)"
+            required
+          />
+          @if(fetchingQuote) {
+          <span class="ticker-badge loading">Fetching…</span>
+          } @else if(liveQuote) {
+          <span class="ticker-badge live">● LIVE</span>
           }
-        </select>
-        @if(connected&&side==='BUY') {<label for="asset-id"
-          >Or enter an existing asset ID</label
-        ><input
-          id="asset-id"
-          type="number"
-          step="1"
-          min="1"
-          name="assetId"
-          [ngModel]="assetId"
-          (ngModelChange)="assetId=$event;price=null;edit()"
-        /><small
-          >For a new position, use the ID from your asset database. Enter its
-          price below.</small
-        >}
+        </div>
+
+        <div
+          class="ticker-chips-row"
+          role="group"
+          aria-label="Quick select ticker"
+        >
+          @if(side === 'SELL') { @if(holdingsChips.length > 0) {
+          <span class="chips-label">Your holdings:</span>
+          @for(h of holdingsChips; track h.ticker) {
+          <button
+            type="button"
+            class="ticker-chip"
+            [class.active]="ticker.toUpperCase() === h.ticker.toUpperCase()"
+            (click)="selectTicker(h.ticker)"
+          >
+            {{h.ticker}} ({{h.quantity}})
+          </button>
+          } } @else {
+          <small class="muted"
+            >No holdings available to sell in this account.</small
+          >
+          } } @else {
+          <span class="chips-label">Popular:</span>
+          @for(t of popularTickers; track t) {
+          <button
+            type="button"
+            class="ticker-chip"
+            [class.active]="ticker.toUpperCase() === t"
+            (click)="selectTicker(t)"
+          >
+            {{t}}
+          </button>
+          } }
+        </div>
+
         <div class="asset-summary">
-          <span class="stock-icon">{{assetLabel.slice(0,1)}}</span>
+          <span class="stock-icon"
+            >{{assetSymbol ? assetSymbol.slice(0, 1) : '?'}}</span
+          >
           <div>
-            <strong>{{assetLabel}}</strong
-            ><small
-              >{{holding?'Reference value from holdings; not a live quote':'No
-              live quote available'}}</small
-            >
+            <strong>{{assetLabel}}</strong>
+            <small>
+              @if(liveQuote !== null) { Live quote:
+              <b>{{liveQuote.price | currency:currency}}</b>
+              @if(liveQuote.changePercent !== undefined) {
+              <span
+                [class.positive]="liveQuote.changePercent >= 0"
+                [class.negative]="liveQuote.changePercent < 0"
+              >
+                ({{liveQuote.changePercent >= 0 ? '+' :
+                ''}}{{liveQuote.changePercent | number:'1.2-2'}}%)
+              </span>
+              } } @else if(holding) { Reference value from holdings:
+              {{price|currency:currency}} } @else { Enter a ticker symbol to
+              load market data }
+            </small>
           </div>
         </div>
+
         <div class="ticket-fields">
           <div>
             <label for="trade-quantity">Quantity</label
@@ -182,7 +222,7 @@
           <dd>{{availableCash|currency:currency}}</dd>
         </div>
         <div>
-          <dt>{{assetLabel}} available</dt>
+          <dt>{{assetSymbol || 'Position'}} available</dt>
           <dd>{{availableShares|number:'1.0-6'}} units</dd>
         </div>
       </dl>
@@ -196,7 +236,7 @@
       <ol>
         <li>
           <strong>Choose your position</strong>
-          <p>Select an asset, side, quantity, and price.</p>
+          <p>Enter any stock ticker, side, quantity, and price.</p>
         </li>
         <li>
           <strong>Review your order</strong>
