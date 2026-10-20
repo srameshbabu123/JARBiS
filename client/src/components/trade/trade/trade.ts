@@ -25,7 +25,6 @@ import {
 import { BrokerageApiService } from "../../../services/brokerage-api.service";
 import { SessionService } from "../../../services/session.service";
 import { MarketService } from "../../../services/market.service";
-import { INSTRUMENTS_DIRECTORY } from "../../../data/sample-market";
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,7 +49,7 @@ export class TradeComponent implements OnInit, OnChanges {
   api = inject(BrokerageApiService);
 
   side: "BUY" | "SELL" = "BUY";
-  ticker = "AAPL";
+  ticker = "";
   assetId: number | null = null;
   quantity: number | null = 1;
   price: number | null = null;
@@ -150,6 +149,7 @@ export class TradeComponent implements OnInit, OnChanges {
   private fetchQuoteAndResolve(rawTicker: string) {
     const raw = (rawTicker || "").trim();
     if (!raw) {
+      this.assetId = null;
       this.liveQuote = null;
       return;
     }
@@ -168,12 +168,6 @@ export class TradeComponent implements OnInit, OnChanges {
           s.symbol.toLowerCase() === rawLower ||
           s.name.toLowerCase() === rawLower ||
           s.name.toLowerCase().startsWith(rawLower),
-      ) ||
-      INSTRUMENTS_DIRECTORY.find(
-        (s) =>
-          s.symbol.toLowerCase() === rawLower ||
-          s.name.toLowerCase() === rawLower ||
-          s.name.toLowerCase().startsWith(rawLower),
       );
 
     const sym = matchingHolding
@@ -188,7 +182,7 @@ export class TradeComponent implements OnInit, OnChanges {
     if (matchingHolding) {
       this.assetId = matchingHolding.assetId;
     } else if (matchingStock) {
-      this.assetId = matchingStock.id;
+      this.assetId = null;
     }
 
     if (!this.connected) {
@@ -284,12 +278,6 @@ export class TradeComponent implements OnInit, OnChanges {
           s.symbol.toLowerCase() === rawLower ||
           s.name.toLowerCase() === rawLower ||
           s.name.toLowerCase().startsWith(rawLower),
-      ) ||
-      INSTRUMENTS_DIRECTORY.find(
-        (s) =>
-          s.symbol.toLowerCase() === rawLower ||
-          s.name.toLowerCase() === rawLower ||
-          s.name.toLowerCase().startsWith(rawLower),
       );
     if (stock) return stock.symbol.toUpperCase();
 
@@ -310,26 +298,7 @@ export class TradeComponent implements OnInit, OnChanges {
   get assetLabel() {
     const sym = this.assetSymbol;
     const stock =
-      this.market.stocks.find((s) => s.symbol.toUpperCase() === sym) ||
-      INSTRUMENTS_DIRECTORY.find((s) => s.symbol.toUpperCase() === sym);
-    if (stock) {
-      return `${stock.name} (${stock.symbol})`;
-    }
-    const h = this.holding;
-    if (h) {
-      return `${h.assetName} (${sym})`;
-    }
-    return sym ? `${sym} (Stock)` : "Enter a ticker";
-  }
-
-  get total() {
-    return (this.quantity || 0) * (this.price || 0);
-  }
-
-  get pending() {
-    return this.orders.filter(
-      (o) => o.status === "PENDING" || o.status === "PARTIALLY_FILLED",
-    );
+      this.market.stocks.find((s) => s.symbol.toUpperCase() === sym);
   }
 
   get availableCash() {
