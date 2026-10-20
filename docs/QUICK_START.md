@@ -73,7 +73,25 @@ ANALYTICS_OPERATIONS_USER=
 ANALYTICS_OPERATIONS_PASSWORD_HASH=
 ```
 
-## 3. Start the stack
+## 3. Select the right existing database volumes
+
+If your working stack was created with `-p jarbis-baseline`, add this to your
+local `.env.analytics` and keep it there:
+
+```env
+COMPOSE_PROJECT_NAME=jarbis-baseline
+```
+
+Then the commands below use that same stack without needing `-p`. Keep the
+existing project name when updating a working stack; changing it selects
+different volumes. A new project name is useful for a fresh baseline when
+older volumes have an incompatible schema, but it does not copy old records.
+
+For an older incompatible database, first stop its original stack with
+`down` WITHOUT `-v`, then choose a new project name as above and start it.
+The old volumes remain available. Do not repeatedly switch project names.
+
+## 4. Start the stack
 
 ```bash
 docker-compose --env-file .env.analytics --profile analytics up -d --build
@@ -99,7 +117,7 @@ For EC2, use your existing SSH tunnel or approved server access.
 Inside Docker, OLTP uses `postgres:5432` and OLAP uses `postgres-olap:5432`.
 The stack does not connect to a central master database.
 
-## 4. Verify before using the sample accounts
+## 5. Verify before using the sample accounts
 
 ```bash
 python3 scripts/verify-shared-trades.py
@@ -119,7 +137,7 @@ To inspect migration history:
 docker-compose --env-file .env.analytics exec -T postgres psql -U jarbis_user -d jarbis_db -c "SELECT version, description, success FROM oltp_migrations.flyway_schema_history ORDER BY installed_rank;"
 ```
 
-## 5. Understand what stays synchronized
+## 6. Understand what stays synchronized
 
 - SQL migrations give everyone the same committed starting schema and data.
 - OLTP outboxes deliver completed trades and order histories to that teammate's OLAP.
@@ -132,7 +150,7 @@ baseline verifier may then fail even though trading is correct. Check the new
 transaction and its OLAP counterpart; do not reset statuses or erase data just
 to make the baseline test pass.
 
-## 6. Share new data with the team
+## 7. Share new data with the team
 
 1. Pull the latest branch and coordinate the next unused version number.
 2. Add a NEW file under `db/oltp`, currently `V5__description.sql`.
@@ -153,7 +171,7 @@ SQL history checksums reject altered files. App-created data is not automaticall
 exported to SQL or Git. Coordinate explicit fixture IDs to avoid collisions and
 advance identity sequences when inserting fixed positive IDs, as V4 does.
 
-## 7. Daily updates and troubleshooting
+## 8. Daily updates and troubleshooting
 
 ```bash
 git pull origin feature/admin-dashboard-ui

@@ -1,5 +1,126 @@
 name: Local database startup
-
-# Disabled for pull requests and pushes. Retained only for optional manual runs.
 on:
   workflow_dispatch:
+  push:
+    branches: [feature/admin-dashboard-ui]
+  pull_request:
+    paths:
+      - 'docker-compose.yml'
+      - 'db/**'
+      - 'scripts/verify-shared-trades.py'
+      - 'src/**'
+      - 'analytics-service/**'
+      - '.github/workflows/local-databases.yml'
+jobs:
+  docker-startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BROKERAGE_MARKET_DATA_API_KEY: ''
+      BROKERAGE_MARKET_DATA_POLLING_ENABLED: 'false'
+      BROKERAGE_ANALYTICS_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject duplicate YAML keys and verify local migration wiring
+        run: |
+          python -m pip install PyYAML
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          class UniqueLoader(yaml.SafeLoader):
+              pass
+          def unique_mapping(loader, node, deep=False):
+              result = {}
+              for key_node, value_node in node.value:
+                  key = loader.construct_object(key_node, deep=deep)
+                  if key in result:
+                      raise ValueError(f"Duplicate YAML key: {key}")
+                  result[key] = loader.construct_object(value_node, deep=deep)
+              return result
+          UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
+          data = yaml.load(Path("docker-compose.yml").read_text(), Loader=UniqueLoader)
+          services = data["services"]
+          backend = services["jarbis-backend"]
+          expected_oltp = "jdbc:postgresql://postgres:5432/jarbis_db"
+          expected_olap = "jdbc:postgresql://postgres-olap:5432/jarbis_olap"
+          assert backend["environment"]["SPRING_DATASOURCE_URL"] == expected_oltp
+          assert services["oltp-migrate"]["environment"]["FLYWAY_URL"] == expected_oltp
+          assert backend["environment"]["BROKERAGE_ANALYTICS_DB_URL"] == expected_olap
+          for name in ("analytics", "olap-migrate"):
+              assert services[name]["environment"]["ANALYTICS_DB_URL"] == expected_olap.removeprefix("jdbc:")
+              assert services[name]["environment"]["ANALYTICS_DB_USER"] == services["postgres-olap"]["environment"]["POSTGRES_USER"]
+          for name in ("oltp-migrate", "olap-migrate"):
+              assert backend["depends_on"][name]["condition"] == "service_completed_successfully"
+          assert backend["environment"]["SPRING_JPA_HIBERNATE_DDL_AUTO"] == "validate"
+          assert backend["environment"]["SPRING_DATA_REDIS_REPOSITORIES_ENABLED"] == "false"
+          assert "./db/oltp:/flyway/sql:ro" in services["oltp-migrate"]["volumes"]
+          def check_dependencies(name, ancestors):
+              assert name not in ancestors, f"Dependency cycle at {name}"
+              for dependency in services[name].get("depends_on", {}):
+                  check_dependencies(dependency, ancestors | {name})
+          for name in services:
+              check_dependencies(name, set())
+          print("PASS: unique YAML keys, local DB URLs, user consistency, dependencies, migration mount and Hibernate validation")
+          PY
+      - name: Generate temporary CI credentials
+        run: |
+          for key in BROKERAGE_DB_PASSWORD ANALYTICS_DB_PASSWORD JWT_SECRET; do
+            value=$(openssl rand -hex 32)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done
+      - name: Validate Compose and start backend after migration
+        run: |
+          docker compose --env-file /dev/null config --quiet
+          docker compose --env-file /dev/null up -d --build --wait --wait-timeout 240 jarbis-backend
+      - name: Verify shared data and JPA validation
+        run: |
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM users')" = 14
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM holdings')" = 38
+      - name: Reconcile seeded trades and orders across OLTP and OLAP
+        run: python scripts/verify-shared-trades.py --env-file /dev/null
+      - name: Repeat startup preserves local data and applies a new SQL file
+        run: |
+          docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -c 'UPDATE accounts SET balance=1234 WHERE id=-1101'
+          docker compose --env-file /dev/null up -d oltp-migrate
+          docker compose --env-file /dev/null wait oltp-migrate
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT balance FROM accounts WHERE id=-1101')" = 1234
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc 'SELECT count(*) FROM oltp_migrations.flyway_schema_history WHERE version IS NOT NULL AND success')" = 4
+          echo "INSERT INTO public.assets(id,name,asset_type) VALUES(-2099,'CI_ONLY','STOCK');" > db/oltp/V5__ci_new_shared_data.sql
+          docker compose --env-file /dev/null up -d oltp-migrate
+          docker compose --env-file /dev/null wait oltp-migrate
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc "SELECT count(*) FROM assets WHERE name='CI_ONLY'")" = 1
+          docker compose --env-file /dev/null up -d oltp-migrate
+          docker compose --env-file /dev/null wait oltp-migrate
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc "SELECT count(*) FROM assets WHERE name='CI_ONLY'")" = 1
+      - name: Recheck shared scenario after repeated migration startup
+        run: python scripts/verify-shared-trades.py --env-file /dev/null
+      - name: A failed new migration rolls back its data
+        run: |
+          printf '%s\n' "INSERT INTO public.assets(id,name,asset_type) VALUES(-2097,'ROLLBACK_TEST','STOCK');" 'SELECT missing_ci_column FROM public.assets;' > db/oltp/V6__ci_failure.sql
+          if docker compose --env-file /dev/null run --rm oltp-migrate; then
+            echo 'Expected SQL failure'; exit 1
+          fi
+          test "$(docker compose --env-file /dev/null exec -T postgres psql -U jarbis_user -d jarbis_db -Atc "SELECT count(*) FROM assets WHERE name='ROLLBACK_TEST'")" = 0
+          rm db/oltp/V6__ci_failure.sql
+      - name: Reject edits to an applied migration
+        run: |
+          echo "INSERT INTO public.assets(id,name,asset_type) VALUES(-2098,'CHANGED','STOCK');" >> db/oltp/V2__shared_development_data.sql
+          if docker compose --env-file /dev/null run --rm oltp-migrate; then
+            echo 'Expected checksum validation to fail'; exit 1
+          fi
+          git checkout -- db/oltp/V2__shared_development_data.sql
+      - name: Verify OLAP migrations on a fresh and persistent database
+        run: |
+          docker compose --env-file /dev/null --profile analytics up -d --build olap-migrate
+          docker compose --env-file /dev/null wait olap-migrate
+          test "$(docker compose --env-file /dev/null exec -T postgres-olap psql -U jarbis_olap_user -d jarbis_olap -Atc 'SELECT count(*) FROM reporting_migrations.python_history')" = 5
+          docker compose --env-file /dev/null --profile analytics up -d olap-migrate
+          docker compose --env-file /dev/null wait olap-migrate
+          test "$(docker compose --env-file /dev/null exec -T postgres-olap psql -U jarbis_olap_user -d jarbis_olap -Atc 'SELECT count(*) FROM reporting_migrations.python_history')" = 5
+      - name: Container logs
+        if: always()
+        run: docker compose --env-file /dev/null --profile analytics logs --tail=150
+      - name: Remove CI containers and volumes
+        if: always()
+        run: docker compose --env-file /dev/null --profile analytics down -v
