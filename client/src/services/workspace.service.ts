@@ -5,7 +5,6 @@ import { forkJoin, filter, map, Subject, takeUntil, finalize } from "rxjs";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { Holding, Order, Account } from "../models/brokerage.models";
 import { SessionService } from "./session.service";
-import { STOCKS } from "../data/sample-market";
 @Injectable({ providedIn: "root" })
 export class WorkspaceService {
   readonly api = inject(BrokerageApiService);
@@ -64,35 +63,35 @@ export class WorkspaceService {
   set live(value: boolean) {
     this.liveState.set(value);
   }
-  private readonly userIdState = signal<number>(1);
+  private readonly userIdState = signal<number>(0);
   get userId() {
     return this.userIdState();
   }
   set userId(value: number) {
     this.userIdState.set(value);
   }
-  private readonly accountIdState = signal<number>(1);
+  private readonly accountIdState = signal<number>(0);
   get accountId() {
     return this.accountIdState();
   }
   set accountId(value: number) {
     this.accountIdState.set(value);
   }
-  private readonly profileNameState = signal<string>("Alex Morgan");
+  private readonly profileNameState = signal<string>("");
   get profileName() {
     return this.profileNameState();
   }
   set profileName(value: string) {
     this.profileNameState.set(value);
   }
-  private readonly profileEmailState = signal<string>("alex@example.com");
+  private readonly profileEmailState = signal<string>("");
   get profileEmail() {
     return this.profileEmailState();
   }
   set profileEmail(value: string) {
     this.profileEmailState.set(value);
   }
-  private readonly cashState = signal<number>(12450);
+  private readonly cashState = signal<number>(0);
   get cash() {
     return this.cashState();
   }
@@ -208,7 +207,7 @@ export class WorkspaceService {
     );
   }
   constructor() {
-    this.resetDemo();
+    this.clearAccountState();
     const currentUser = this.session.currentUser;
     if (currentUser) {
       this.userId = currentUser.id;
@@ -223,43 +222,20 @@ export class WorkspaceService {
     this.notice = "";
     this.error = "";
   }
-  resetDemo() {
+  clearAccountState() {
     this.resetRequests.next();
     this.accounts.set([]);
     this.cashBusy.set(false);
     this.busy = false;
     this.loadedAccount = null;
     this.live = false;
-    this.profileName = "Alex Morgan";
-    this.profileEmail = "alex@example.com";
-    this.userId = 1;
-    this.accountId = 1;
-    this.cash = 12450;
-    this.holdings = STOCKS.slice(0, 4).map((s, i) => {
-      const q = [80, 45, 30, 25][i],
-        a = s.price * 0.86;
-      return {
-        id: i + 1,
-        accountId: 1,
-        assetId: i + 1,
-        assetName: s.name,
-        quantity: q,
-        averagePrice: a,
-        marketValue: q * s.price,
-        costBasis: q * a,
-        unrealizedPnL: q * (s.price - a),
-        unrealizedPnLPercentage: 16.28,
-        isProfitable: true,
-      };
-    });
-    this.orders = STOCKS.slice(0, 5).map((s, i) => ({
-      id: 1048 - i,
-      asset: { id: i + 1, name: s.name, symbol: s.symbol },
-      side: i === 3 ? "SELL" : "BUY",
-      quantity: [10, 5, 12, 8, 15][i],
-      price: s.price,
-      status: i === 0 ? "PENDING" : i === 4 ? "CANCELLED" : "COMPLETED",
-    }));
+    this.profileName = "";
+    this.profileEmail = "";
+    this.userId = 0;
+    this.accountId = 0;
+    this.cash = 0;
+    this.holdings = [];
+    this.orders = [];
   }
   get invested() {
     return this.holdings.reduce((a, h) => a + h.marketValue, 0);
@@ -270,7 +246,7 @@ export class WorkspaceService {
 
   signOut() {
     this.session.signOut();
-    this.resetDemo();
+    this.clearAccountState();
     this.go("Login");
   }
   orderSubmitted(order: Order) {
@@ -344,13 +320,13 @@ export class WorkspaceService {
         error: () => {
           this.busy = false;
           this.error =
-            "Unable to load account. Check API connection and IDs. Your previous account view remains visible.";
+            "Unable to load account. Check API connection and IDs. Please try again.";
         },
       });
   }
   saveProfile() {
     if (!this.live) {
-      this.notice = "Demo profile updated for this preview.";
+      this.error = "Sign in and load your account before saving your profile."; 
       return;
     }
     this.api
