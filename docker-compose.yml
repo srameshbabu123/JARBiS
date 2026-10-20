@@ -213,6 +213,13 @@ services:
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      BROKERAGE_KAFKA_TOPICS_ORDER_SUBMITTED: orders.submitted
+      SPRING_KAFKA_CONSUMER_GROUP_ID: jarbis-settlement
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+      SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER: org.apache.kafka.common.serialization.StringDeserializer
+      SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER: org.apache.kafka.common.serialization.StringDeserializer
+      SPRING_KAFKA_PRODUCER_KEY_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
+      SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
       # Container-to-container connection to each developer's local OLTP.
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jarbis_db
       SPRING_DATASOURCE_USERNAME: jarbis_user
@@ -227,7 +234,8 @@ services:
       # Redis is accessed through services; repositories belong to JPA/PostgreSQL.
       SPRING_DATA_REDIS_REPOSITORIES_ENABLED: "false"
       BROKERAGE_MARKET_DATA_POLLING_ENABLED: ${BROKERAGE_MARKET_DATA_POLLING_ENABLED:-true}
-      BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY}
+      BROKERAGE_MARKET_DATA_BASE_URL: ${BROKERAGE_MARKET_DATA_BASE_URL:-https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1}
+      BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY:-}
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
