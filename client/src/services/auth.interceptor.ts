@@ -8,7 +8,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const session = inject(SessionService);
   const router = inject(Router);
   const isBackendRequest = request.url.startsWith("/api/");
-  const publicAuthRequest = request.url === "/api/auth/login" || request.url === "/api/auth/register";
+  const publicAuthRequest =
+    request.url === "/api/auth/login" || request.url === "/api/auth/register";
   const token = !publicAuthRequest && isBackendRequest ? session.token : "";
   const outbound = token
     ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })

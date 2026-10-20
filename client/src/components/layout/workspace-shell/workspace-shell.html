@@ -40,7 +40,8 @@
     <div class="header-right">
       <app-theme-toggle />
       <span class="demo"
-        ><span class="dot"></span>{{vm.live?'API connected':'Connecting to API'}}</span
+        ><span class="dot"></span>{{vm.live?'API connected':'Connecting to
+        API'}}</span
       >@if(vm.session.currentUser){<button
         class="outline"
         (click)="vm.signOut()"
@@ -86,7 +87,8 @@
       <app-brand-logo [compact]="true" /><span
         >A clearer view. A confident next step.</span
       ><small
-        >{{vm.live?'Brokerage data from API':'Account connection pending'}}</small
+        >{{vm.live?'Brokerage data from API':'Account connection
+        pending'}}</small
       >
     </footer>
   </main>

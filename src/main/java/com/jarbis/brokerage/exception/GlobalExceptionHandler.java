@@ -191,6 +191,16 @@ public class GlobalExceptionHandler {
 	/**
 	 * Handle any other exceptions - returns 500 Internal Server Error.
 	 */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(Exception ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "You cannot access this resource");
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return buildErrorResponse(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason());
+    }
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex, WebRequest request) {
 		return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred: " + ex.getMessage());

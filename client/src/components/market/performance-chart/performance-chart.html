@@ -55,12 +55,13 @@
         />
       </svg>
       <div class="axis">
-        <span>Period start</span
-        ><span>{{market.range}} view</span
+        <span>Period start</span><span>{{market.range}} view</span
         ><span>Period end</span>
       </div>
     </div>
-    } @else { <p class="muted">No verified historical performance data available.</p> }
+    } @else {
+    <p class="muted">No verified historical performance data available.</p>
+    }
     <div class="chart-footer">
       <span
         ><b class="purple-dot"></b>{{vm.page==='overview'?'Your

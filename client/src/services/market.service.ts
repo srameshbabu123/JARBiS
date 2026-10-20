@@ -41,7 +41,16 @@ export class MarketService {
     this.stocksState.set(value);
   }
 
-  private readonly selectedState = signal<MarketStock>({ id: 0, symbol: "", name: "", price: 0, change: 0, sector: "Unknown", cap: 0, color: "var(--purple)" });
+  private readonly selectedState = signal<MarketStock>({
+    id: 0,
+    symbol: "",
+    name: "",
+    price: 0,
+    change: 0,
+    sector: "Unknown",
+    cap: 0,
+    color: "var(--purple)",
+  });
   get selected(): MarketStock {
     return this.selectedState();
   }
@@ -133,14 +142,11 @@ export class MarketService {
       const token = this.session.token;
       if (token) {
         untracked(() => {
-          this.refreshQuotes();
+          this.loadAssets();
           this.refreshHistory(this.selected.symbol, this.range);
         });
       }
     });
-
-    // Fetch live quotes immediately on startup
-    this.refreshQuotes();
 
     // 60-second polling interval to preserve external API token quota
     const intervalId = setInterval(() => {
@@ -176,10 +182,7 @@ export class MarketService {
 
   loadWatchlist() {
     try {
-      const v = JSON.parse(
-        localStorage.getItem("velocity-watchlist") ||
-          "[]",
-      );
+      const v = JSON.parse(localStorage.getItem("velocity-watchlist") || "[]");
       return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
     } catch {
       return [];
@@ -214,31 +217,70 @@ export class MarketService {
     void this.router.navigateByUrl("/charts");
   }
 
+  loadAssets() {
+    this.api.assets().subscribe({
+      next: (assets) => {
+        this.stocks = assets.map((asset) => ({
+          id: asset.id,
+          symbol: asset.name,
+          name: asset.name,
+          price: 0,
+          change: 0,
+          sector: "Unknown",
+          cap: 0,
+          color: "var(--purple)",
+        }));
+        if (this.stocks.length && !this.selected.symbol) {
+          this.selected = this.stocks[0];
+          this.refreshHistory(this.selected.symbol, this.range);
+        }
+        this.refreshQuotes();
+      },
+      error: () => {},
+    });
+  }
+
   refreshQuotes() {
-    const symbols = [...new Set([...this.stocks.map((s) => s.symbol), ...this.watched])];
+    if (!this.session.token) return;
+    const symbols = [
+      ...new Set([...this.stocks.map((s) => s.symbol), ...this.watched]),
+    ];
     if (!symbols.length) return;
-    this.api.fetchBatchFauxnanceQuotes(symbols).subscribe({
+    this.api.latestQuotes(symbols).subscribe({
       next: (events) => {
         if (!Array.isArray(events) || !events.length) return;
         const eventMap = new Map(events.map((e) => [e.symbol, e]));
-        const existing = new Set(this.stocks.map(s => s.symbol));
-        const fetched = events.filter(e => !existing.has(e.symbol) && typeof e.price === "number").map(e => ({ id: 0, symbol: e.symbol, name: e.symbol, price: e.price, change: e.changePercent ?? 0, sector: "Unknown", cap: 0, color: "var(--purple)" }));
-        this.stocks = [...this.stocks.map((s) => {
-          const e = eventMap.get(s.symbol);
-          if (e && typeof e.price === "number") {
-            const changePct =
-              typeof e.changePercent === "number"
-                ? Math.round(e.changePercent * 100) / 100
-                : s.change;
-            return {
-              ...s,
-              price: Math.round(e.price * 100) / 100,
-              change: changePct,
-            };
-          }
-          return s;
-        }),
-        ...fetched];
+        const existing = new Set(this.stocks.map((s) => s.symbol));
+        const fetched = events
+          .filter((e) => !existing.has(e.symbol) && typeof e.price === "number")
+          .map((e) => ({
+            id: 0,
+            symbol: e.symbol,
+            name: e.symbol,
+            price: e.price,
+            change: e.changePercent ?? 0,
+            sector: "Unknown",
+            cap: 0,
+            color: "var(--purple)",
+          }));
+        this.stocks = [
+          ...this.stocks.map((s) => {
+            const e = eventMap.get(s.symbol);
+            if (e && typeof e.price === "number") {
+              const changePct =
+                typeof e.changePercent === "number"
+                  ? Math.round(e.changePercent * 100) / 100
+                  : s.change;
+              return {
+                ...s,
+                price: Math.round(e.price * 100) / 100,
+                change: changePct,
+              };
+            }
+            return s;
+          }),
+          ...fetched,
+        ];
         const selEvent = eventMap.get(this.selected.symbol);
         if (selEvent && typeof selEvent.price === "number") {
           const changePct =
@@ -257,7 +299,7 @@ export class MarketService {
   }
 
   refreshHistory(symbol: string, range: string) {
-    if (!symbol) return;
+    if (!symbol || !this.session.token) return;
     const now = new Date();
     const to = now.toISOString();
     const fromDate = new Date(now);

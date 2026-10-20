@@ -59,6 +59,7 @@ export class TradeComponent implements OnInit, OnChanges {
   receipt: Order | null = null;
   uncertain = false;
 
+  private quoteRequest = 0;
   fetchingQuote = false;
   liveQuote: MarketDataEvent | null = null;
 
@@ -147,6 +148,9 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   private fetchQuoteAndResolve(rawTicker: string) {
+    const requestId = ++this.quoteRequest;
+    this.liveQuote = null;
+    this.price = null;
     const raw = (rawTicker || "").trim();
     if (!raw) {
       this.assetId = null;
@@ -162,19 +166,18 @@ export class TradeComponent implements OnInit, OnChanges {
         (h.assetName && h.assetName.toLowerCase() === rawLower),
     );
 
-    const matchingStock =
-      this.market.stocks.find(
-        (s) =>
-          s.symbol.toLowerCase() === rawLower ||
-          s.name.toLowerCase() === rawLower ||
-          s.name.toLowerCase().startsWith(rawLower),
-      );
+    const matchingStock = this.market.stocks.find(
+      (s) =>
+        s.symbol.toLowerCase() === rawLower ||
+        s.name.toLowerCase() === rawLower ||
+        s.name.toLowerCase().startsWith(rawLower),
+    );
 
     const sym = matchingHolding
-      ? (matchingHolding.assetName &&
+      ? matchingHolding.assetName &&
         matchingHolding.assetName.toLowerCase() === rawLower
-          ? this.getHoldingTicker(matchingHolding).toUpperCase()
-          : raw.toUpperCase())
+        ? this.getHoldingTicker(matchingHolding).toUpperCase()
+        : raw.toUpperCase()
       : matchingStock
         ? matchingStock.symbol.toUpperCase()
         : raw.toUpperCase();
@@ -211,9 +214,17 @@ export class TradeComponent implements OnInit, OnChanges {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (asset) => {
+          if (requestId !== this.quoteRequest) return;
           if (!matchingHolding) {
             this.assetId = asset.id;
           }
+          this.changeDetector.markForCheck();
+        },
+        error: () => {
+          if (requestId !== this.quoteRequest) return;
+          this.assetId = null;
+          this.error =
+            "This symbol is not available in the backend asset catalog.";
           this.changeDetector.markForCheck();
         },
       });
@@ -227,6 +238,7 @@ export class TradeComponent implements OnInit, OnChanges {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (event) => {
+          if (requestId !== this.quoteRequest) return;
           this.fetchingQuote = false;
           if (event && typeof event.price === "number") {
             this.liveQuote = event;
@@ -235,6 +247,7 @@ export class TradeComponent implements OnInit, OnChanges {
           this.changeDetector.markForCheck();
         },
         error: () => {
+          if (requestId !== this.quoteRequest) return;
           this.fetchingQuote = false;
           if (matchingHolding) {
             this.price =
@@ -272,13 +285,12 @@ export class TradeComponent implements OnInit, OnChanges {
     );
     if (h) return this.getHoldingTicker(h).toUpperCase();
 
-    const stock =
-      this.market.stocks.find(
-        (s) =>
-          s.symbol.toLowerCase() === rawLower ||
-          s.name.toLowerCase() === rawLower ||
-          s.name.toLowerCase().startsWith(rawLower),
-      );
+    const stock = this.market.stocks.find(
+      (s) =>
+        s.symbol.toLowerCase() === rawLower ||
+        s.name.toLowerCase() === rawLower ||
+        s.name.toLowerCase().startsWith(rawLower),
+    );
     if (stock) return stock.symbol.toUpperCase();
 
     return raw.toUpperCase();
@@ -297,7 +309,9 @@ export class TradeComponent implements OnInit, OnChanges {
 
   get assetLabel() {
     const sym = this.assetSymbol;
-    const stock = this.market.stocks.find(s => s.symbol.toUpperCase() === sym);
+    const stock = this.market.stocks.find(
+      (s) => s.symbol.toUpperCase() === sym,
+    );
     if (stock) return `${stock.name} (${stock.symbol})`;
     const holding = this.holding;
     if (holding) return `${holding.assetName} (${sym})`;
@@ -309,7 +323,9 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   get pending() {
-    return this.orders.filter(o => o.status === "PENDING" || o.status === "PARTIALLY_FILLED");
+    return this.orders.filter(
+      (o) => o.status === "PENDING" || o.status === "PARTIALLY_FILLED",
+    );
   }
 
   get availableCash() {
@@ -334,11 +350,12 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   get validation() {
-    if (!this.connected) return "Sign in and load your account before placing an order.";
+    if (!this.connected)
+      return "Sign in and load your account before placing an order.";
     if (!this.ticker || !this.ticker.trim()) {
       return "Enter a stock ticker symbol.";
     }
-    if (!Number.isSafeInteger(this.assetId) || Number(this.assetId) <= 0) {
+    if (!Number.isSafeInteger(this.assetId) || Number(this.assetId) === 0) {
       return "Unable to resolve asset for this ticker.";
     }
     if (!Number.isFinite(this.quantity) || Number(this.quantity) <= 0) {

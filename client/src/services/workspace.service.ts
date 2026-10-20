@@ -171,6 +171,7 @@ export class WorkspaceService {
                   accountType: "INVESTMENT",
                   currency: "USD",
                 })
+                .pipe(takeUntil(this.resetRequests))
                 .subscribe({
                   next: (acc) => {
                     this.accounts.set([acc]);
@@ -276,8 +277,8 @@ export class WorkspaceService {
     if (
       !Number.isInteger(this.userId) ||
       !Number.isInteger(this.accountId) ||
-      this.userId < 1 ||
-      this.accountId < 1 ||
+      this.userId === 0 ||
+      this.accountId === 0 ||
       !this.accounts().some((account) => account.id === this.accountId)
     ) {
       this.error = "Choose one of your brokerage accounts.";
@@ -325,7 +326,7 @@ export class WorkspaceService {
   }
   saveProfile() {
     if (!this.live) {
-      this.error = "Sign in and load your account before saving your profile."; 
+      this.error = "Sign in and load your account before saving your profile.";
       return;
     }
     this.api
@@ -335,7 +336,10 @@ export class WorkspaceService {
       })
       .pipe(takeUntil(this.resetRequests))
       .subscribe({
-        next: () => (this.notice = "Profile saved."),
+        next: (user) => {
+          this.session.updateUser(user);
+          this.notice = "Profile saved.";
+        },
         error: () => (this.error = "Profile could not be saved."),
       });
   }

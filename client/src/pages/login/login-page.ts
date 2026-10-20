@@ -97,26 +97,38 @@ export class LoginPageComponent {
           this.workspace.busy = false;
           this.password = "";
           const serverMessage =
-            typeof err.error?.message === "string" ? err.error.message :
-            typeof err.error?.detail === "string" ? err.error.detail : "";
+            typeof err.error?.message === "string"
+              ? err.error.message
+              : typeof err.error?.detail === "string"
+                ? err.error.detail
+                : "";
           if (err.status === 0) {
             this.workspace.error =
               "Cannot reach the Java backend. Check that Spring Boot is running and the Angular proxy target is correct.";
           } else if (err.status === 409) {
             this.workspace.error = "An account with this email already exists.";
           } else if (err.status === 400 || err.status === 422) {
-            this.workspace.error = serverMessage || "Please enter a valid name, email, and password (at least 8 characters).";
+            this.workspace.error =
+              serverMessage ||
+              "Please enter a valid name, email, and password (at least 8 characters).";
           } else if (err.status === 401) {
             this.workspace.error = "Incorrect email or password.";
           } else if (err.status === 404) {
-            this.workspace.error = "Authentication endpoint not found. Check the Angular proxy and Java server address.";
-          } else if (err.status === 502 || err.status === 503 || err.status === 504) {
-            this.workspace.error = "The Java backend is unavailable. Check the backend server and proxy.";
+            this.workspace.error =
+              "Authentication endpoint not found. Check the Angular proxy and Java server address.";
+          } else if (
+            err.status === 502 ||
+            err.status === 503 ||
+            err.status === 504
+          ) {
+            this.workspace.error =
+              "The Java backend is unavailable. Check the backend server and proxy.";
           } else if (err.status >= 500) {
             this.workspace.error = `Server error (${err.status}). Check the Spring Boot logs for the database or authentication failure.`;
           } else {
             this.workspace.error =
-              serverMessage || `${isSignup ? "Registration" : "Sign-in"} failed (HTTP ${err.status}).`;
+              serverMessage ||
+              `${isSignup ? "Registration" : "Sign-in"} failed (HTTP ${err.status}).`;
           }
         },
       });

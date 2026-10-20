@@ -1,5 +1,5 @@
 import { Injectable, signal } from "@angular/core";
-import { AuthResponse } from "../models/brokerage.models";
+import { AuthResponse, User } from "../models/brokerage.models";
 
 const SESSION_STORAGE_KEY = "velocity-session";
 
@@ -20,7 +20,7 @@ export class SessionService {
   private readonly session = signal<AuthResponse | null>(this.restoreSession());
 
   get currentUser() {
-    return this.token ? this.session()?.user ?? null : null;
+    return this.token ? (this.session()?.user ?? null) : null;
   }
 
   get token() {
@@ -34,7 +34,11 @@ export class SessionService {
   }
 
   remember(result: AuthResponse) {
-    if (!result?.token || !result?.user?.id || tokenExpiresAt(result.token) <= Date.now()) {
+    if (
+      !result?.token ||
+      !result?.user?.id ||
+      tokenExpiresAt(result.token) <= Date.now()
+    ) {
       throw new Error("The server did not return a valid session.");
     }
     this.session.set(result);
@@ -43,6 +47,17 @@ export class SessionService {
     } catch {
       // The session stays usable in memory when browser storage is disabled.
     }
+  }
+
+  updateUser(user: User) {
+    const current = this.session();
+    if (
+      current &&
+      current.user.id === user.id &&
+      (current.user.fullName !== user.fullName ||
+        current.user.email !== user.email)
+    )
+      this.remember({ ...current, user });
   }
 
   signOut() {
@@ -60,7 +75,11 @@ export class SessionService {
       const saved = localStorage.getItem(SESSION_STORAGE_KEY);
       if (!saved) return null;
       const result = JSON.parse(saved) as AuthResponse;
-      if (!result?.user?.id || !result?.token || tokenExpiresAt(result.token) <= Date.now()) {
+      if (
+        !result?.user?.id ||
+        !result?.token ||
+        tokenExpiresAt(result.token) <= Date.now()
+      ) {
         localStorage.removeItem(SESSION_STORAGE_KEY);
         return null;
       }

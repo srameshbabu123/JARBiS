@@ -1,5 +1,5 @@
 import { Injectable, inject } from "@angular/core";
-import { HttpClient, HttpHeaders } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { tap, catchError, of, forkJoin, map, Observable } from "rxjs";
 import { SessionService } from "./session.service";
 import {
@@ -11,10 +11,6 @@ import {
   CreateOrder,
   MarketDataEvent,
 } from "../models/brokerage.models";
-
-const FAUXNANCE_API_KEY = "fnx_dev_ynMH4HwnxqC9EljRB9BjjtbRyPLUgPOP";
-const FAUXNANCE_BASE_URL =
-  "https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1";
 
 interface CachedQuote {
   event: MarketDataEvent;
@@ -49,7 +45,7 @@ export class BrokerageApiService {
   }
 
   account(id: number) {
-    return this.http.get<Account>(`/api/accounts/${id}`);
+    return this.http.get<Account>(`/api/accounts/mine/${id}`);
   }
 
   createAccount(body: {
@@ -102,130 +98,38 @@ export class BrokerageApiService {
     }
 
     return this.http
-      .get<MarketDataEvent>(`/api/market-data/${sym}/latest`)
+      .get<MarketDataEvent>(
+        `/api/market-data/${encodeURIComponent(sym)}/latest`,
+      )
       .pipe(
         tap((event) => {
           if (event && typeof event.price === "number") {
             this.quoteCache.set(sym, { event, timestamp: Date.now() });
           }
         }),
-        catchError(() => this.fetchDirectFauxnanceQuote(sym)),
       );
   }
 
-  fetchDirectFauxnanceQuote(symbol: string): Observable<MarketDataEvent> {
-    const sym = (symbol || "").trim().toUpperCase();
-    const headers = new HttpHeaders({ "X-Api-Key": FAUXNANCE_API_KEY });
-    return this.http
-      .get<any>(`${FAUXNANCE_BASE_URL}/quotes?symbols=${sym}`, { headers })
-      .pipe(
-        map((res) => {
-          const quotes = res?.data?.quotes;
-          if (Array.isArray(quotes) && quotes.length > 0) {
-            const item = quotes.find((q: any) => q.symbol === sym) || quotes[0];
-            const q = item.quote;
-            if (q && typeof q.price === "number") {
-              const event: MarketDataEvent = {
-                symbol: q.symbol || sym,
-                price: q.price,
-                bid: q.bid,
-                ask: q.ask,
-                spreadBps: q.spreadBps,
-                currency: q.currency || "USD",
-                change: q.change,
-                changePercent: q.changePercent,
-                previousClose: q.previousClose,
-                source: item.source || "fauxnance",
-                stale: Boolean(item.stale),
-                marketState: q.marketState,
-                asOf: q.asOf,
-                capturedAt: new Date().toISOString(),
-              };
-              this.quoteCache.set(sym, { event, timestamp: Date.now() });
-              return event;
-            }
-          }
-          throw new Error(`No quote found for ${sym}`);
-        }),
-      );
+  assets() {
+    return this.http.get<{ id: number; name: string; type: string }[]>(
+      "/api/assets",
+    );
   }
 
-  fetchBatchFauxnanceQuotes(symbols: string[]): Observable<MarketDataEvent[]> {
-    if (!symbols.length) return of([]);
-    const cleanSymbols = symbols
-      .map((s) => s.trim().toUpperCase())
-      .filter((s) => Boolean(s));
-    if (!cleanSymbols.length) return of([]);
-
-    const now = Date.now();
-    const missingOrStale: string[] = [];
-    const cachedResults: MarketDataEvent[] = [];
-
-    for (const sym of cleanSymbols) {
-      const cached = this.quoteCache.get(sym);
-      if (cached && now - cached.timestamp < this.CACHE_TTL_MS) {
-        cachedResults.push(cached.event);
-      } else {
-        missingOrStale.push(sym);
-      }
-    }
-
-    if (missingOrStale.length === 0) {
-      return of(cachedResults);
-    }
-
-    const headers = new HttpHeaders({ "X-Api-Key": FAUXNANCE_API_KEY });
-    const chunks: string[][] = [];
-    for (let i = 0; i < missingOrStale.length; i += 25) {
-      chunks.push(missingOrStale.slice(i, i + 25));
-    }
-
-    const chunkRequests = chunks.map((chunk) => {
-      const symString = chunk.join(",");
-      return this.http
-        .get<any>(`${FAUXNANCE_BASE_URL}/quotes?symbols=${symString}`, {
-          headers,
-        })
-        .pipe(
-          map((res) => {
-            const quotes = res?.data?.quotes;
-            if (!Array.isArray(quotes)) return [];
-            return quotes
-              .filter((item: any) => item?.quote?.price != null)
-              .map((item: any) => {
-                const q = item.quote;
-                const evt: MarketDataEvent = {
-                  symbol: q.symbol || item.symbol,
-                  price: q.price,
-                  bid: q.bid,
-                  ask: q.ask,
-                  spreadBps: q.spreadBps,
-                  currency: q.currency || "USD",
-                  change: q.change,
-                  changePercent: q.changePercent,
-                  previousClose: q.previousClose,
-                  source: item.source || "fauxnance",
-                  stale: Boolean(item.stale),
-                  marketState: q.marketState,
-                  asOf: q.asOf,
-                  capturedAt: new Date().toISOString(),
-                };
-                this.quoteCache.set(evt.symbol.toUpperCase(), {
-                  event: evt,
-                  timestamp: Date.now(),
-                });
-                return evt;
-              });
-          }),
-          catchError(() => of([])),
-        );
-    });
-
-    return forkJoin(chunkRequests).pipe(
-      map((results) => {
-        const fetchedEvents = results.flat();
-        return [...cachedResults, ...fetchedEvents];
-      }),
+  latestQuotes(symbols: string[]): Observable<MarketDataEvent[]> {
+    const unique = [
+      ...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)),
+    ];
+    if (!unique.length) return of([]);
+    return forkJoin(
+      unique.map((symbol) =>
+        this.latestMarketData(symbol).pipe(
+          // A symbol without collected data must not hide the other quotes.
+          catchError(() => of(null)),
+        ),
+      ),
+    ).pipe(
+      map((events) => events.filter((e): e is MarketDataEvent => e !== null)),
     );
   }
 
@@ -240,7 +144,7 @@ export class BrokerageApiService {
 
   marketDataHistory(symbol: string, from: string, to: string) {
     return this.http.get<MarketDataEvent[]>(
-      `/api/market-data/${symbol}/history`,
+      `/api/market-data/${encodeURIComponent(symbol)}/history`,
       {
         params: { from, to },
       },

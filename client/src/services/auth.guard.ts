@@ -21,6 +21,7 @@ export const authenticatedGuard: CanActivateChildFn = () => {
         session.signOut();
         return router.createUrlTree(["/login"]);
       }
+      session.updateUser(user);
       return true;
     }),
     catchError(() => of(router.createUrlTree(["/login"]))),

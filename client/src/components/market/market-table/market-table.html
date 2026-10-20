@@ -68,7 +68,10 @@
       </tbody>
     </table>
     @if(market.filtered.length===0){
-    <p class="muted">No market quotes available. Search for a ticker to request its latest price.</p>
+    <p class="muted">
+      No market quotes available. Search for a ticker to request its latest
+      price.
+    </p>
     }@if(vm.page==='watchlist'&&!market.watched.length){
     <p class="muted">Your watchlist is empty. Add assets from the screener.</p>
     }
