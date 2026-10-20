@@ -98,36 +98,7 @@ export class BrokerageApiService {
   }
 
   myAccounts() {
-    return this.http.get<Account[]>("/api/accounts/mine").pipe(
-      catchError(() => {
-        const currentUser = this.session.currentUser;
-        if (!currentUser) return of([]);
-
-        const candidateIds = new Set<number>();
-        try {
-          const savedId = localStorage.getItem("velocity-account-id");
-          if (savedId) candidateIds.add(Number(savedId));
-        } catch {
-          /* ignore storage error */
-        }
-
-        [109, 108, 107, 106, 105, 104, 103, 102, 101, 42, 1].forEach((id) =>
-          candidateIds.add(id),
-        );
-
-        const checks = Array.from(candidateIds).map((id) =>
-          this.account(id).pipe(catchError(() => of(null))),
-        );
-
-        return forkJoin(checks).pipe(
-          map((results) =>
-            results.filter(
-              (a): a is Account => a !== null && a.ownerId === currentUser.id,
-            ),
-          ),
-        );
-      }),
-    );
+    return this.http.get<Account[]>("/api/accounts/mine");
   }
 
   changeCash(id: number, amount: number, action: "deposit" | "withdraw") {
@@ -141,7 +112,7 @@ export class BrokerageApiService {
   orders(id: number) {
     return this.http
       .get<Order[]>(`/api/orders/account/${id}`)
-      .pipe(catchError(() => of([])));
+      ;
   }
 
   updateUser(id: number, body: { fullName: string; email: string }) {
@@ -298,20 +269,11 @@ export class BrokerageApiService {
 
   resolveAsset(symbol: string): Observable<{ id: number; name: string }> {
     const sym = (symbol || "").trim().toUpperCase();
-    if (!sym) return of({ id: 58, name: "AAPL" });
+    if (!sym) throw new Error("An asset symbol is required.");
 
-    const mappedId = KNOWN_TICKER_ASSET_MAP[sym];
-    if (mappedId) {
-      return of({ id: mappedId, name: sym });
-    }
-
-    return this.http
-      .get<{ id: number; name: string }>(`/api/assets/by-symbol/${sym}`)
-      .pipe(
-        catchError(() => {
-          return of({ id: 58, name: sym });
-        }),
-      );
+    return this.http.get<{ id: number; name: string }>(
+      `/api/assets/by-symbol/${encodeURIComponent(sym)}`,
+    );
   }
 
   marketDataHistory(symbol: string, from: string, to: string) {
