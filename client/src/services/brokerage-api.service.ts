@@ -110,9 +110,7 @@ export class BrokerageApiService {
   }
 
   orders(id: number) {
-    return this.http
-      .get<Order[]>(`/api/orders/account/${id}`)
-      ;
+    return this.http.get<Order[]>(`/api/orders/account/${id}`);
   }
 
   updateUser(id: number, body: { fullName: string; email: string }) {
