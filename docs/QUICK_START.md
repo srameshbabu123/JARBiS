@@ -42,6 +42,8 @@ Keep existing working settings when updating. Set these values in that file:
 | `JWT_SECRET` | A random secret of at least 32 bytes |
 | `BROKERAGE_ANALYTICS_ENABLED` | `true` so trades and audit events reach OLAP |
 | `BROKERAGE_MARKET_DATA_API_KEY` | Your Fauxnance API key |
+| `BROKERAGE_MARKET_DATA_POLLING_API_KEY` | Optional override for quote polling key (defaults to `BROKERAGE_MARKET_DATA_API_KEY`) |
+| `BROKERAGE_MARKET_DATA_CANDLES_API_KEY` | Optional override for candles key (falls back to `BROKERAGE_MARKET_DATA_API_KEY2`, then key 1) |
 | `BROKERAGE_MARKET_DATA_POLLING_ENABLED` | `true`, or `false` to test without live quotes |
 | `ANALYTICS_ADMIN_USER` | Your admin dashboard username |
 | `ANALYTICS_ADMIN_PASSWORD_HASH` | BCrypt hash of your chosen dashboard password |

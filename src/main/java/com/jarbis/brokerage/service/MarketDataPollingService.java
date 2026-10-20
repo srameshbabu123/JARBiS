@@ -39,7 +39,7 @@ public class MarketDataPollingService {
 		this.batchSize = marketDataProperties.getBatchSize();
 	}
 
-	@Scheduled(fixedDelayString = "${brokerage.market-data.polling.fixed-delay-ms:15000}",
+	@Scheduled(fixedDelayString = "${brokerage.market-data.polling.fixed-delay-ms:1800000}",
 			initialDelayString = "${brokerage.market-data.polling.initial-delay-ms:5000}")
 	public void pollMarketData() {
 		List<MarketDataEvent> events = pollOnce();

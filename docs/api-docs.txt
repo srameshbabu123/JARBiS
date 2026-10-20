@@ -1,0 +1,2 @@
+GitHub repository: https://github.com/canaokar/fauxnance-api
+API Routes: https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1/docs#GET/usage

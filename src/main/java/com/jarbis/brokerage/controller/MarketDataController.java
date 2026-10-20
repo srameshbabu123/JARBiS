@@ -2,6 +2,8 @@ package com.jarbis.brokerage.controller;
 
 import com.jarbis.brokerage.exception.MarketDataUnavailableException;
 import com.jarbis.brokerage.marketdata.MarketDataEvent;
+import com.jarbis.brokerage.marketdata.MarketHistoryRange;
+import com.jarbis.brokerage.service.MarketDataHistoryRoutingService;
 import com.jarbis.brokerage.service.RedisMarketDataHistoryService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +21,12 @@ import java.util.List;
 public class MarketDataController {
 
 	private final RedisMarketDataHistoryService marketDataHistoryService;
+	private final MarketDataHistoryRoutingService marketDataHistoryRoutingService;
 
-	public MarketDataController(RedisMarketDataHistoryService marketDataHistoryService) {
+	public MarketDataController(RedisMarketDataHistoryService marketDataHistoryService,
+			MarketDataHistoryRoutingService marketDataHistoryRoutingService) {
 		this.marketDataHistoryService = marketDataHistoryService;
+		this.marketDataHistoryRoutingService = marketDataHistoryRoutingService;
 	}
 
 	@GetMapping("/{symbol}/latest")
@@ -33,9 +38,9 @@ public class MarketDataController {
 	}
 
 	@GetMapping("/{symbol}/history")
-	public ResponseEntity<List<MarketDataEvent>> getHistory(@PathVariable String symbol,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
-		return ResponseEntity.ok(marketDataHistoryService.getHistory(symbol, from, to));
+	public ResponseEntity<List<MarketDataEvent>> getHistory(@PathVariable String symbol, @RequestParam String range,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+		MarketHistoryRange historyRange = MarketHistoryRange.parse(range);
+		return ResponseEntity.ok(marketDataHistoryRoutingService.getHistory(symbol, historyRange, to));
 	}
 }
