@@ -69,7 +69,7 @@ class ClientRoutesIntegrationTest {
         when(accounts.initializeMyAccount(-1001L)).thenReturn(account);
         when(accounts.getAccountByUser(-1001L, -1101L)).thenReturn(account);
         when(accounts.getAccountById(-1101L)).thenReturn(account);
-        when(accountRepository.findById(-1101L)).thenReturn(Optional.of(account));
+        when(accountRepository.existsByIdAndOwnerId(-1101L, -1001L)).thenReturn(true);
         when(holdingRepository.findByAccountId(-1101L)).thenReturn(List.of());
         when(orders.getOrdersByAccount(-1101L)).thenReturn(List.of());
         when(assetRepository.findAll()).thenReturn(List.of(asset));

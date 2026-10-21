@@ -24,6 +24,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 	@Query("SELECT a FROM Account a WHERE a.id = :accountId AND a.owner.id = :userId")
 	Optional<Account> findOwnedForCashUpdate(@Param("userId") Long userId, @Param("accountId") Long accountId);
 
+    // Authorization must not call findById: that method takes a write lock.
+    boolean existsByIdAndOwnerId(Long accountId, Long userId);
+
 	List<Account> findByOwnerId(Long userId);
 	List<Account> findByAccountType(AccountType accountType);
 	List<Account> findByCurrency(Currency currency);

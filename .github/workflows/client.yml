@@ -32,4 +32,29 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      - name: Start disposable PostgreSQL for transaction regression tests
+        shell: bash
+        run: |
+          test_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$test_password"
+          docker run -d --name client-route-postgres \
+            -e POSTGRES_USER=route_test -e POSTGRES_DB=route_test \
+            -e POSTGRES_PASSWORD="$test_password" \
+            -p 127.0.0.1::5432 postgres:15-alpine
+          ready=false
+          for attempt in $(seq 1 30); do
+            if docker exec client-route-postgres pg_isready -h 127.0.0.1 -U route_test -d route_test; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          test_port="$(docker port client-route-postgres 5432/tcp | cut -d: -f2)"
+          echo "JARBIS_TEST_POSTGRES_URL=jdbc:postgresql://127.0.0.1:$test_port/route_test" >> "$GITHUB_ENV"
+          echo "JARBIS_TEST_POSTGRES_USER=route_test" >> "$GITHUB_ENV"
+          echo "JARBIS_TEST_POSTGRES_PASSWORD=$test_password" >> "$GITHUB_ENV"
       - run: mvn --batch-mode test
+      - name: Remove disposable test database
+        if: always()
+        run: docker rm -f -v client-route-postgres || true

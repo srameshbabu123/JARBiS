@@ -9,7 +9,6 @@ public class ClientAccess {
     public ClientAccess(AccountRepository accounts) { this.accounts = accounts; }
 
     public boolean ownsAccount(Object principal, Long accountId) {
-        return principal instanceof Long userId && accountId != null && accounts.findById(accountId)
-            .map(account -> account.getOwner().getId().equals(userId)).orElse(false);
+        return principal instanceof Long userId && accountId != null && accounts.existsByIdAndOwnerId(accountId, userId);
     }
 }
