@@ -194,6 +194,17 @@ services:
     stdin_open: true
     tty: true
 
+  client:
+    build: ./client
+    ports:
+      - "8095:80"
+    depends_on:
+      jarbis-backend:
+        condition: service_healthy
+    networks:
+      - jarbis-network
+    restart: unless-stopped
+
 networks:
   jarbis-network:
     driver: bridge
