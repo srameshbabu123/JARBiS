@@ -109,6 +109,7 @@ public class HoldingController {
 	}
 
 	@GetMapping("/account/{accountId}")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #accountId)")
 	public ResponseEntity<List<HoldingResponseDto>> getHoldingsByAccount(@PathVariable Long accountId) {
 		List<Holding> holdings = holdingRepository.findByAccountId(accountId);
 		List<HoldingResponseDto> dtos = holdings.stream().map(this::convertToDto).collect(Collectors.toList());

@@ -28,6 +28,11 @@ public class AccountController {
 		this.accountService = accountService;
 	}
 
+    @PostMapping("/mine/initialize")
+    public ResponseEntity<AccountResponseDto> initializeMyAccount(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.initializeMyAccount(userId)));
+    }
+
 	@GetMapping("/mine")
 	public ResponseEntity<List<AccountResponseDto>> getMyAccounts(@AuthenticationPrincipal Long userId) {
 		return ResponseEntity.ok(accountService.getAccountsByUser(userId).stream()
@@ -52,6 +57,7 @@ public class AccountController {
 	}
 
 	@PostMapping
+	@org.springframework.security.access.prepost.PreAuthorize("#requestDto.userId == authentication.principal")
 	public ResponseEntity<AccountResponseDto> createAccount(@RequestBody CreateAccountRequestDto requestDto) {
 		Account account = requestDto.getInitialBalance() == null
 				? accountService.createAccount(requestDto.getUserId(), requestDto.getAccountType(),
@@ -63,11 +69,13 @@ public class AccountController {
 	}
 
 	@GetMapping("/{accountId}")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #accountId)")
 	public ResponseEntity<AccountResponseDto> getAccountById(@PathVariable Long accountId) {
 		return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.getAccountById(accountId)));
 	}
 
 	@PutMapping("/{accountId}")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #accountId)")
 	public ResponseEntity<AccountResponseDto> updateAccount(@PathVariable Long accountId,
 			@RequestBody UpdateAccountRequestDto requestDto) {
 		Account account = accountService.updateAccount(accountId, requestDto.getAccountType(),
@@ -77,6 +85,7 @@ public class AccountController {
 	}
 
 	@DeleteMapping("/{accountId}")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #accountId)")
 	public ResponseEntity<Void> deleteAccount(@PathVariable Long accountId) {
 		accountService.deleteAccount(accountId);
 		return ResponseEntity.noContent().build();

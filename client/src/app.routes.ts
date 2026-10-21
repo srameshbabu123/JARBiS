@@ -1,18 +1,20 @@
 import { Routes } from "@angular/router";
+import { authenticatedGuard } from "./services/auth.guard";
 export const routes: Routes = [
   {
     path: "login",
     loadComponent: () =>
       import("./pages/login/login-page").then((m) => m.LoginPageComponent),
   },
+  { path: "", pathMatch: "full", redirectTo: "login" },
   {
     path: "",
+    canActivateChild: [authenticatedGuard],
     loadComponent: () =>
       import("./components/layout/workspace-shell/workspace-shell").then(
         (m) => m.WorkspaceShellComponent,
       ),
     children: [
-      { path: "", pathMatch: "full", redirectTo: "overview" },
       {
         path: "overview",
         loadComponent: () =>
@@ -67,5 +69,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: "**", redirectTo: "overview" },
+  { path: "**", redirectTo: "login" },
 ];

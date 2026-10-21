@@ -43,7 +43,7 @@ def clear(request):
 
 
 def filt(**kw):
-    return ReportFilter(**{"from": "2026-03-01", "to": "2026-03-02", "dataset": "LIVE", **kw})
+    return ReportFilter(**{"from": "2026-03-01", "to": "2026-03-02", **kw})
 
 
 def test_duplicate_delivery_currency_dates_clients_and_pandas(pool, event_data):

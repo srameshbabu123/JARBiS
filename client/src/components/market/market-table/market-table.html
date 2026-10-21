@@ -6,7 +6,7 @@
       {{vm.page==='watchlist'?'My watchlist':vm.page==='charts'?'Explore
       symbols':'Market screener'}}
     </h3>
-    <span class="sample-tag">Sample market universe</span>
+    <span class="sample-tag">Available market quotes</span>
   </div>
   <div class="filters">
     <input
@@ -17,8 +17,7 @@
       aria-label="Sector"
       [(ngModel)]="market.sector"
     >
-      @for(s of ['All
-      sectors','Technology','Automotive','Consumer','Financials'];track s){
+      @for(s of market.availableSectors;track s){
       <option>{{s}}</option>
       }</select
     ><label class="check"
@@ -54,7 +53,7 @@
             {{s.change>0?'+':''}}{{s.change}}%
           </td>
           <td>{{s.sector}}</td>
-          <td>{{s.cap|number}} B</td>
+          <td>{{s.cap > 0 ? (s.cap|number) : "—"}}</td>
           <td>
             <button
               class="star"
@@ -69,7 +68,10 @@
       </tbody>
     </table>
     @if(market.filtered.length===0){
-    <p class="muted">No results. Try another search.</p>
+    <p class="muted">
+      No market quotes available. Search for a ticker to request its latest
+      price.
+    </p>
     }@if(vm.page==='watchlist'&&!market.watched.length){
     <p class="muted">Your watchlist is empty. Add assets from the screener.</p>
     }

@@ -8,7 +8,7 @@
           {{vm.page==='overview'?'Portfolio performance':market.selected.name+'
           · '+market.selected.symbol}}
         </h3>
-        <small>Illustrative price history</small>
+        <small>Historical market data when available</small>
       </div>
       <div class="segmented">
         @for(r of ['1D','1W','1M','3M','1Y','ALL'];track r){<button
@@ -20,16 +20,15 @@
       </div>
     </div>
     <div class="chart-value">
-      {{(vm.page==='overview'?vm.cash+vm.invested:market.selected.price)|currency:(vm.page==='overview'?vm.currency:'USD')}}<span
-        >↗ Sample trend</span
-      >
+      {{(vm.page==='overview'?vm.cash+vm.invested:market.selected.price)|currency:(vm.page==='overview'?vm.currency:'USD')}}
     </div>
+    @if(vm.page!=='overview' && market.history.length >= 2){
     <div class="chart">
       <svg
         viewBox="0 0 790 270"
         preserveAspectRatio="none"
         role="img"
-        aria-label="Illustrative price trend, not real historical data"
+        aria-label="Historical market prices"
       >
         <defs>
           <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
@@ -56,11 +55,13 @@
         />
       </svg>
       <div class="axis">
-        <span>Period start</span
-        ><span>{{market.range}} view · illustrative</span
+        <span>Period start</span><span>{{market.range}} view</span
         ><span>Period end</span>
       </div>
     </div>
+    } @else {
+    <p class="muted">No verified historical performance data available.</p>
+    }
     <div class="chart-footer">
       <span
         ><b class="purple-dot"></b>{{vm.page==='overview'?'Your

@@ -3,11 +3,13 @@
     <div>
       <h3>Manage cash</h3>
       <p class="muted">
-        {{ workspace.live ? 'Your brokerage cash balance.' : 'Try deposits and
-        withdrawals with demo cash.' }}
+        {{ workspace.live ? 'Your brokerage cash balance.' : 'Load your account
+        to manage cash.' }}
       </p>
     </div>
-    <span class="pill">{{workspace.cash | currency:currency}}</span>
+    <span class="pill"
+      >{{workspace.live ? (workspace.cash | currency:currency) : '—'}}</span
+    >
   </div>
   <p class="muted">Brokerage cash only. Bank transfers are not connected.</p>
   @if(workspace.live){<button
@@ -66,16 +68,14 @@
     <h3>Review cash change</h3>
     <p>
       {{review.action==='deposit'?'Deposit':'Withdraw'}} {{review.amount |
-      currency:review.currency}} {{review.accountId===null?'in your demo
-      account':'in your selected brokerage account'}}.
+      currency:review.currency}} in your selected brokerage account.
     </p>
     <button
       class="primary"
       (click)="confirm()"
       [disabled]="submitting() || uncertain()"
     >
-      {{submitting()?'Submitting…':review.accountId===null?'Confirm demo cash
-      change':'Confirm cash change'}}</button
+      {{submitting()?'Submitting…':'Confirm cash change'}}</button
     ><button class="text-button" (click)="reset()" [disabled]="submitting()">
       {{uncertain()?'Start a new transfer after checking balance':'Cancel'}}
     </button>

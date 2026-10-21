@@ -12,6 +12,7 @@ import com.jarbis.brokerage.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -46,7 +47,12 @@ public class AuthController {
 
 	@PostMapping("/register")
 	public ResponseEntity<AuthResponseDto> register(@RequestBody CreateUserRequestDto requestDto) {
-		User user = userService.createUser(requestDto.getFullName(), requestDto.getEmail(), requestDto.getPassword());
+		if (requestDto == null || requestDto.getFullName() == null || requestDto.getFullName().isBlank()
+				|| requestDto.getEmail() == null || !requestDto.getEmail().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+				|| requestDto.getPassword() == null || requestDto.getPassword().length() < 8) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full name, valid email, and password of at least 8 characters are required");
+		}
+		User user = userService.createUser(requestDto.getFullName().trim(), requestDto.getEmail().trim(), requestDto.getPassword());
 		String token = jwtService.generateToken(user);
 		ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
 		addRefreshCookie(response, user);
@@ -55,7 +61,8 @@ public class AuthController {
 
 	@PostMapping("/login")
 	public ResponseEntity<AuthResponseDto> login(@RequestBody LoginRequestDto requestDto) {
-		if (!userService.verifyPassword(requestDto.getEmail(), requestDto.getPassword())) {
+		if (requestDto == null || requestDto.getEmail() == null || requestDto.getPassword() == null
+				|| !userService.verifyPassword(requestDto.getEmail(), requestDto.getPassword())) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 		}
 

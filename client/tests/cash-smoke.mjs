@@ -3,7 +3,8 @@ import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { chromium } from 'playwright';
-const root=new URL('../dist/client/browser/',import.meta.url).pathname;
+import { fileURLToPath } from 'node:url';
+const root=fileURLToPath(new URL('../dist/client/browser/',import.meta.url));
 const server=createServer(async(req,res)=>{
  try{const file=join(root,req.url==='/'?'index.html':req.url.split('?')[0]);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.html':'text/html','.jpg':'image/jpeg'})[extname(file)]||'application/octet-stream');res.end(await readFile(file))}catch{res.writeHead(404).end()}
 });
@@ -51,7 +52,7 @@ try{
    assert.equal(request.headers().authorization,'Bearer cash-test-session');
    if(path==='/api/accounts/mine')json=multiple?accounts:[accounts[0]];
    else if(path==='/api/users/9')json={id:9,fullName:'Test User',email:'test@example.com'};
-   else if(/^\/api\/accounts\/mine\/(42|77)$/.test(path))json=accounts.find(a=>a.id===Number(path.split('/').at(-1)));
+   else if(/^\/api\/accounts(\/(mine|\d+))?$/.test(path))json=accounts.find(a=>a.id===Number(path.split('/').at(-1)));
    else if(path.startsWith('/api/holdings/account/'))json=[];
    else if(path.startsWith('/api/orders/account/'))json=[];
    else if(/^\/api\/accounts\/(42|77)\/(deposit|withdraw)$/.test(path)){
@@ -61,7 +62,8 @@ try{
     await new Promise(resolve=>setTimeout(resolve,150));
     if(ambiguous){await route.fulfill({status:503,json:{message:'Unavailable'}});return}
     json=account;
-   }else throw Error('Unexpected request '+path);
+   }else if(path.startsWith('/api/market-data/')||path.startsWith('/api/assets/'))json=[];
+   else throw Error('Unexpected request '+path);
   }
   await route.fulfill({json});
  });
@@ -73,7 +75,7 @@ try{
  await panel.getByRole('button',{name:'Deposit',exact:true}).click();await amount.fill('10');await panel.getByRole('button',{name:'Review deposit'}).click();await panel.getByText(/Deposit €10.00/).waitFor();
  ambiguous=true;await panel.getByRole('button',{name:'Confirm cash change',exact:true}).click();await panel.getByRole('alert').waitFor();assert(await panel.getByRole('button',{name:'Confirm cash change',exact:true}).isDisabled());assert.equal(cashPosts,3);
  await panel.getByRole('button',{name:'Refresh cash balance',exact:true}).click();await page.getByText('Loaded account 77 · EUR').waitFor();await page.waitForFunction(()=>document.querySelector('.cash-panel').innerText.includes('€510.00'));
- await mkdir(new URL('../test-results/',import.meta.url),{recursive:true});await page.screenshot({path:new URL('../test-results/cash.png',import.meta.url).pathname,fullPage:true});
- await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:new URL('../test-results/cash-mobile.png',import.meta.url).pathname,fullPage:true});
+ await mkdir(new URL('../test-results/',import.meta.url),{recursive:true});await page.screenshot({path:fileURLToPath(new URL('../test-results/cash.png',import.meta.url)),fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:fileURLToPath(new URL('../test-results/cash-mobile.png',import.meta.url)),fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: demo/live deposits and withdrawals, amount validation, automatic session-based account discovery, multiple accounts, currency, duplicate prevention, ambiguous failure, balance refresh, mobile layout.');
 }finally{await browser.close();server.close()}

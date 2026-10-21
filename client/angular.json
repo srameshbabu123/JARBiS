@@ -26,10 +26,14 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "buildTarget": "client:build"
+            "buildTarget": "client:build",
+            "proxyConfig": "proxy.conf.js"
           }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }

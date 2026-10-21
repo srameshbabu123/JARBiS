@@ -1,61 +1,111 @@
-# Velocity Angular 22 client
+# Velocity client: connect to Java
 
-The client is based on `development` (backend commit `f068d2c`), with the existing UI imported from `feature/angular-client-ui`. Angular framework, router, CLI, and build tooling are pinned to **22.2.2**. TypeScript is 6.0, and the app uses Angular's default zoneless rendering.
+The browser calls `/api/...` on the Angular dev server. `proxy.conf.js` removes `/api` and forwards the request, including its JWT, to Spring Boot. The client never opens a database connection or calls Fauxnance directly.
 
-## Run
+## Start the backend
 
-Use Node 24.15+ (or another version accepted by `package.json` engines).
+On the machine hosting Java, pull this branch and rebuild the backend service:
 
-```sh
+```bash
+git switch feature/client-backend-integration
+git pull --ff-only
+docker compose --env-file .env.analytics up -d --build jarbis-backend
+curl -i http://127.0.0.1:8081/actuator/health
+```
+
+Use `docker-compose` instead if that is your installed command. Keep the existing database configuration in your backend environment. The frontend proxy target is the **Java HTTP address**, not PostgreSQL's address or port.
+
+## Start the frontend
+
+Use a Node version supported by `package.json` (Node 24 recommended):
+
+```bash
 cd client
 npm ci
+```
+
+If Java is on the same machine:
+
+```bash
 npm start
 ```
 
-Open http://localhost:4200/#/overview or http://localhost:4200/#/trade. The existing hash URLs also resolve. The dev proxy forwards `/api` to http://localhost:8080 and strips `/api`. Production needs an equivalent same-origin reverse proxy. `npm run build` writes `dist/client/browser`.
+If the frontend runs on Windows and Java runs on EC2, first check that Windows can reach Java. For the backend host verified in this setup:
 
-## Architecture
+```bash
+curl -i http://10.18.78.59:8081/actuator/health
+```
 
-| Location | Responsibility |
-| --- | --- |
-| `src/main.ts` | Bootstrap only |
-| `src/app.config.ts` | HTTP/interceptor and router providers |
-| `src/app.routes.ts` | Lazy standalone route definitions and unknown-route fallback |
-| `src/pages/` | Routed overview, login, trade, charts, watchlist, screener, news, history, and profile pages |
-| `src/components/` | Reusable portfolio, market, order, profile, trade, shell and branding components, with colocated templates/styles |
-| `src/services/` | Signal-backed workspace/market state, session, API transport and Bearer interceptor |
-| `src/models/` | Backend DTOs |
-| `src/data/` | Illustrative market data |
-| `src/styles/` | Shared theme tokens, base typography/controls, and consistent page/layout classes |
-| `src/assets/branding/` | Existing Velocity dark/light logos and icons copied from the repository |
+Git Bash / Linux:
 
-Components use `OnPush`; shared writable state uses signals behind getters/setters to retain template-driven form bindings. Login owns its transient form fields, and its HTTP subscription ends when the page is destroyed. Trade subscriptions also end on destruction and explicitly notify Angular on asynchronous results. No manual hashchange listener or Zone.js dependency remains. Templates and feature styles are colocated; global styles load one shared theme for all pages. The shared brand component renders the existing Velocity logo in the sidebar, login and footer; the supplied icon is the favicon.
+```bash
+BACKEND_URL=http://10.18.78.59:8081 npm start
+```
 
-## Dark and light themes
+PowerShell:
 
-Use the mode toggle in the workspace header or login page. The saved browser preference applies on reload; dark mode is the default. Shared tokens use the supplied exact Velocity background, grid and four-stop gradient colors in each mode. Neutral surfaces and readable status colors derive from the selected theme. The existing dark/light logo and icon assets switch with the mode, and chart grids/lines use shared theme tokens.
+```powershell
+$env:BACKEND_URL = "http://10.18.78.59:8081"
+npm start
+```
 
-## Behavior and API integration
+Replace that IP if the backend moves. Restart `npm start` after changing the target. `BACKEND_URL` is read by Node, not from `.env.analytics`; the default is `http://127.0.0.1:8081`. No database password or market API key belongs in `client/`.
 
-Demo mode uses illustrative quotes, charts, balances and orders. Confirming a demo order creates a local PENDING order without HTTP requests or settlement. Sign in/register, open Profile to discover your brokerage accounts from your signed-in session. A single account loads automatically; multiple accounts use a selector. No user/account ID entry is required. Trade can use holdings or a manually entered existing asset ID; the backend has no asset search/list endpoint yet.
+Keep the frontend terminal open. In another terminal on the **frontend machine**:
 
-Orders POST exactly `{accountId, assetId, side, quantity, price}` to `/api/orders`. The UI estimates cash/shares after pending reservations, freezes review details, blocks duplicate clicks, and treats network/5xx failures as ambiguous without automatic retry. Refresh history or reload the account to see settlement results. Tokens remain in memory and are cleared on sign-out/refresh. Authorization and final balance checks remain backend responsibilities.
+```bash
+curl -i http://127.0.0.1:4200/api/actuator/health
+```
 
-News opens publisher sources; it is not an in-app article feed. Market data is illustrative. Watchlists are browser-local. Cash, holdings, order history, and portfolio summaries use the selected account currency. Illustrative market quotes remain USD. Live quotes, account creation, and persisted watchlists require further integration.
+Both health checks should return HTTP 200. Open `http://localhost:4200` on that machine. If either check fails, resolve it before testing login: a connection refusal means nothing is listening at that address; a proxy 502 means the dev server cannot reach Java. Same-origin proxy requests do not require browser CORS exceptions.
 
-## Deposits and withdrawals
+## Route contracts
 
-Manage cash on Overview or Profile. Enter an amount, review it, and explicitly confirm. Demo mode changes demo cash locally. Connected mode uses POST `/api/accounts/{accountId}/deposit` or `/withdraw` with `{amount}` and the in-memory Bearer session. The server identifies the owner from the JWT principal and uses a locked account lookup. Amounts must be positive, finite, and have at most two decimal places. Withdrawals exclude cash reserved for open BUY orders. Success updates the selected account balance; no automatic retry occurs after a network/5xx response. Use Refresh cash balance to check an uncertain result before a new request.
+| Frontend request | Java route | Use |
+| --- | --- | --- |
+| POST `/api/auth/register` | POST `/auth/register` | Register and receive JWT |
+| POST `/api/auth/login` | POST `/auth/login` | Sign in and receive JWT |
+| GET `/api/auth/me` | GET `/auth/me` | Validate restored session / navigation |
+| GET `/api/accounts/mine` | GET `/accounts/mine` | Discover owned accounts |
+| POST `/api/accounts` | POST `/accounts` | Create an additional owned account |
+| POST `/api/accounts/mine/initialize` | POST `/accounts/mine/initialize` | Repair a missing account; repeated calls reuse it |
+| GET `/api/accounts/mine/{id}` | GET `/accounts/mine/{id}` | Load owned account |
+| GET/PUT `/api/users/{id}` | GET/PUT `/users/{id}` | Load/save own profile |
+| GET `/api/users/{id}/balance` | GET `/users/{id}/balance` | Own total balance |
+| POST `/api/accounts/{id}/deposit` or `/withdraw` | Same path without `/api` | Update brokerage cash |
+| GET `/api/holdings/account/{id}` | GET `/holdings/account/{id}` | Owned account holdings |
+| GET `/api/orders/account/{id}` | GET `/orders/account/{id}` | Owned account order history |
+| POST `/api/orders` | POST `/orders` | Submit order for an owned account |
+| GET `/api/assets` | GET `/assets` | Tradable asset catalog |
+| GET `/api/assets/by-symbol/{symbol}` | GET `/assets/by-symbol/{symbol}` | Resolve existing asset ID |
+| GET `/api/market-data/{symbol}/latest` | Same path without `/api` | Collected quote |
+| GET `/api/market-data/{symbol}/history?from=...&to=...` | Same path without `/api` | Collected history |
 
-These operations update brokerage cash balances only. No bank transfer, external payment processing, reconciliation or transfer ledger is connected. The UI states this explicitly. Account discovery uses GET `/api/accounts/mine`; account loading uses GET `/api/accounts/mine/{accountId}`, both scoped to the authenticated principal.
+The proxy does not insert unknown assets. Add assets through your team's database/data-management process. Negative IDs in the shared sample data are supported.
 
-## Validation
+## Authentication and market data
 
-```sh
+Login and registration return `{user, token, tokenType}`. The client restores an unexpired session from browser storage, sends `Authorization: Bearer ...` only to `/api/` routes, and verifies `/auth/me` before entering workspace pages. A backend 401 clears the session and returns to login; 403 reports denied access. Profile updates refresh the stored user. Sign-out removes local session/account selection. This branch has stateless access JWTs and no refresh-token or server token-revocation endpoint; expired sessions require signing in again. Use HTTPS for deployed environments.
+
+Set `BROKERAGE_MARKET_DATA_API_KEY` on **the backend**, and run its market-data poller with Redis available. Quotes/history come from Java's collected data; missing quotes return 503 and are never replaced with a browser-to-provider call. History contains only retained observations, not invented long-range prices. The asset catalog drives the initial market list. Watchlists remain browser-local and scoped to the signed-in user; News opens external reporting links rather than an in-app feed.
+
+For a production build, `ng serve` and its proxy are absent. Your web server must serve `dist/client/browser` and forward `/api/` to Java, removing the prefix. This change configures development connectivity; it does not deploy Nginx.
+
+## Verification
+
+```bash
 npm run format:check
-npm run build
+npm run test:proxy
 npx playwright install chromium
 npm run test:ui
 ```
 
-`CHROMIUM_PATH=/path/to/chromium npm run test:ui` can use an existing browser. Browser tests serve the production build with mocked API responses and never submit real trades. They cover demo buy/sell, validation, review locks, history, lazy routes, browser back/reload, watchlist persistence, authentication headers, exact order payloads, duplicate submission, ambiguous failures, sign-out, and mobile overflow. The cash suite also checks demo/live deposits and withdrawals, single/multiple account discovery, currency, amount validation, duplicate prevention and ambiguous failures. Screenshots are written to ignored `test-results/`. Live backend integration is not exercised by these tests.
+`test:proxy` starts a real Angular dev server and a temporary HTTP upstream, checking nested paths, query strings, request bodies and authorization headers. `test:ui` uses API fixtures to exercise protected page navigation, signup/account initialization, login, session restoration, profile edits, cash changes, quotes/history, order submission, sign-out and 401 handling. `test:trade` and `test:cash` also run this consolidated suite. They do not connect to your live database.
+
+From the repository root, `mvn test` includes `ClientRoutesIntegrationTest`: real Spring MVC routes, JWT validation, method authorization and JSON serialization with mocked business dependencies. On your EC2 deployment, complete a final UI check with your own account: register/login, verify profile/holdings, change brokerage cash, submit an order, and refresh order history. An accepted order can stay pending until the matching engine finds a counterparty.
+
+## Fresh accounts and older frontend processes
+
+Registration saves the user and a zero-balance USD investment account in one transaction. Fresh accounts have no holdings or orders. When an older user has no account, the client calls `/accounts/mine/initialize`; the server locks that user and creates an empty account only if needed. Errors remain visible and can be retried with Refresh accounts. Account cards show a dash until real account data loads. Funding amount and order quantity fields start blank.
+
+The default URL opens `/#/login`. Workspace routes require a verified session. If the UI still shows sample balances or an Explore demo option, stop the old `npm start` process with Ctrl+C, pull `feature/client-backend-integration`, run `npm ci`, restart Angular, and hard-refresh the browser (Ctrl+Shift+R). Rebuild the Java container too, so the initialization endpoint is present. Do not reset database volumes or insert sample data to repair onboarding.

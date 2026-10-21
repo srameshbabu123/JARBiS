@@ -61,6 +61,72 @@ select {
   display: block;
   width: 100%;
 }
+.ticker-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ticker-box input {
+  padding-right: 75px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ticker-badge {
+  position: absolute;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.ticker-badge.live {
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.12);
+}
+.ticker-badge.loading {
+  color: var(--orange);
+  background: var(--orange-wash);
+}
+.ticker-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chips-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.ticker-chip {
+  background: var(--line);
+  color: var(--text);
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ticker-chip:hover {
+  background: var(--purple-wash);
+  border-color: var(--purple);
+}
+.ticker-chip.active {
+  background: var(--purple-wash);
+  color: var(--purple);
+  border-color: var(--purple);
+}
+.positive {
+  color: #00e676;
+}
+.negative {
+  color: #ff5252;
+}
 small {
   display: block;
   color: var(--muted);

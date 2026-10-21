@@ -4,6 +4,7 @@
   ><span class="nav-label">WORKSPACE</span>
   <nav>
     @for(item of vm.nav;track item;let i=$index){<button
+      [routerLink]="'/' + item.toLowerCase().replace(' ', '-')"
       [class.active]="vm.page===item.toLowerCase().replace(' ','-')"
       (click)="vm.go(item)"
     >
@@ -21,7 +22,7 @@
       <span class="avatar">{{vm.profileName.slice(0,1)}}</span
       ><span
         >{{vm.profileName}}<small
-          >{{vm.live?'Connected account':'Personal demo account'}}</small
+          >{{vm.live?'Connected account':'Account loading'}}</small
         ></span
       ><span>⌄</span>
     </button>
@@ -39,8 +40,8 @@
     <div class="header-right">
       <app-theme-toggle />
       <span class="demo"
-        ><span class="dot"></span>{{vm.live?'API connected':'Demo
-        workspace'}}</span
+        ><span class="dot"></span>{{vm.live?'API connected':'Connecting to
+        API'}}</span
       >@if(vm.session.currentUser){<button
         class="outline"
         (click)="vm.signOut()"
@@ -73,8 +74,7 @@
         </p>
       </div>
       <span class="sample-tag"
-        >{{vm.live?'Account data from API':'Illustrative data · not live
-        quotes'}}</span
+        >{{vm.live?'Account data from API':'Account loading'}}</span
       >
     </div>
     @if(vm.error){
@@ -87,8 +87,8 @@
       <app-brand-logo [compact]="true" /><span
         >A clearer view. A confident next step.</span
       ><small
-        >{{vm.live?'Connected account · illustrative market data':'Demo preview
-        · No real trades'}}</small
+        >{{vm.live?'Brokerage data from API':'Account connection
+        pending'}}</small
       >
     </footer>
   </main>

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/users")
+@org.springframework.security.access.prepost.PreAuthorize("#userId == authentication.principal")
 public class UserController {
 	private final UserService userService;
 

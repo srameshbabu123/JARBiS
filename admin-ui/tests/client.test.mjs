@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Api,query,change,csv,escapeHtml,validateDates} from '../client.js';
+import {Api,query,change,csv,escapeHtml} from '../client.mjs';
 test('both independent segment filters reach the API',()=>{
  const p=new URLSearchParams(query({portfolioSize:'UNDER_10K',activityLevel:'ACTIVE',instrumentId:'',currency:'USD'}));
  assert.equal(p.get('portfolioSize'),'UNDER_10K');assert.equal(p.get('activityLevel'),'ACTIVE');assert.equal(p.has('instrumentId'),false);

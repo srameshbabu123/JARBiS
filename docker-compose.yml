@@ -22,29 +22,6 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Separate PostgreSQL instance for OLAP and reporting
-  postgres-olap:
-    image: postgres:15-alpine
-    container_name: jarbis-postgres-olap
-    environment:
-      POSTGRES_DB: jarbis_olap
-      POSTGRES_USER: jarbis_olap_user
-      POSTGRES_PASSWORD: jarbis_olap_password
-    ports:
-      - "8091:5432"
-    volumes:
-      - postgres_olap_data:/var/lib/postgresql/data
-      - ./docker/postgres-olap/init:/docker-entrypoint-initdb.d:ro
-    networks:
-      - jarbis-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    restart: unless-stopped
-
   # Redis market-data store
   redis:
     image: redis:7-alpine
@@ -63,6 +40,29 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+
+  # Separate PostgreSQL instance for OLAP and reporting
+  postgres-olap:
+    image: postgres:15-alpine
+    container_name: jarbis-postgres-olap
+    environment:
+      POSTGRES_DB: jarbis_olap
+      POSTGRES_USER: jarbis_olap_user
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+    ports:
+      - "8091:5432"
+    volumes:
+      - postgres_olap_data:/var/lib/postgresql/data
+      - ./docker/postgres-olap/init/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    networks:
+      - jarbis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarbis_olap_user -d jarbis_olap"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   # Single-node Kafka in KRaft mode for local development
   kafka:
@@ -148,7 +148,7 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
-      ANALYTICS_DB_URL: postgresql://postgres-olap:5432/jarbis_olap
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-postgresql://postgres-olap:5432/jarbis_olap}
       ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       ANALYTICS_OPERATIONS_USER: ${ANALYTICS_OPERATIONS_USER:-}
@@ -175,10 +175,6 @@ services:
       dockerfile: Dockerfile
     container_name: jarbis-backend
     depends_on:
-      postgres:
-        condition: service_healthy
-      postgres-olap:
-        condition: service_healthy
       redis:
         condition: service_healthy
       kafka-init:
@@ -228,6 +224,17 @@ services:
     stdin_open: true
     tty: true
 
+  client:
+    build: ./client
+    ports:
+      - "8095:80"
+    depends_on:
+      jarbis-backend:
+        condition: service_healthy
+    networks:
+      - jarbis-network
+    restart: unless-stopped
+
 networks:
   jarbis-network:
     driver: bridge
@@ -237,7 +244,7 @@ volumes:
     driver: local
   postgres_data:
     driver: local
-  postgres_olap_data:
-    driver: local
   redis_data:
+    driver: local
+  postgres_olap_data:
     driver: local

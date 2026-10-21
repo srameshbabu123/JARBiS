@@ -17,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 public class SecurityConfig {
 
 	@Bean
@@ -43,7 +44,12 @@ public class SecurityConfig {
 				.requestMatchers("/transactions/**").authenticated()
 				// Require auth for all other endpoints
 				.anyRequest().authenticated())
-			.httpBasic(httpBasic -> httpBasic.disable())
+			.exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) -> {
+                response.setStatus(401);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"message\":\"Sign in to access this resource\"}");
+            }))
+            .httpBasic(httpBasic -> httpBasic.disable())
 			.formLogin(form -> form.disable())
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

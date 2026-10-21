@@ -151,7 +151,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
         try:
             start = q.get("from") or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
             return ReportFilter(**{"from": start, "to": end, "instrumentId": q.get("instrumentId"),
-                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "ALL")})
+                                  "segment": q.get("segment"), "portfolioSize": q.get("portfolioSize"), "activityLevel": q.get("activityLevel"), "currency": q.get("currency", "USD"), "dataset": q.get("dataset", "LIVE")})
         except (ValueError, ValidationError):
             raise HTTPException(400, "Invalid reporting filters")
 
@@ -171,16 +171,7 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
                 raise ValueError()
         except ValueError:
             raise HTTPException(400, "Invalid page")
-        extra = {}
-        for key, field in (("clientId", "client_id"), ("orderId", "order_id"), ("tradeId", "trade_id")):
-            if key in request.query_params:
-                try:
-                    value = int(request.query_params[key])
-                    if value <= 0: raise ValueError()
-                    extra[field] = value
-                except ValueError:
-                    raise HTTPException(400, "Use positive numeric client, order and trade IDs")
-        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page, **extra)))
+        return JSONResponse(jsonable_encoder(reports.trades(parse_filter(request, True), page)))
 
     def actor(request):
         return request.state.session["username"]

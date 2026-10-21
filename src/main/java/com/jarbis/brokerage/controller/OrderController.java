@@ -40,6 +40,7 @@ public class OrderController {
 	 * Create a new order
 	 */
 	@PostMapping
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #requestDto.accountId)")
 	public ResponseEntity<Order> createOrder(@RequestBody CreateOrderRequestDto requestDto) {
 		Account account = accountService.getAccountById(requestDto.getAccountId());
 		Asset asset = assetService.getAssetById(requestDto.getAssetId());
@@ -72,6 +73,7 @@ public class OrderController {
 	 * Get all orders for a specific account
 	 */
 	@GetMapping("/account/{accountId}")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsAccount(authentication.principal, #accountId)")
 	public ResponseEntity<List<Order>> getOrdersByAccount(@PathVariable Long accountId) {
 		List<Order> orders = orderService.getOrdersByAccount(accountId);
 		return ResponseEntity.ok(orders);

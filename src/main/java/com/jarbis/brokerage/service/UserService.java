@@ -62,6 +62,9 @@ public class UserService {
 		user.setEmail(email);
 		user.setPasswordHash(passwordEncoder.encode(password));
 
+        // Persist both together: registration must not leave a user without an account.
+        user.addAccount(new Account(com.jarbis.brokerage.enums.AccountType.INVESTMENT,
+                com.jarbis.brokerage.enums.Currency.USD, 0.0, user));
 		return userRepository.save(user);
 	}
 

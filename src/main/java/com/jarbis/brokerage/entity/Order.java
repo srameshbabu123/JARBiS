@@ -60,6 +60,7 @@ public class Order {
 		return asset;
 	}
 
+	@com.fasterxml.jackson.annotation.JsonIgnore
 	public Account getAccount() {
 		return account;
 	}
