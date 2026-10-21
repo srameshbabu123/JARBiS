@@ -52,9 +52,7 @@ export class CashTransferComponent {
     return this.workspace.loadedAccount?.currency ?? "USD";
   }
   protected get unavailable() {
-    return (
-      !!this.workspace.session.currentUser && !this.workspace.loadedAccount
-    );
+    return !this.workspace.session.currentUser || !this.workspace.loadedAccount;
   }
   protected get validation() {
     const amount = this.amount();
@@ -107,16 +105,7 @@ export class CashTransferComponent {
       this.reviewing.set(null);
       return;
     }
-    if (review.accountId === null) {
-      this.workspace.cash =
-        Math.round(
-          (this.workspace.cash +
-            (review.action === "deposit" ? review.amount : -review.amount)) *
-            100,
-        ) / 100;
-      this.complete(review, true);
-      return;
-    }
+    if (review.accountId === null) return;
     this.submitting.set(true);
     this.workspace.cashBusy.set(true);
     this.error.set("");
@@ -132,7 +121,7 @@ export class CashTransferComponent {
       .subscribe({
         next: (account) => {
           this.workspace.applyCash(account);
-          this.complete(review, false);
+          this.complete(review);
         },
         error: (error: HttpErrorResponse) => {
           if (error.status === 0 || error.status >= 500) {
@@ -150,11 +139,11 @@ export class CashTransferComponent {
         },
       });
   }
-  private complete(review: CashReview, demo: boolean) {
+  private complete(review: CashReview) {
     this.reviewing.set(null);
     this.amount.set(null);
     this.receipt.set(
-      `${demo ? "Demo " : ""}${review.action === "deposit" ? "Deposit" : "Withdrawal"} completed. Your cash balance has been updated.`,
+      `${review.action === "deposit" ? "Deposit" : "Withdrawal"} completed. Your cash balance has been updated.`,
     );
   }
 }

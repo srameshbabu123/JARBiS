@@ -22,9 +22,9 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   const user = { id: -1001, fullName: 'Integration User', email: 'integration@example.test' };
   const token = ['test', Buffer.from(JSON.stringify({ exp: Math.floor(Date.now()/1000) + 3600 })).toString('base64url'), 'signature'].join('.');
-  const account = { id: -1101, ownerId: user.id, balance: 1000, accountType: 'INVESTMENT', currency: 'USD' };
+  const account = { id: -1101, ownerId: user.id, balance: 0, accountType: 'INVESTMENT', currency: 'USD' };
   const orders = [];
-  let hasAccount = false, expire = false, posts = 0;
+  let hasAccount = false, expire = false, posts = 0, failInitialization = false;
   const seen = new Set();
   await page.route('**/api/**', async route => {
     const req = route.request(), path = new URL(req.url()).pathname;
@@ -40,8 +40,10 @@ try {
         if (req.method() === 'PUT') Object.assign(user, req.postDataJSON());
         body = user;
       } else if (path === '/api/accounts/mine') body = hasAccount ? [account] : [];
-      else if (path === '/api/accounts' && req.method() === 'POST') {
-        assert.equal(req.postDataJSON().userId, user.id); hasAccount = true; body = account;
+      else if (path === '/api/accounts/mine/initialize' && req.method() === 'POST') {
+        assert.deepEqual(req.postDataJSON(), {});
+        if (failInitialization) return route.fulfill({ status: 503, json: { message: 'Account initialization unavailable' } });
+        hasAccount = true; body = account;
       } else if (path === '/api/accounts/mine/-1101') body = account;
       else if (path === '/api/holdings/account/-1101') body = [];
       else if (path === '/api/orders/account/-1101') body = orders;
@@ -61,6 +63,8 @@ try {
     await route.fulfill({ json: body });
   });
   const origin = `http://127.0.0.1:${server.address().port}`;
+  await page.goto(origin + '/');
+  await page.waitForURL('**/#/login');
   await page.goto(origin + '/#/trade');
   await page.getByRole('heading', { name: 'Welcome back.' }).waitFor();
   await page.getByRole('button', { name: 'New here? Create an account' }).click();
@@ -69,9 +73,12 @@ try {
   await page.getByLabel('Password', { exact: true }).fill(randomUUID());
   await page.getByRole('button', { name: 'Create account →', exact: true }).click();
   await page.getByText('Loaded account -1101 · USD').waitFor();
+  assert.equal(await page.getByLabel('Cash amount').inputValue(), '');
+  assert.equal(account.balance, 0);
+  await page.getByText('No holdings in this account yet.').waitFor();
   for (const [action, button] of [['deposit', 'Review deposit'], ['withdraw', 'Review withdrawal']]) {
     await page.getByRole('button', { name: action === 'deposit' ? 'Deposit' : 'Withdraw', exact: true }).click();
-    await page.getByLabel('Cash amount').fill('25');
+    await page.getByLabel('Cash amount').fill(action === 'deposit' ? '1000' : '25');
     await page.getByRole('button', { name: button, exact: true }).click();
     await page.getByRole('button', { name: 'Confirm cash change', exact: true }).click();
     await page.getByRole('status').filter({ hasText: action === 'deposit' ? /Deposit completed/i : /Withdrawal completed/i }).waitFor();
@@ -87,6 +94,7 @@ try {
     await page.waitForURL('**/#/' + name.toLowerCase().replace(' ', '-'));
   }
   await page.getByLabel('Stock ticker symbol').fill('AAPL');
+  assert.equal(await page.getByLabel('Quantity', { exact: true }).inputValue(), '');
   await page.getByLabel('Quantity', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Review buy order' }).click();
   await page.getByRole('button', { name: 'Submit order', exact: true }).dblclick();
@@ -102,7 +110,18 @@ try {
   await page.locator('nav button').filter({ hasText: 'Trade' }).click();
   await page.getByRole('heading', { name: 'Welcome back.' }).waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem('velocity-session')), null);
-  for (const endpoint of ['POST /api/auth/register', 'POST /api/auth/login', 'GET /api/auth/me', 'POST /api/accounts', 'GET /api/accounts/mine/-1101', 'GET /api/holdings/account/-1101', 'GET /api/orders/account/-1101', 'POST /api/accounts/-1101/deposit', 'POST /api/accounts/-1101/withdraw', 'PUT /api/users/-1001', 'GET /api/assets', 'GET /api/assets/by-symbol/AAPL', 'GET /api/market-data/AAPL/latest', 'GET /api/market-data/AAPL/history', 'POST /api/orders']) assert(seen.has(endpoint), endpoint);
+  // An initialization failure must leave an unavailable account, never demo cash.
+  expire = false; hasAccount = false; failInitialization = true;
+  await page.getByLabel('Email address').fill(user.email);
+  await page.getByLabel('Password', { exact: true }).fill(randomUUID());
+  await page.getByRole('button', { name: 'Sign in →', exact: true }).click();
+  await page.getByText('Account initialization unavailable', { exact: true }).waitFor();
+  assert.equal(await page.locator('.hero-stat h2').innerText(), '—');
+  assert.equal(await page.getByLabel('Cash amount').count(), 0);
+  failInitialization = false;
+  await page.getByRole('button', { name: 'Refresh accounts', exact: true }).click();
+  await page.getByText('Loaded account -1101 · USD').waitFor();
+  for (const endpoint of ['POST /api/auth/register', 'POST /api/auth/login', 'GET /api/auth/me', 'POST /api/accounts/mine/initialize', 'GET /api/accounts/mine/-1101', 'GET /api/holdings/account/-1101', 'GET /api/orders/account/-1101', 'POST /api/accounts/-1101/deposit', 'POST /api/accounts/-1101/withdraw', 'PUT /api/users/-1001', 'GET /api/assets', 'GET /api/assets/by-symbol/AAPL', 'GET /api/market-data/AAPL/latest', 'GET /api/market-data/AAPL/history', 'POST /api/orders']) assert(seen.has(endpoint), endpoint);
   assert.deepEqual(errors, []);
   console.log('PASS: authenticated UI routes, signup/account initialization, login, persisted session, profile, cash, quotes, history, negative baseline IDs, order submission, sign-out and 401 redirect (mock API).');
 } finally { await browser.close(); server.close(); }

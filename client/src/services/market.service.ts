@@ -7,7 +7,7 @@ import {
   DestroyRef,
 } from "@angular/core";
 import { Router } from "@angular/router";
-import { MarketStock } from "../data/sample-market";
+import { MarketStock } from "../models/market.models";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { SessionService } from "./session.service";
 import { MarketDataEvent } from "../models/brokerage.models";
@@ -129,7 +129,8 @@ export class MarketService {
     this.refreshHistory(this.selected.symbol, value);
   }
 
-  private readonly watchedState = signal<string[]>(this.loadWatchlist());
+  private readonly watchedState = signal<string[]>([]);
+  private watchlistOwner: number | null = null;
   get watched() {
     return this.watchedState();
   }
@@ -140,6 +141,13 @@ export class MarketService {
   constructor() {
     effect(() => {
       const token = this.session.token;
+      const userId = this.session.currentUser?.id ?? null;
+      untracked(() => {
+        if (userId !== this.watchlistOwner) {
+          this.watchlistOwner = userId;
+          this.watched = userId === null ? [] : this.loadWatchlist();
+        }
+      });
       if (token) {
         untracked(() => {
           this.loadAssets();
@@ -182,7 +190,10 @@ export class MarketService {
 
   loadWatchlist() {
     try {
-      const v = JSON.parse(localStorage.getItem("velocity-watchlist") || "[]");
+      const v = JSON.parse(
+        localStorage.getItem(`velocity-watchlist:${this.watchlistOwner}`) ||
+          "[]",
+      );
       return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
     } catch {
       return [];
@@ -205,7 +216,10 @@ export class MarketService {
       ? this.watched.filter((x) => x !== s)
       : [...this.watched, s];
     try {
-      localStorage.setItem("velocity-watchlist", JSON.stringify(this.watched));
+      localStorage.setItem(
+        `velocity-watchlist:${this.watchlistOwner}`,
+        JSON.stringify(this.watched),
+      );
     } catch {
       /* Keep the in-memory watchlist if browser storage is unavailable. */
     }

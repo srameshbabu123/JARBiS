@@ -5,7 +5,7 @@
         <span class="eyebrow">MAKE YOUR NEXT MOVE</span>
         <h3>Order ticket</h3>
       </div>
-      <span class="mode">{{connected?'API order':'Demo order'}}</span>
+      <span class="mode">{{connected?'API order':'Account unavailable'}}</span>
     </div>
     <div class="side-picker" role="group" aria-label="Order side">
       <button
@@ -172,8 +172,8 @@
       </p>
       <small
         >{{connected?'Submitting creates an order; matching and settlement
-        determine fills.':'This creates a local pending demo order. No real
-        trade is sent.'}}</small
+        determine fills.':'Load your brokerage account before submitting an
+        order. No trade is sent.'}}</small
       >
       <div class="review-actions">
         <button class="outline" [disabled]="submitting" (click)="edit()">
@@ -183,8 +183,8 @@
           [disabled]="submitting||uncertain"
           (click)="confirm()"
         >
-          {{submitting?'Submitting…':connected?'Submit order':'Place demo
-          order'}}
+          {{submitting?'Submitting…':connected?'Submit order':'Load an
+          account'}}
         </button>
       </div>
     </div>
@@ -211,7 +211,7 @@
   <div>
     <section class="panel account-panel">
       <span class="eyebrow">YOUR TRADING ACCOUNT</span>
-      <h3>{{connected?'Account #'+account!.id:'Demo brokerage'}}</h3>
+      <h3>{{connected?'Account #'+account!.id:'No account loaded'}}</h3>
       <dl>
         <div>
           <dt>Cash balance</dt>

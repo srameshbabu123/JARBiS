@@ -1,7 +1,16 @@
 import { toSignal } from "@angular/core/rxjs-interop";
 import { Injectable, inject, signal } from "@angular/core";
 import { Router, NavigationEnd } from "@angular/router";
-import { forkJoin, filter, map, Subject, takeUntil, finalize } from "rxjs";
+import {
+  forkJoin,
+  filter,
+  map,
+  Subject,
+  takeUntil,
+  finalize,
+  switchMap,
+  of,
+} from "rxjs";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { Holding, Order, Account } from "../models/brokerage.models";
 import { SessionService } from "./session.service";
@@ -148,46 +157,36 @@ export class WorkspaceService {
     this.api
       .myAccounts()
       .pipe(
+        switchMap((accounts) =>
+          accounts.length
+            ? of(accounts)
+            : this.api.initializeMyAccount().pipe(map((account) => [account])),
+        ),
         takeUntil(this.resetRequests),
         finalize(() => this.accountsLoading.set(false)),
       )
       .subscribe({
         next: (accounts) => {
           this.accounts.set(accounts);
-          if (accounts.length > 0) {
-            let targetId = accounts[0].id;
-            try {
-              const savedAccId = localStorage.getItem("velocity-account-id");
-              const matched = accounts.find((a) => a.id === Number(savedAccId));
-              if (matched) targetId = matched.id;
-            } catch {}
-            this.selectAccount(targetId);
-          } else {
-            const user = this.session.currentUser;
-            if (user) {
-              this.api
-                .createAccount({
-                  userId: user.id,
-                  accountType: "INVESTMENT",
-                  currency: "USD",
-                })
-                .pipe(takeUntil(this.resetRequests))
-                .subscribe({
-                  next: (acc) => {
-                    this.accounts.set([acc]);
-                    this.selectAccount(acc.id);
-                  },
-                  error: () => {
-                    this.error =
-                      "Could not load or initialize your brokerage account.";
-                  },
-                });
-            }
-          }
+          let targetId = accounts[0].id;
+          try {
+            const savedId = Number(localStorage.getItem("velocity-account-id"));
+            if (accounts.some((account) => account.id === savedId))
+              targetId = savedId;
+          } catch {}
+          this.selectAccount(targetId);
         },
-        error: () =>
-          (this.error =
-            "Could not load your accounts. Please refresh your account list."),
+        error: (error) => {
+          this.loadedAccount = null;
+          this.live = false;
+          this.cash = 0;
+          this.holdings = [];
+          this.orders = [];
+          this.error =
+            typeof error.error?.message === "string"
+              ? error.error.message
+              : "Could not initialize your brokerage account. Refresh accounts to retry.";
+        },
       });
   }
   selectAccount(id: number) {
@@ -284,6 +283,11 @@ export class WorkspaceService {
       this.error = "Choose one of your brokerage accounts.";
       return;
     }
+    this.loadedAccount = null;
+    this.live = false;
+    this.cash = 0;
+    this.holdings = [];
+    this.orders = [];
     this.busy = true;
     forkJoin({
       user: this.api.user(this.userId),

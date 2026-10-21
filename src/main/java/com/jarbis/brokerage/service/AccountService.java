@@ -45,6 +45,17 @@ public class AccountService {
 		this.holdingService = holdingService;
 	}
 
+    /** Repair older logins without an account; concurrent callers reuse the same account. */
+    public Account initializeMyAccount(Long userId) {
+        User user = userRepository.findForAccountInitialization(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        List<Account> existing = accountRepository.findByOwnerId(userId);
+        if (!existing.isEmpty()) return existing.get(0);
+        Account account = new Account(AccountType.INVESTMENT, Currency.USD, 0.0, user);
+        user.addAccount(account);
+        return accountRepository.save(account);
+    }
+
 	// ==================== CRUD Operations ====================
 
 	/**

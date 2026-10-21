@@ -66,6 +66,7 @@ class ClientRoutesIntegrationTest {
         bearer = "Bearer " + jwt.generateToken(user);
         when(users.getUserById(-1001L)).thenReturn(user);
         when(accounts.getAccountsByUser(-1001L)).thenReturn(List.of(account));
+        when(accounts.initializeMyAccount(-1001L)).thenReturn(account);
         when(accounts.getAccountByUser(-1001L, -1101L)).thenReturn(account);
         when(accounts.getAccountById(-1101L)).thenReturn(account);
         when(accountRepository.findById(-1101L)).thenReturn(Optional.of(account));
@@ -77,6 +78,9 @@ class ClientRoutesIntegrationTest {
 
     @Test void clientReadRoutesRequireJwtAndReturnExpectedShapes() throws Exception {
         mvc.perform(get("/accounts/mine")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/accounts/mine/initialize")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/accounts/mine/initialize").header("Authorization", bearer))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.ownerId").value(-1001));
         mvc.perform(get("/auth/me").header("Authorization", "Bearer invalid")).andExpect(status().isUnauthorized());
         mvc.perform(get("/auth/me").header("Authorization", bearer)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(-1001));
         mvc.perform(get("/users/-1001").header("Authorization", bearer)).andExpect(status().isOk()).andExpect(jsonPath("$.passwordHash").doesNotExist());

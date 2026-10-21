@@ -28,6 +28,11 @@ public class AccountController {
 		this.accountService = accountService;
 	}
 
+    @PostMapping("/mine/initialize")
+    public ResponseEntity<AccountResponseDto> initializeMyAccount(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(AccountResponseDto.fromAccount(accountService.initializeMyAccount(userId)));
+    }
+
 	@GetMapping("/mine")
 	public ResponseEntity<List<AccountResponseDto>> getMyAccounts(@AuthenticationPrincipal Long userId) {
 		return ResponseEntity.ok(accountService.getAccountsByUser(userId).stream()

@@ -57,6 +57,10 @@ export class BrokerageApiService {
     return this.http.post<Account>("/api/accounts", body);
   }
 
+  initializeMyAccount() {
+    return this.http.post<Account>("/api/accounts/mine/initialize", {});
+  }
+
   myAccounts() {
     return this.http.get<Account[]>("/api/accounts/mine");
   }

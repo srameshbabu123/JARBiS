@@ -51,7 +51,7 @@ export class TradeComponent implements OnInit, OnChanges {
   side: "BUY" | "SELL" = "BUY";
   ticker = "";
   assetId: number | null = null;
-  quantity: number | null = 1;
+  quantity: number | null = null;
   price: number | null = null;
   reviewing: CreateOrder | null = null;
   submitting = false;
