@@ -6,12 +6,14 @@ import com.jarbis.brokerage.marketdata.MarketDataEvent;
 import com.jarbis.brokerage.marketdata.MarketDataEventTimestamp;
 import com.jarbis.brokerage.marketdata.MarketDataProperties;
 import com.jarbis.brokerage.marketdata.MarketDataRedisKey;
+import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Set;
 
 @Service
 public class RedisMarketDataService {
@@ -57,8 +59,39 @@ public class RedisMarketDataService {
 		redisTemplate.opsForZSet().removeRangeByScore(key, Double.NEGATIVE_INFINITY, cutoff - 1);
 	}
 
+	public long purgeSnapshotsBefore(Instant cutoff) {
+		if (cutoff == null) {
+			throw new IllegalArgumentException("Market data cleanup cutoff must not be null");
+		}
+
+		Set<String> keys = redisTemplate.keys(marketDataProperties.getRedis().getKeyPrefix() + "*");
+		if (keys == null || keys.isEmpty()) {
+			return 0L;
+		}
+
+		long removed = 0L;
+		double maxScore = cutoff.toEpochMilli() - 1;
+		for (String key : keys) {
+			if (key == null || isCandlesCacheKey(key)) {
+				continue;
+			}
+			if (redisTemplate.type(key) != DataType.ZSET) {
+				continue;
+			}
+
+			Long deleted = redisTemplate.opsForZSet().removeRangeByScore(key, Double.NEGATIVE_INFINITY, maxScore);
+			removed += deleted != null ? deleted : 0L;
+		}
+
+		return removed;
+	}
+
 	private String getKey(String symbol) {
 		return MarketDataRedisKey.forSymbol(marketDataProperties.getRedis().getKeyPrefix(), symbol);
+	}
+
+	private boolean isCandlesCacheKey(String key) {
+		return key.startsWith("market-data:candles:");
 	}
 
 }

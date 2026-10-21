@@ -2,6 +2,8 @@ package com.jarbis.brokerage.controller;
 
 import com.jarbis.brokerage.exception.MarketDataUnavailableException;
 import com.jarbis.brokerage.marketdata.MarketDataEvent;
+import com.jarbis.brokerage.marketdata.MarketHistoryRange;
+import com.jarbis.brokerage.service.MarketDataHistoryRoutingService;
 import com.jarbis.brokerage.service.RedisMarketDataHistoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,12 +24,14 @@ import static org.mockito.Mockito.when;
 class MarketDataControllerTest {
 
 	private RedisMarketDataHistoryService marketDataHistoryService;
+	private MarketDataHistoryRoutingService marketDataHistoryRoutingService;
 	private MarketDataController marketDataController;
 
 	@BeforeEach
 	void setUp() {
 		marketDataHistoryService = mock(RedisMarketDataHistoryService.class);
-		marketDataController = new MarketDataController(marketDataHistoryService);
+		marketDataHistoryRoutingService = mock(MarketDataHistoryRoutingService.class);
+		marketDataController = new MarketDataController(marketDataHistoryService, marketDataHistoryRoutingService);
 	}
 
 	@Test
@@ -53,15 +57,21 @@ class MarketDataControllerTest {
 	@Test
 	@DisplayName("Should return historical market-data events")
 	void getHistoryReturnsEvents() {
-		Instant from = Instant.parse("2026-10-13T19:00:00Z");
 		Instant to = Instant.parse("2026-10-13T20:00:00Z");
 		List<MarketDataEvent> events = List.of(event("AAPL"));
-		when(marketDataHistoryService.getHistory("AAPL", from, to)).thenReturn(events);
+		when(marketDataHistoryRoutingService.getHistory("AAPL", MarketHistoryRange.ONE_WEEK, to)).thenReturn(events);
 
-		ResponseEntity<List<MarketDataEvent>> response = marketDataController.getHistory("AAPL", from, to);
+		ResponseEntity<List<MarketDataEvent>> response = marketDataController.getHistory("AAPL", "1w", to);
 
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		assertEquals(events, response.getBody());
+	}
+
+	@Test
+	@DisplayName("Should reject unsupported market-data ranges")
+	void getHistoryRejectsUnsupportedRange() {
+		assertThrows(IllegalArgumentException.class,
+				() -> marketDataController.getHistory("AAPL", "10y", Instant.parse("2026-10-13T20:00:00Z")));
 	}
 
 	private MarketDataEvent event(String symbol) {

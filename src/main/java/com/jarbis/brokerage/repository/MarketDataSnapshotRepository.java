@@ -11,4 +11,6 @@ import java.util.List;
 public interface MarketDataSnapshotRepository extends JpaRepository<MarketDataSnapshot, Long> {
 
 	List<MarketDataSnapshot> findByScoreTimestampBetweenOrderByScoreTimestampAsc(Instant from, Instant to);
+
+	long deleteByScoreTimestampBefore(Instant cutoff);
 }
