@@ -56,6 +56,15 @@ public class MarketDataPostgresService {
 				.toList();
 	}
 
+	@Transactional
+	public long purgeSnapshotsBefore(Instant cutoff) {
+		if (cutoff == null) {
+			throw new IllegalArgumentException("Market data cleanup cutoff must not be null");
+		}
+
+		return snapshotRepository.deleteByScoreTimestampBefore(cutoff);
+	}
+
 	private MarketDataEvent deserialize(String payload) {
 		try {
 			return objectMapper.readValue(payload, MarketDataEvent.class);

@@ -2,7 +2,7 @@ spring.config.import=optional:file:.env[.properties]
 spring.application.name=trading-platform
 
 # PostgreSQL Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/jarbis_db
+spring.datasource.url=jdbc:postgresql://10.18.67.77:8090/jarbis_db
 spring.datasource.driverClassName=org.postgresql.Driver
 spring.datasource.username=jarbis_user
 spring.datasource.password=jarbis_password
@@ -31,8 +31,12 @@ spring.data.redis.port=6379
 # Fauxnance market data configuration
 brokerage.market-data.base-url=https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1
 brokerage.market-data.api-key=${BROKERAGE_MARKET_DATA_API_KEY:}
+brokerage.market-data.polling-api-key=${BROKERAGE_MARKET_DATA_POLLING_API_KEY:${BROKERAGE_MARKET_DATA_API_KEY:}}
+brokerage.market-data.candles-api-key=${BROKERAGE_MARKET_DATA_CANDLES_API_KEY:${BROKERAGE_MARKET_DATA_API_KEY:}}
 brokerage.market-data.batch-size=25
 brokerage.market-data.polling.enabled=false
-brokerage.market-data.polling.fixed-delay-ms=15000
+brokerage.market-data.polling.fixed-delay-ms=1800000
 brokerage.market-data.redis.key-prefix=market-data:
 brokerage.market-data.redis.retention-window=7d
+brokerage.market-data.cleanup.fixed-delay-ms=3600000
+brokerage.market-data.cleanup.initial-delay-ms=300000

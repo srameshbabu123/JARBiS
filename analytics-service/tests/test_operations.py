@@ -64,6 +64,7 @@ def test_operations_role_and_csrf_boundary():
         assert client.get("/admin/analytics/trades").status_code == 403
         token=sign_in(client,"david","test-only")
         assert client.get("/session/me").json()["roles"] == ["ROLE_OPERATIONS"]
+        assert client.get('/admin/analytics/trades?from=2026-01-01&to=2026-02-01&clientId=-1').status_code==400
         assert client.get("/admin/investigations/orders/1/timeline").json()["actor"] == "david"
         from uuid import uuid4
         body={"requestId":str(uuid4()),"orderId":1,"category":"OTHER","reason":"Client disputes this order"}

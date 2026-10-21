@@ -16,14 +16,17 @@ public class SettlementEngineService {
 	private final TransactionService transactionService;
 	private final AccountService accountService;
 	private final OrderBookService orderBookService;
+	private final com.jarbis.brokerage.messaging.OrderAuditWriter audit;
 
 	@Autowired
 	public SettlementEngineService(OrderService orderService, TransactionService transactionService,
-			AccountService accountService, OrderBookService orderBookService) {
+			AccountService accountService, OrderBookService orderBookService,
+			com.jarbis.brokerage.messaging.OrderAuditWriter audit) {
 		this.orderService = orderService;
 		this.transactionService = transactionService;
 		this.accountService = accountService;
 		this.orderBookService = orderBookService;
+		this.audit = audit;
 	}
 
 	@Transactional
@@ -56,10 +59,14 @@ public class SettlementEngineService {
 			double matchedQuantity = Math.min(bestBid.getRemainingQuantity(), bestAsk.getRemainingQuantity());
 			double executionPrice = determineExecutionPrice(bestBid, bestAsk);
 
+			var buyerBefore=audit.snapshot(bestBid);
+			var sellerBefore=audit.snapshot(bestAsk);
 			Transaction transaction = transactionService.createPendingTransaction(bestBid.getAsset(), matchedQuantity,
 					executionPrice, bestBid, bestAsk);
 
 			try {
+                var pricing=java.util.Map.<String,Object>of("transactionId",transaction.getId(),"executionPrice",executionPrice,"matchedQuantity",matchedQuantity,"priceBasis","RESTING_ORDER_PRICE","marketQuoteRecorded",false);
+                audit.record(bestBid,"EXECUTION_PRICED",pricing);audit.record(bestAsk,"EXECUTION_PRICED",pricing);
 				accountService.buyAsset(bestBid.getAccount().getId(), bestBid.getAsset(), matchedQuantity, executionPrice);
 				accountService.sellAsset(bestAsk.getAccount().getId(), bestAsk.getAsset(), matchedQuantity, executionPrice);
 
@@ -77,8 +84,10 @@ public class SettlementEngineService {
 				}
 
 				transactionService.completeTransaction(transaction.getId());
+                audit.record(bestBid,"FILL_RECORDED",java.util.Map.of("transactionId",transaction.getId(),"before",buyerBefore,"after",audit.snapshot(bestBid),"executionPrice",executionPrice,"filledQuantity",matchedQuantity));
+                audit.record(bestAsk,"FILL_RECORDED",java.util.Map.of("transactionId",transaction.getId(),"before",sellerBefore,"after",audit.snapshot(bestAsk),"executionPrice",executionPrice,"filledQuantity",matchedQuantity));
 			} catch (RuntimeException ex) {
-				transactionService.failTransaction(transaction.getId());
+				audit.failureAfterRollback(java.util.List.of(buyerBefore,sellerBefore),ex.getClass().getSimpleName(),java.util.Map.of("attemptedExecutionPrice",executionPrice,"attemptedQuantity",matchedQuantity,"priceBasis","RESTING_ORDER_PRICE","marketQuoteRecorded",false));
 				throw new TransactionExecutionException(
 						"Settlement failed while matching orders " + bestBid.getId() + " and " + bestAsk.getId(), ex);
 			}

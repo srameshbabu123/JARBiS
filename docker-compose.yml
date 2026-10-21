@@ -123,8 +123,27 @@ services:
       - jarbis-network
     restart: unless-stopped
 
+  # Apply OLAP SQL additions on each up, even when the API image is unchanged.
+  olap-migrate:
+    image: jarbis-analytics:local
+    build: ./analytics-service
+    command: ["python", "-m", "analytics.migrate"]
+    environment:
+      ANALYTICS_DB_URL: postgresql://postgres-olap:5432/jarbis_olap
+      ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
+    volumes:
+      - ./analytics-service/migrations:/app/migrations:ro
+    depends_on:
+      postgres-olap:
+        condition: service_healthy
+    networks:
+      - jarbis-network
+    restart: "no"
+
   analytics:
     profiles: ["analytics"]
+    image: jarbis-analytics:local
     build: ./analytics-service
     ports:
       - "127.0.0.1:8082:8082"
@@ -138,7 +157,11 @@ services:
       ANALYTICS_ADMIN_PASSWORD_HASH: ${ANALYTICS_ADMIN_PASSWORD_HASH:-}
       ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
       ANALYTICS_SECURE_COOKIE: ${ANALYTICS_SECURE_COOKIE:-false}
+    volumes:
+      - ./analytics-service/migrations:/app/migrations:ro
     depends_on:
+      olap-migrate:
+        condition: service_completed_successfully
       postgres-olap:
         condition: service_healthy
     networks:
@@ -158,24 +181,31 @@ services:
         condition: service_completed_successfully
     environment:
       SERVER_PORT: 8080
-      BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-false}
-      BROKERAGE_ANALYTICS_DB_URL: ${BROKERAGE_ANALYTICS_DB_URL:-jdbc:postgresql://postgres-olap:5432/jarbis_olap}
+      BROKERAGE_ANALYTICS_ENABLED: ${BROKERAGE_ANALYTICS_ENABLED:-true}
+      BROKERAGE_ANALYTICS_DB_URL: jdbc:postgresql://postgres-olap:5432/jarbis_olap
       BROKERAGE_ANALYTICS_DB_USER: ${ANALYTICS_DB_USER:-jarbis_olap_user}
       BROKERAGE_ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?Set ANALYTICS_DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      # The backend uses the shared development database; no local fallback.
-      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:?Set BROKERAGE_DB_URL}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${SPRING_KAFKA_CONSUMER_GROUP_ID:-jarbis-backend}
+      BROKERAGE_KAFKA_TOPICS_ORDER_SUBMITTED: ${BROKERAGE_KAFKA_TOPICS_ORDER_SUBMITTED:-orders.submitted}
+      # Defaults to local OLTP container; can be overridden via BROKERAGE_DB_URL.
+      SPRING_DATASOURCE_URL: ${BROKERAGE_DB_URL:-jdbc:postgresql://postgres:5432/jarbis_db}
       SPRING_DATASOURCE_USERNAME: jarbis_user
       SPRING_DATASOURCE_PASSWORD: ${BROKERAGE_DB_PASSWORD:?Set BROKERAGE_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_JPA_SHOW_SQL: 'false'
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      BROKERAGE_MARKET_DATA_POLLING_ENABLED: "true"
-      BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY}
+      # Redis is accessed through services; repositories belong to JPA/PostgreSQL.
+      SPRING_DATA_REDIS_REPOSITORIES_ENABLED: "false"
+      BROKERAGE_MARKET_DATA_POLLING_ENABLED: ${BROKERAGE_MARKET_DATA_POLLING_ENABLED:-true}
+      BROKERAGE_MARKET_DATA_BASE_URL: ${BROKERAGE_MARKET_DATA_BASE_URL:-https://y4t9nq2bqf.execute-api.eu-west-2.amazonaws.com/v1}
+      BROKERAGE_MARKET_DATA_API_KEY: ${BROKERAGE_MARKET_DATA_API_KEY:-}
+      BROKERAGE_MARKET_DATA_POLLING_API_KEY: ${BROKERAGE_MARKET_DATA_POLLING_API_KEY:-${BROKERAGE_MARKET_DATA_API_KEY:-}}
+      BROKERAGE_MARKET_DATA_CANDLES_API_KEY: ${BROKERAGE_MARKET_DATA_CANDLES_API_KEY:-${BROKERAGE_MARKET_DATA_API_KEY2:-${BROKERAGE_MARKET_DATA_API_KEY:-}}}
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_JARBIS_BROKERAGE: INFO
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}

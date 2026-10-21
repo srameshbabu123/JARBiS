@@ -20,3 +20,27 @@ test('conflict errors remain visible for versioned case updates',async()=>{
  const api=new Api(async()=>({ok:false,status:409,json:async()=>({detail:'Dispute changed; reload before updating'})}));
  await assert.rejects(api.request('/admin/disputes/id',{method:'PATCH',body:{expectedVersion:1}}),e=>e.status===409&&e.message.includes('reload'));
 });
+
+// A failed module load must never fall back to putting credentials in a GET URL.
+test('login defaults to POST and waits for JavaScript initialization',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/<form id="login-form"[^>]*method="post"[^>]*action="\/login"/);
+ assert.match(html,/<button id="sign-in"[^>]*disabled/);
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ assert.match(app,/from '\.\/client\.js'/);
+});
+
+test('date validation explains oversized historical ranges before a request',()=>{
+ assert.doesNotThrow(()=>validateDates('2026-01-01','2026-12-31'));
+ assert.throws(()=>validateDates('2024-03-01','2026-10-16'),/367 days/);
+ assert.throws(()=>validateDates('2026-10-16','2026-10-01'),/on or after/);
+});
+
+test('dashboard does not ask users to distinguish OLAP data sources',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/name="dataset"/);
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ assert.doesNotMatch(app,/elements\.dataset/);
+});

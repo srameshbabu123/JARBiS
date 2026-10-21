@@ -36,3 +36,13 @@ src/main/resources/application-*.properties
 src/test/resources/application-test.properties
 
 
+
+# Analytics configuration and build output
+analytics-service/target/
+
+# Python analytics
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+analytics-service/application-local.properties

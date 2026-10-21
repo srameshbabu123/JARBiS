@@ -51,6 +51,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 		// Skip filter for public endpoints
 		String path = request.getRequestURI();
-		return path.equals("/actuator/health") || path.equals("/auth/register") || path.equals("/auth/login");
+		return path.startsWith("/actuator") || path.equals("/auth/register") || path.equals("/auth/login")
+				|| path.equals("/auth/refresh") || path.equals("/auth/logout")
+				|| path.contains("health");
 	}
 }

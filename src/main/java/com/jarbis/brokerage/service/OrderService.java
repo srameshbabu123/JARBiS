@@ -34,15 +34,18 @@ public class OrderService {
 	private final AccountService accountService;
 	private final OrderSubmittedPublisher orderSubmittedPublisher;
 	private final OrderBookService orderBookService;
+	private final com.jarbis.brokerage.messaging.OrderAuditWriter audit;
 
 	@Autowired
 	public OrderService(OrderRepository orderRepository, UserService userService, AccountService accountService,
-			OrderSubmittedPublisher orderSubmittedPublisher, OrderBookService orderBookService) {
+			OrderSubmittedPublisher orderSubmittedPublisher, OrderBookService orderBookService,
+			com.jarbis.brokerage.messaging.OrderAuditWriter audit) {
 		this.orderRepository = orderRepository;
 		this.userService = userService;
 		this.accountService = accountService;
 		this.orderSubmittedPublisher = orderSubmittedPublisher;
 		this.orderBookService = orderBookService;
+		this.audit = audit;
 	}
 
 	// ==================== Order Creation ====================
@@ -95,6 +98,7 @@ public class OrderService {
 		persistedAccount.addOrder(order);
 
 		Order savedOrder = orderRepository.save(order);
+		audit.record(savedOrder,"ORDER_SUBMITTED",java.util.Map.of("checksPerformed",java.util.List.of("ASSET_PRESENT","ACCOUNT_PRESENT","POSITIVE_QUANTITY","POSITIVE_ORDER_PRICE"),"fullTradingRuleValidation",false));
 		if (status == OrderStatus.PENDING) {
 			publishSubmittedOrderAfterCommit(savedOrder.getId());
 		}
@@ -273,8 +277,10 @@ public class OrderService {
 
 		Order order = getOrderById(orderId);
 		validateStatusTransition(order.getStatus(), newStatus);
+		String beforeStatus=order.getStatus().name();
 		order.setStatus(newStatus);
 		Order savedOrder = orderRepository.save(order);
+		audit.record(savedOrder,"ORDER_STATUS_CHANGED",java.util.Map.of("previousStatus",beforeStatus));
 		syncOrderBookAfterCommit(savedOrder);
 		return savedOrder;
 	}
@@ -442,6 +448,7 @@ public class OrderService {
 		if (order.getStatus() == OrderStatus.COMPLETED) {
 			throw new InvalidOrderStateException("Cannot delete a completed order");
 		}
+		audit.record(order,"ORDER_DELETION_REQUESTED",java.util.Map.of("evidenceRetained",true));
 		orderRepository.delete(order);
 		removeOrderFromBookAfterCommit(order);
 	}
@@ -467,6 +474,7 @@ public class OrderService {
 			throw new OrderExecutionException("Order is not in PENDING status and cannot be executed");
 		}
 
+		var beforeExecution=audit.snapshot(order);
 		Long accountId = order.getAccount().getId();
 		Asset asset = order.getAsset();
 		Double quantity = order.getRemainingQuantity();
@@ -482,5 +490,6 @@ public class OrderService {
 
 		order.setRemainingQuantity(0.0);
 		completeOrder(orderId);
+		audit.record(order,"DIRECT_EXECUTION_RECORDED",java.util.Map.of("before",beforeExecution,"after",audit.snapshot(order),"marketQuoteRecorded",false,"priceBasis","ORDER_PRICE","matchedTradeRecord",false));
 	}
 }

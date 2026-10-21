@@ -65,7 +65,7 @@ public class MarketDataProperties {
 	public static class Polling {
 
 		private boolean enabled;
-		private long fixedDelayMs = 15000;
+		private long fixedDelayMs = 1800000;
 		private long initialDelayMs = 5000;
 
 		public boolean isEnabled() {

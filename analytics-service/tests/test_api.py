@@ -99,3 +99,10 @@ def test_independent_segments_are_validated_and_forwarded(client):
     assert response.json()['filter']['activityLevel']=='ACTIVE'
     assert client.get('/admin/analytics/dashboard?portfolioSize=madeup').status_code==400
     assert client.get('/admin/analytics/dashboard?activityLevel=madeup').status_code==400
+
+
+def test_dashboard_includes_all_olap_sources_by_default(client):
+    login(client)
+    response=client.get('/admin/analytics/dashboard')
+    assert response.status_code==200
+    assert response.json()['filter']['dataset']=='ALL'

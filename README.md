@@ -1,4 +1,4 @@
-We have decided on GitFlow Based branching strategy because we want to ensure we have development branch that acts as a buffer zone for our shared workspace. We want to ensure main has the cleanest working code that is ready to deploy, so rather than merging into main and having code that doesn't work, we want to use development as the zone to ensure that when our features come together, it works and main is only merged when it has the version that is ready to be deployed. On top of this strategy, we are planning to have our own member's development, so that we can have our own Jenkins pipeline to test our features. 
+# JARBiS
 
 ## Team setup
 
@@ -106,21 +106,60 @@ Docker database volumes.
 
 ## Run the container stack
 
-From the repository root:
+Each developer runs their own OLTP, OLAP, Redis, and Kafka containers. Shared
+schema and sample-data changes travel through Git as versioned SQL migrations.
+Docker applies pending migrations on startup, including existing volumes.
+
+Copy `.env.analytics.example` to `.env.analytics` if you do not already have
+local settings, and replace the secret placeholders. Existing database volumes
+need their original database passwords; changing an environment variable does
+not change a PostgreSQL role's password.
 
 ```bash
-docker compose up -d --build
-docker compose ps -a
-docker compose logs --tail=100 kafka jarbis-backend
+git pull origin feature/admin-dashboard-ui
+docker compose --env-file .env.analytics --profile analytics up -d --build
+docker compose --env-file .env.analytics --profile analytics ps -a
 ```
 
-The API is available at http://localhost:8081 and its health endpoint is
-http://localhost:8081/actuator/health. The backend listens on port 8080 inside
-Docker. Kafka runs in single-node KRaft mode with persistent storage.
-Container clients use kafka:19092; applications running on the host use
-localhost:9092. The kafka-init service creates orders.submitted and exits
-successfully before the backend starts. An exited kafka-init container with
-exit code 0 is expected. This plaintext Kafka setup is for local development.
+Use Docker Compose v2 (the `docker compose` command). The `oltp-migrate`,
+`olap-migrate`, and `kafka-init` jobs normally finish with exit code 0.
+
+| Service | Local address |
+| --- | --- |
+| Backend | http://localhost:8081 |
+| Analytics API | http://localhost:8082 |
+| Admin UI | http://localhost:8083 |
+| OLTP / jarbis_db / jarbis_user | localhost:8090 |
+| OLAP / jarbis_olap / jarbis_olap_user | localhost:8091 |
+
+Inside Docker, the backend uses `postgres:5432/jarbis_db`; analytics uses
+`postgres-olap:5432/jarbis_olap`. The Compose URLs are explicitly local, so old
+remote URL settings in an environment file cannot redirect the application.
+Fauxnance quotes write to the local OLTP `market_data_snapshots` table and Redis.
+Market quotes are not copied to OLAP.
+
+See [the local database workflow](docs/local-databases.md) for sample logins,
+how to add data, migration rules, verification, and existing-volume behavior.
+Do not import the root `database.sql`; it is an obsolete historical schema.
+
+## Shared development data
+
+The initial local fixtures include Alice and Bob, investment accounts with
+USD 10,000 each, AAPL/MSFT/NVDA assets, and example holdings. Development logins:
+`alice@example.test` or `bob@example.test`; use your local fixture credentials.
+These public fixtures are for local development only.
+
+V3 adds Cara, Dan, Emma, and Finn with funded opening portfolios, 6 completed
+trades, 12 matched completed orders, 2 non-crossing pending orders, and 1
+cancelled order. GOOGL/AMZN/SPY are added to polling. The same settlements and
+order histories flow from OLTP outboxes into OLAP, with matching IDs, quantities,
+prices, and counterparties. See the linked scenario table in the workflow guide.
+`BROKERAGE_ANALYTICS_ENABLED` defaults to true; keep it enabled for delivery.
+
+V4 expands this to **100 completed trades**, **200 filled orders**, and **14
+clients with 14 accounts**, while retaining the 2 pending and 1 cancelled order.
+Eight new funded clients support the additional 94 settlements. The verifier
+checks all trades, portfolio movements, and 404 audit events against OLAP.
 
 ## OLAP database
 
@@ -173,27 +212,25 @@ uses the shared `jarbis_db` at `10.18.67.77:8090`. These are separate database
 instances: an asset inserted into the local database is not automatically
 copied into the shared master.
 
-To inspect the exact database used by the container backend:
+## Database inspection
 
 ```bash
-docker compose exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT current_database();"
-docker compose exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT id, name, price, asset_type FROM assets ORDER BY id;"
+docker compose --env-file .env.analytics exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT id, name, asset_type FROM assets ORDER BY id;"
+docker compose --env-file .env.analytics exec postgres psql -U jarbis_user -d jarbis_db -c "SELECT version, description, success FROM oltp_migrations.flyway_schema_history ORDER BY installed_rank;"
+docker compose --env-file .env.analytics --profile analytics logs --tail=100 oltp-migrate olap-migrate jarbis-backend analytics
 ```
 
-Use the numeric assets.id from this result as assetId in POST /orders.
-If the asset is missing, add it to this database using the current entity
-schema (assets has id, name, price and asset_type). Do not import database.sql:
-it describes an older schema with string asset_id and asset_name columns,
-and Compose does not run it as an initialization script.
+Keep Docker volumes when updating or rebuilding. `docker compose down` preserves
+them; `down -v` deletes database and Kafka data and is not part of this workflow.
+This change does not download the former central database's records.
 
 For a database GUI running on the same machine, use host localhost, port
 8090, database jarbis_db, user jarbis_user and the password configured in
 docker-compose.yml. If you run the backend outside Docker against this
 database, override its datasource URL and credentials accordingly.
 
-The existing postgres_data volume is retained when rebuilding the backend.
-Do not use docker compose down -v if you want to retain database and Kafka
-data. Changing POSTGRES_DB does not rename or migrate an existing database.
+We use GitFlow: feature branches integrate into `development`, which acts as a
+buffer before working changes merge to `main`.
 
 ## Order settlement
 
