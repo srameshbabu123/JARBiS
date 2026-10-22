@@ -88,6 +88,7 @@ select {
 .ticker-badge.loading {
   color: var(--orange);
   background: var(--orange-wash);
+  animation: ticker-fetch-pulse 0.95s ease-in-out infinite alternate;
 }
 .ticker-chips-row {
   display: flex;
@@ -259,5 +260,14 @@ small {
   }
   .review-actions {
     flex-direction: column;
+  }
+}
+
+@keyframes ticker-fetch-pulse {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
   }
 }

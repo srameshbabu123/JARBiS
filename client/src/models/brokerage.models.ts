@@ -60,3 +60,19 @@ export interface MarketDataEvent {
   asOf?: string;
   capturedAt?: string;
 }
+
+export interface CreateOrderDispute {
+  reason: string;
+  details: string;
+}
+
+export interface OrderDispute {
+  id: number;
+  orderId: number;
+  accountId: number;
+  reason: string;
+  details: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}

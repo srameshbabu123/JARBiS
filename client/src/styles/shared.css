@@ -3,7 +3,7 @@ aside {
   inset: 0 auto 0 0;
   width: 232px;
   border-right: 1px solid var(--line);
-  padding: 34px 20px;
+  padding: 30px 20px;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -118,12 +118,12 @@ nav em {
   margin-left: 232px;
 }
 header {
-  height: 81px;
+  min-height: 81px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 37px;
+  padding: 14px 37px;
   font-size: 11px;
 }
 .breadcrumb {
@@ -156,15 +156,15 @@ header {
   background: var(--line);
 }
 main {
-  max-width: 1570px;
+  max-width: 1440px;
   margin: auto;
-  padding: 35px 37px;
+  padding: 34px 37px 44px;
 }
 .page-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 29px;
+  margin-bottom: 24px;
   gap: 15px;
 }
 .eyebrow {
@@ -178,7 +178,7 @@ main {
 .muted {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.62;
 }
 .page-heading p {
   margin-top: 10px;
@@ -247,15 +247,15 @@ main {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 11px;
-  padding: 23px;
-  margin-bottom: 23px;
+  padding: 22px;
+  margin-bottom: 20px;
 }
 .panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 .panel-heading small {
   display: block;
@@ -302,7 +302,7 @@ main {
   margin-left: 13px;
 }
 .chart {
-  margin-top: 16px;
+  margin-top: 12px;
   position: relative;
 }
 .chart-canvas {
@@ -368,6 +368,19 @@ main {
   background: var(--purple);
   animation: loading-dot-pulse 0.9s ease-in-out infinite alternate;
 }
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.loading-ring {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--orange) 30%, var(--line));
+  border-top-color: var(--orange);
+  animation: loading-ring-spin 0.9s linear infinite;
+}
 .axis {
   display: flex;
   justify-content: space-between;
@@ -404,6 +417,11 @@ main {
   100% {
     opacity: 1;
     transform: scale(1.08);
+  }
+}
+@keyframes loading-ring-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 .text-button {
@@ -474,6 +492,7 @@ main {
 }
 .table-wrap {
   overflow: auto;
+  border-radius: 10px;
 }
 table {
   width: 100%;
@@ -488,10 +507,13 @@ th {
   padding: 0 10px 13px;
 }
 td {
-  padding: 14px 10px;
+  padding: 13px 10px;
   border-top: 1px solid var(--line);
   font-size: 11px;
   color: var(--text);
+}
+tbody tr:hover {
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
 }
 th:first-child,
 td:first-child {
@@ -643,7 +665,7 @@ label {
   display: block;
   font-size: 11px;
   color: var(--muted);
-  margin: 22px 0;
+  margin: 18px 0;
 }
 label input {
   display: block;
@@ -738,7 +760,7 @@ footer small {
 .auth-form {
   width: min(400px, 85%);
   margin: auto;
-  padding: 45px 0;
+  padding: 42px 0;
 }
 .auth-form h1 {
   font-size: 35px;

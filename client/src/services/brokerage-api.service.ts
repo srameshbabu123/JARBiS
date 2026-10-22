@@ -9,6 +9,8 @@ import {
   Holding,
   Order,
   CreateOrder,
+  CreateOrderDispute,
+  OrderDispute,
   MarketDataEvent,
 } from "../models/brokerage.models";
 
@@ -153,5 +155,13 @@ export class BrokerageApiService {
         params: { range, to },
       },
     );
+  }
+
+  submitOrderDispute(orderId: number, body: CreateOrderDispute) {
+    return this.http.post<OrderDispute>(`/api/orders/${orderId}/disputes`, body);
+  }
+
+  orderDisputes(orderId: number) {
+    return this.http.get<OrderDispute[]>(`/api/orders/${orderId}/disputes`);
   }
 }
