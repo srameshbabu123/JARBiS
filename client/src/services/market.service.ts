@@ -59,8 +59,24 @@ export class MarketService {
   }
 
   private readonly historyState = signal<MarketDataEvent[]>([]);
+  private historyRequestId = 0;
+  private readonly historyLoadingState = signal<boolean>(false);
+  private readonly historyCache = new Map<string, MarketDataEvent[]>();
   get history() {
     return this.historyState();
+  }
+  get historyLoading() {
+    return this.historyLoadingState();
+  }
+  get priceLevels() {
+    const events = this.historyState();
+    if (events.length < 2) return ["", "", "", ""];
+    const prices = events.map((e) => e.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const diff = max - min || 1;
+    const yTicks = [30, 90, 150, 210];
+    return yTicks.map((y) => `$${(min + ((220 - y) / 160) * diff).toFixed(2)}`);
   }
 
   private readonly queryState = signal<string>("");
@@ -227,7 +243,7 @@ export class MarketService {
 
   chart(s: MarketStock) {
     this.selected = s;
-    this.refreshHistory(s.symbol, this.range);
+    this.refreshHistory(s.symbol, this.range, true);
     void this.router.navigateByUrl("/charts");
   }
 
@@ -312,28 +328,50 @@ export class MarketService {
     });
   }
 
-  refreshHistory(symbol: string, range: string) {
+  refreshHistory(symbol: string, range: string, clearBeforeLoad = false) {
     if (!symbol || !this.session.token) return;
-    const now = new Date();
-    const to = now.toISOString();
+    const requestId = ++this.historyRequestId;
+    const normalizedSymbol = symbol.trim().toUpperCase();
     const historyRange =
       {
         "1D": "1d",
         "1W": "1w",
         "1M": "1m",
         "3M": "3m",
+        "6M": "6m",
+        YTD: "ytd",
         "1Y": "1y",
-        ALL: "5y",
+        "5Y": "5y",
       }[range] ?? "1m";
+    const cacheKey = `${normalizedSymbol}|${historyRange}`;
+    const cached = this.historyCache.get(cacheKey);
+
+    if (cached && cached.length >= 2) {
+      this.historyState.set(cached);
+      this.historyLoadingState.set(false);
+    }
+
+    const uncachedLoad = !cached;
+    if (clearBeforeLoad && uncachedLoad) {
+      this.historyState.set([]);
+    }
+    this.historyLoadingState.set(uncachedLoad);
+    const now = new Date();
+    const to = now.toISOString();
     this.api.marketDataHistory(symbol, historyRange, to).subscribe({
       next: (events) => {
+        if (requestId !== this.historyRequestId) return;
+        this.historyLoadingState.set(false);
         if (Array.isArray(events) && events.length >= 2) {
+          this.historyCache.set(cacheKey, events);
           this.historyState.set(events);
         } else {
           this.historyState.set([]);
         }
       },
       error: () => {
+        if (requestId !== this.historyRequestId) return;
+        this.historyLoadingState.set(false);
         this.historyState.set([]);
       },
     });

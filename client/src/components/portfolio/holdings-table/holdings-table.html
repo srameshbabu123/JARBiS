@@ -36,7 +36,7 @@
             {{h.unrealizedPnL|currency:vm.currency}}
           </td>
           <td>
-            <span class="pill"
+            <span class="positive" [class.negative]="h.unrealizedPnLPercentage < 0"
               >{{h.unrealizedPnLPercentage|number:'1.2-2'}}%</span
             >
           </td>

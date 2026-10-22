@@ -82,8 +82,8 @@ select {
   pointer-events: none;
 }
 .ticker-badge.live {
-  color: #00e676;
-  background: rgba(0, 230, 118, 0.12);
+  color: var(--positive);
+  background: var(--positive-wash);
 }
 .ticker-badge.loading {
   color: var(--orange);
@@ -122,10 +122,10 @@ select {
   border-color: var(--purple);
 }
 .positive {
-  color: #00e676;
+  color: var(--positive);
 }
 .negative {
-  color: #ff5252;
+  color: var(--negative);
 }
 small {
   display: block;

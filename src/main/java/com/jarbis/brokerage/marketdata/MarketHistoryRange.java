@@ -24,7 +24,7 @@ public enum MarketHistoryRange {
 	}
 
 	public boolean isRedisBackedRange() {
-		return this == ONE_DAY || this == ONE_WEEK;
+		return this == ONE_DAY;
 	}
 
 	public static MarketHistoryRange parse(String value) {

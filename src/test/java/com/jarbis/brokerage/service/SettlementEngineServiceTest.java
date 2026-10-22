@@ -28,6 +28,7 @@ class SettlementEngineServiceTest {
 	private OrderService orderService;
 	private TransactionService transactionService;
 	private AccountService accountService;
+	private LiquidityBackstopService liquidityBackstopService;
 	private SettlementEngineService settlementEngineService;
 
 	@BeforeEach
@@ -35,8 +36,9 @@ class SettlementEngineServiceTest {
 		orderService = mock(OrderService.class);
 		transactionService = mock(TransactionService.class);
 		accountService = mock(AccountService.class);
+		liquidityBackstopService = mock(LiquidityBackstopService.class);
 		settlementEngineService = new SettlementEngineService(orderService, transactionService, accountService,
-				new OrderBookService(), mockAudit());
+				new OrderBookService(), liquidityBackstopService, mockAudit());
 
 		when(orderService.saveOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}

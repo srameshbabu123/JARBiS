@@ -16,16 +16,19 @@ public class SettlementEngineService {
 	private final TransactionService transactionService;
 	private final AccountService accountService;
 	private final OrderBookService orderBookService;
+	private final LiquidityBackstopService liquidityBackstopService;
 	private final com.jarbis.brokerage.messaging.OrderAuditWriter audit;
 
 	@Autowired
 	public SettlementEngineService(OrderService orderService, TransactionService transactionService,
 			AccountService accountService, OrderBookService orderBookService,
+			LiquidityBackstopService liquidityBackstopService,
 			com.jarbis.brokerage.messaging.OrderAuditWriter audit) {
 		this.orderService = orderService;
 		this.transactionService = transactionService;
 		this.accountService = accountService;
 		this.orderBookService = orderBookService;
+		this.liquidityBackstopService = liquidityBackstopService;
 		this.audit = audit;
 	}
 
@@ -39,6 +42,7 @@ public class SettlementEngineService {
 		orderBook.lock();
 		try {
 			orderBook.upsert(submittedOrder);
+			liquidityBackstopService.provideAskLiquidityIfNeeded(submittedOrder, orderBook);
 			settleBook(orderBook);
 			if (orderBook.isEmpty()) {
 				orderBookService.evict(assetId);
