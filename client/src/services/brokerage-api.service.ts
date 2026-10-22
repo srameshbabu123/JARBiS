@@ -146,11 +146,11 @@ export class BrokerageApiService {
     );
   }
 
-  marketDataHistory(symbol: string, from: string, to: string) {
+  marketDataHistory(symbol: string, range: string, to: string) {
     return this.http.get<MarketDataEvent[]>(
       `/api/market-data/${encodeURIComponent(symbol)}/history`,
       {
-        params: { from, to },
+        params: { range, to },
       },
     );
   }

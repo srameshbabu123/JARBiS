@@ -316,28 +316,16 @@ export class MarketService {
     if (!symbol || !this.session.token) return;
     const now = new Date();
     const to = now.toISOString();
-    const fromDate = new Date(now);
-    switch (range) {
-      case "1D":
-        fromDate.setHours(now.getHours() - 24);
-        break;
-      case "1W":
-        fromDate.setDate(now.getDate() - 7);
-        break;
-      case "1M":
-        fromDate.setDate(now.getDate() - 30);
-        break;
-      case "3M":
-        fromDate.setDate(now.getDate() - 90);
-        break;
-      case "1Y":
-      case "ALL":
-      default:
-        fromDate.setDate(now.getDate() - 365);
-        break;
-    }
-    const from = fromDate.toISOString();
-    this.api.marketDataHistory(symbol, from, to).subscribe({
+    const historyRange =
+      {
+        "1D": "1d",
+        "1W": "1w",
+        "1M": "1m",
+        "3M": "3m",
+        "1Y": "1y",
+        ALL: "5y",
+      }[range] ?? "1m";
+    this.api.marketDataHistory(symbol, historyRange, to).subscribe({
       next: (events) => {
         if (Array.isArray(events) && events.length >= 2) {
           this.historyState.set(events);
