@@ -3,8 +3,11 @@
 <section class="panel">
   <div class="panel-heading">
     <h3>Order history <span class="count">{{history.length}}</span></h3>
-    @if(vm.live){<button class="outline" (click)="vm.refreshOrders()">
-      Refresh status</button
+    @if(vm.live){<button class="outline" (click)="refreshOrderStatus()" [disabled]="ordersRefreshing()">
+      @if(ordersRefreshing()){
+      <span class="loading-inline"><span class="loading-ring"></span>Refreshing…</span>
+      } @else { Refresh status }
+    </button
     >}<select aria-label="Order status" [(ngModel)]="orderFilter">
       @for(s of
       ['All','PENDING','PARTIALLY_FILLED','COMPLETED','CANCELLED'];track s){
@@ -58,30 +61,58 @@
       <h3>Order disputes</h3>
       <p class="muted">Have a question or notice an issue with an order?</p>
     </div>
-    <button
-      type="button"
-      class="outline"
-      [attr.aria-expanded]="disputeOpen()"
-      aria-controls="dispute-form"
-      (click)="disputeOpen.set(!disputeOpen())"
-    >
-      {{disputeOpen() ? 'Close dispute' : 'Dispute an order'}}
+    <button type="button" class="text-button" (click)="loadOpenDisputes()" [disabled]="openDisputesLoading()">
+      @if(openDisputesLoading()){
+      <span class="loading-inline"><span class="loading-ring"></span>Refreshing</span>
+      } @else { Refresh open disputes }
     </button>
   </div>
+  <div class="panel-inner">
+    <div class="subheading-row">
+      <h4>Open disputes</h4>
+      <span class="count">{{openDisputes().length}}</span>
+    </div>
+    @if(openDisputesLoading()){
+    <p class="muted">Loading open disputes...</p>
+    } @else if(openDisputes().length){
+    <ul class="open-disputes">
+      @for(item of openDisputes(); track item.id){
+      <li>
+        <div>
+          <strong>#{{item.id}}</strong> · Order #{{item.orderId}}
+          <span class="pill pending">{{item.status}}</span>
+        </div>
+        <div class="muted">{{item.reason}}</div>
+        <small class="muted">{{item.createdAt | date:'medium'}}</small>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="muted">No open disputes right now.</p>
+    }
+  </div>
+  <button
+    type="button"
+    class="outline"
+    [attr.aria-expanded]="disputeOpen()"
+    aria-controls="dispute-form"
+    (click)="toggleDisputePanel()"
+  >
+    {{disputeOpen() ? 'Close dispute form' : 'Open dispute form'}}
+  </button>
+
   @if(disputeOpen()){
   <div id="dispute-form">
-    <p class="muted">
-      Online dispute submission is not connected yet. You can prepare the
-      details below, but they will not be sent or saved.
-    </p>
+    <p class="muted">Submit an order dispute for review by the operations team.</p>
     @if(workspace.orders.length){
     <div class="dispute-fields">
       <label
-        >Order
+        ><span class="field-title">Order</span>
         <select
           aria-label="Order"
           name="disputeOrder"
           [(ngModel)]="disputeOrderId"
+          (ngModelChange)="onDisputeOrderChange($event)"
         >
           <option [ngValue]="null" disabled>Select an order</option>
           @for(order of workspace.orders; track order.id){
@@ -93,7 +124,7 @@
         </select>
       </label>
       <label
-        >Reason
+        ><span class="field-title">Reason</span>
         <select
           aria-label="Reason"
           name="disputeReason"
@@ -106,7 +137,7 @@
         </select>
       </label>
       <label
-        >Details
+        ><span class="field-title">Details</span>
         <textarea
           aria-label="Details"
           name="disputeDetails"
@@ -119,9 +150,46 @@
       <small id="dispute-details-help" class="muted"
         >Describe the issue in up to 2,000 characters.</small
       >
-      <button type="button" class="text-button" (click)="resetDispute()">
-        Cancel
-      </button>
+      <div class="dispute-actions">
+        <button
+          type="button"
+          class="outline"
+          [disabled]="!canSubmitDispute"
+          (click)="submitDispute()"
+        >
+          {{disputeSubmitting() ? 'Submitting...' : 'Submit dispute'}}
+        </button>
+        <button type="button" class="text-button" (click)="resetDispute()">
+          Cancel
+        </button>
+      </div>
+      @if(disputeNotice()){
+      <p class="muted dispute-notice">{{disputeNotice()}}</p>
+      }
+
+      @if(disputeOrderId !== null){
+      <div class="dispute-history">
+        <h4>Previous disputes for order #{{disputeOrderId}}</h4>
+        @if(disputesLoading()){
+        <p class="muted">Loading disputes...</p>
+        } @else if(disputeHistory().length){
+        <ul>
+          @for(item of disputeHistory(); track item.id){
+          <li>
+            <strong>#{{item.id}}</strong>
+            <span class="pill pending">{{item.status}}</span>
+            <div>{{item.reason}}</div>
+            <small class="muted"
+              >{{item.createdAt | date:'medium'}} · {{item.details}}</small
+            >
+          </li>
+          }
+        </ul>
+        } @else {
+        <p class="muted">No disputes on file for this order.</p>
+        }
+      </div>
+      }
     </div>
     } @else {
     <p class="muted">No orders available to dispute.</p>

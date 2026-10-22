@@ -25,7 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Real Spring routes, JWT filter, method security and JSON; business dependencies are mocked. */
 @WebMvcTest({AuthController.class, AccountController.class, UserController.class,
-    HoldingController.class, OrderController.class, AssetController.class, MarketDataController.class})
+    HoldingController.class, OrderController.class, OrderDisputeController.class,
+    AssetController.class, MarketDataController.class})
 @Import({SecurityConfig.class, JwtService.class, ClientAccess.class})
 class ClientRoutesIntegrationTest {
     @Autowired MockMvc mvc;
@@ -34,11 +35,13 @@ class ClientRoutesIntegrationTest {
     @MockBean UserService users;
     @MockBean AccountService accounts;
     @MockBean OrderService orders;
+    @MockBean OrderDisputeService disputes;
     @MockBean AssetService assets;
     @MockBean HoldingService holdings;
     @MockBean HoldingRepository holdingRepository;
     @MockBean AssetRepository assetRepository;
     @MockBean AccountRepository accountRepository;
+    @MockBean OrderRepository orderRepository;
     @MockBean RedisMarketDataHistoryService market;
     private User user;
     private Account account;
@@ -70,6 +73,11 @@ class ClientRoutesIntegrationTest {
         when(accounts.getAccountByUser(-1001L, -1101L)).thenReturn(account);
         when(accounts.getAccountById(-1101L)).thenReturn(account);
         when(accountRepository.existsByIdAndOwnerId(-1101L, -1001L)).thenReturn(true);
+        Order ownedOrder = new Order(asset, account, OrderStatus.PENDING);
+        var orderIdField = Order.class.getDeclaredField("id");
+        orderIdField.setAccessible(true);
+        orderIdField.set(ownedOrder, -3001L);
+        when(orderRepository.findById(-3001L)).thenReturn(Optional.of(ownedOrder));
         when(holdingRepository.findByAccountId(-1101L)).thenReturn(List.of());
         when(orders.getOrdersByAccount(-1101L)).thenReturn(List.of());
         when(assetRepository.findAll()).thenReturn(List.of(asset));
@@ -134,6 +142,46 @@ class ClientRoutesIntegrationTest {
         mvc.perform(post("/accounts").header("Authorization", bearer).contentType("application/json").content("{\"userId\":99,\"accountType\":\"INVESTMENT\",\"currency\":\"USD\"}"))
             .andExpect(status().isForbidden());
         mvc.perform(post("/orders").header("Authorization", bearer).contentType("application/json").content("{\"accountId\":99,\"assetId\":-2001,\"side\":\"BUY\",\"quantity\":1,\"price\":100}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test void disputeRoutesAllowOwnerAndRespectJavaContracts() throws Exception {
+        var created = new com.jarbis.brokerage.dto.response.OrderDisputeResponseDto();
+        created.setId(-4001L);
+        created.setOrderId(-3001L);
+        created.setAccountId(-1101L);
+        created.setReason("Incorrect price");
+        created.setDetails("Expected 100, received 101");
+        created.setStatus("OPEN");
+        created.setCreatedAt(java.time.Instant.parse("2026-10-20T12:00:00Z"));
+        created.setUpdatedAt(java.time.Instant.parse("2026-10-20T12:00:00Z"));
+
+        when(disputes.submit(eq(-3001L), any())).thenReturn(created);
+        when(disputes.byOrder(-3001L)).thenReturn(List.of(created));
+
+        mvc.perform(post("/orders/-3001/disputes")
+                .header("Authorization", bearer)
+                .contentType("application/json")
+                .content("{\"reason\":\"Incorrect price\",\"details\":\"Expected 100, received 101\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(-4001))
+            .andExpect(jsonPath("$.status").value("OPEN"));
+
+        mvc.perform(get("/orders/-3001/disputes").header("Authorization", bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].orderId").value(-3001));
+    }
+
+    @Test void disputeRoutesAreForbiddenForUnownedOrders() throws Exception {
+        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+
+        mvc.perform(post("/orders/99/disputes")
+                .header("Authorization", bearer)
+                .contentType("application/json")
+                .content("{\"reason\":\"Other\",\"details\":\"Please review\"}"))
+            .andExpect(status().isForbidden());
+
+        mvc.perform(get("/orders/99/disputes").header("Authorization", bearer))
             .andExpect(status().isForbidden());
     }
 }

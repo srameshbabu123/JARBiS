@@ -31,7 +31,7 @@
       single account connects automatically.
     </p>
     @if(vm.accountsLoading()){
-    <p role="status">Finding your accounts…</p>
+    <p role="status" class="loading-inline"><span class="loading-ring"></span>Finding your accounts…</p>
     } @else if(vm.accounts().length){
     <label
       >Brokerage account
@@ -61,7 +61,9 @@
       (click)="vm.discoverAccounts()"
       [disabled]="vm.accountsLoading() || vm.cashBusy()"
     >
-      Refresh accounts
+      @if(vm.accountsLoading()){
+      <span class="loading-inline"><span class="loading-ring"></span>Refreshing…</span>
+      } @else { Refresh accounts }
     </button>
     }
   </section>
