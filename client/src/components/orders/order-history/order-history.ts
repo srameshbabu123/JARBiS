@@ -20,6 +20,7 @@ export class OrderHistoryComponent {
   protected readonly disputesLoading = signal(false);
   protected readonly openDisputesLoading = signal(false);
   protected readonly ordersRefreshing = signal(false);
+  protected readonly cancellingOrderId = signal<number | null>(null);
   protected readonly disputeHistory = signal<OrderDispute[]>([]);
   protected readonly openDisputes = signal<OrderDispute[]>([]);
   protected disputeOrderId: number | null = null;
@@ -80,6 +81,29 @@ export class OrderHistoryComponent {
         error: () => {
           this.workspace.error =
             "Could not refresh order history. Please try again.";
+        },
+      });
+  }
+
+  protected cancelOrder(orderId: number) {
+    if (this.cancellingOrderId() !== null) return;
+
+    this.cancellingOrderId.set(orderId);
+    this.workspace.api
+      .cancelOrder(orderId)
+      .pipe(finalize(() => this.cancellingOrderId.set(null)))
+      .subscribe({
+        next: (cancelled) => {
+          this.workspace.orders = this.workspace.orders.map((order) =>
+            order.id === cancelled.id ? cancelled : order,
+          );
+          this.workspace.notice = `Order #${cancelled.id} cancelled.`;
+        },
+        error: (error) => {
+          this.workspace.error =
+            typeof error?.error?.message === "string"
+              ? error.error.message
+              : "Could not cancel this order. Refresh status and try again.";
         },
       });
   }

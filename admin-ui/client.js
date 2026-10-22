@@ -1,14 +1,15 @@
-export function escapeHtml(value) {
+(function () {
+function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-export function query(values) {
+function query(values) {
   return new URLSearchParams(Object.entries(values).filter(([,v]) => v !== '' && v != null)).toString();
 }
-export function change(current, previous) {
+function change(current, previous) {
   const a=Number(current), b=Number(previous);
   return b === 0 ? (a === 0 ? 'No change' : 'No previous baseline') : `${a>=b?'↑':'↓'} ${Math.abs((a-b)/b*100).toFixed(1)}% vs previous period`;
 }
-export function csv(rows) {
+function csv(rows) {
   if (!rows.length) return '';
   const keys=Object.keys(rows[0]);
   const cell=value => {
@@ -18,7 +19,7 @@ export function csv(rows) {
   };
   return [keys,...rows.map(r=>keys.map(k=>r[k]))].map(r=>r.map(cell).join(',')).join('\r\n');
 }
-export class Api {
+class Api {
   constructor(fetcher=globalThis.fetch.bind(globalThis)) {this.fetcher=fetcher;this.csrf='';}
   async request(path, {method='GET', body, form=false}={}) {
     const headers={};
@@ -36,13 +37,16 @@ export class Api {
   async login(username,password) {await this.token();await this.request('/login',{method:'POST',form:true,body:{username,password}});await this.token();return this.request('/session/me');}
 }
 
-export function validateDates(from,to) {
+function validateDates(from,to) {
   const start=Date.parse(from+'T00:00:00Z'),end=Date.parse(to+'T00:00:00Z');
   if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error('Choose a valid From and To date.');
   if(end<start)throw new Error('The To date must be on or after the From date.');
   if((end-start)/86400000>366)throw new Error('Choose a date range of at most 367 days. Search older history one year at a time.');
 }
 
-export function instrumentLabel(value) {
+function instrumentLabel(value) {
   return String(value ?? '').replace(/^DEMO(?:-\s*|\s*·\s*)/, '');
 }
+
+globalThis.AdminClient = { Api, escapeHtml, query, change, csv, validateDates, instrumentLabel };
+})();

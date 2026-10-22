@@ -305,8 +305,8 @@ public class OrderService {
 	 */
 	public Order cancelOrder(Long orderId) {
 		Order order = getOrderById(orderId);
-		if (order.getStatus() == OrderStatus.COMPLETED) {
-			throw new InvalidOrderStateException("Cannot cancel a completed order");
+		if (order.getStatus() != OrderStatus.PENDING) {
+			throw new InvalidOrderStateException("Only pending orders can be cancelled");
 		}
 		return updateOrderStatus(orderId, OrderStatus.CANCELLED);
 	}

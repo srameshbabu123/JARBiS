@@ -1,5 +1,5 @@
-import {Api,escapeHtml as esc,query,change,csv} from './client.mjs';
-const $=id=>document.getElementById(id), api=new Api();
+const {Api:AdminApi,escapeHtml:esc,query,change,csv}=globalThis.AdminClient;
+const $=id=>document.getElementById(id), api=new AdminApi();
 let user, report, metric='value', reportGeneration=0, orderPage=0, casePage=0, currentCase;
 const fmt=value=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(Number(value??0));
 const when=value=>value?new Date(value).toLocaleString('en-GB',{timeZone:'UTC'})+' UTC':'Not yet available';
@@ -56,7 +56,7 @@ async function openCase(id){const data=await api.request('/admin/disputes/'+id);
  $('assign-case').onsubmit=e=>{e.preventDefault();save(e.target,()=>api.request('/admin/disputes/'+id,{method:'PATCH',body:{expectedVersion:currentCase.version,assignedTo:values(e.target).assignedTo||null}}));};
  if($('add-note'))$('add-note').onsubmit=e=>{e.preventDefault();save(e.target,()=>api.request(`/admin/disputes/${id}/notes`,{method:'POST',body:values(e.target)}));};root.scrollIntoView({behavior:'smooth',block:'start'});
 }
-$('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const button=e.target.querySelector('button');button.disabled=true;try{const v=values(e.target);await enter(await api.login(v.username,v.password));e.target.reset();}catch(error){$('login-error').textContent=error.message;loginScreen();}finally{button.disabled=false;}};
+$('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const button=e.target.querySelector('button');button.disabled=true;try{const v=values(e.target);await enter(await api.login(v.username,v.password));e.target.reset();}catch(error){loginScreen();$('login-error').textContent=error.status===401?'Invalid username or password.':(error.message||'Unable to sign in right now.');}finally{button.disabled=false;}};
 $('logout').onclick=()=>run(async()=>{await api.request('/logout',{method:'POST'});loginScreen();});
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>run(()=>showView(b.dataset.view)));
 $('filters').onsubmit=e=>{e.preventDefault();run(loadReport);};

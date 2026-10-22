@@ -26,6 +26,7 @@
           <th>Price</th>
           <th>Total</th>
           <th>Status</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -44,10 +45,22 @@
               >{{o.status}}</span
             >
           </td>
+          <td>
+            @if(o.status==='PENDING'){
+            <button
+              type="button"
+              class="text-button cancel-order"
+              [disabled]="cancellingOrderId() !== null"
+              (click)="cancelOrder(o.id)"
+            >
+              {{cancellingOrderId() === o.id ? 'Cancelling…' : 'Cancel'}}
+            </button>
+            } @else { <span class="muted">—</span> }
+          </td>
         </tr>
         }@empty{
         <tr>
-          <td colspan="7">No orders match this filter.</td>
+          <td colspan="8">No orders match this filter.</td>
         </tr>
         }
       </tbody>

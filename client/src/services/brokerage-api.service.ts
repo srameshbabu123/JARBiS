@@ -88,6 +88,10 @@ export class BrokerageApiService {
     return this.http.post<Order>("/api/orders", body);
   }
 
+  cancelOrder(orderId: number) {
+    return this.http.put<Order>(`/api/orders/${orderId}/cancel`, {});
+  }
+
   latestMarketData(symbol: string): Observable<MarketDataEvent> {
     const sym = (symbol || "").trim().toUpperCase();
     if (!sym) {

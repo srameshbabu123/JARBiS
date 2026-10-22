@@ -147,6 +147,7 @@ public class OrderController {
 	 * Cancel an order
 	 */
 	@PutMapping("/{orderId}/cancel")
+	@org.springframework.security.access.prepost.PreAuthorize("@clientAccess.ownsOrder(authentication.principal, #orderId)")
 	public ResponseEntity<Order> cancelOrder(@PathVariable Long orderId) {
 		Order order = orderService.cancelOrder(orderId);
 		return ResponseEntity.ok(order);

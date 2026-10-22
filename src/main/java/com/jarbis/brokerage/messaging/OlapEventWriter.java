@@ -54,6 +54,8 @@ public class OlapEventWriter {
                 if ("OrderLifecycle".equals(e.required("type").asText())) {
                     jdbc.update("INSERT INTO analytics.order_events(event_id,audit_sequence,order_id,client_id,account_id,asset_id,event_type,occurred_at,payload) VALUES (?,?,?,?,?,?,?,?,?::jsonb) ON CONFLICT(event_id) DO NOTHING",
                         id,e.required("auditSequence").asLong(),e.required("orderId").asLong(),e.required("clientId").asLong(),e.required("accountId").asLong(),e.required("assetId").asLong(),e.required("eventType").asText(),time,payload);
+                } else if ("ClientDisputeSubmitted".equals(e.required("type").asText())) {
+                    clientDispute(jdbc, e, id, time, payload);
                 } else if ("TradeSettled".equals(e.required("type").asText())) {
                     settlement(jdbc,e,id,time);
                 } else throw new IllegalArgumentException("Unsupported OLAP event type");
@@ -63,6 +65,23 @@ public class OlapEventWriter {
                 throw failure;
             }
         } catch (Exception failure) { throw new IllegalStateException("OLAP delivery failed; source event must remain pending",failure); }
+    }
+    private void clientDispute(JdbcTemplate jdbc, JsonNode e, UUID id, OffsetDateTime time, String payload) {
+        JsonNode details = e.required("details");
+        String reason = details.required("reason").asText();
+        String clientDetails = details.required("details").asText();
+        String combinedReason = reason + "\n\n" + clientDetails;
+        int inserted = jdbc.update("""
+            INSERT INTO operations.disputes(id,request_id,order_id,client_id,category,reason,status,assigned_to,opened_by,evidence)
+            VALUES (?::uuid,?::uuid,?,?,?,?,'OPEN',NULL,?,?::jsonb)
+            ON CONFLICT(request_id) DO NOTHING
+            """, id, id, e.required("orderId").asLong(), e.required("clientId").asLong(),
+                "CLIENT_SUBMITTED", combinedReason, e.path("actor").asText("CLIENT"), payload);
+        if (inserted == 1) {
+            jdbc.update("INSERT INTO operations.dispute_events(dispute_id,actor,kind,details) VALUES (?::uuid,?,?,?::jsonb)",
+                id, e.path("actor").asText("CLIENT"), "OPENED",
+                mapper.createObjectNode().put("source", "CLIENT_DISPUTE").put("reason", reason).put("details", clientDetails).toString());
+        }
     }
     private void settlement(JdbcTemplate j,JsonNode e,UUID id,OffsetDateTime time) {
         long trade=e.required("transactionId").asLong();
