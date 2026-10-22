@@ -1,6 +1,7 @@
 """Backend-only HTTP API. No UI, static assets, or database access to OLTP."""
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
+import logging
 from uuid import UUID
 import secrets
 import bcrypt
@@ -20,6 +21,10 @@ from .reports import Reports
 from .sessions import Sessions, COOKIE
 from .operations import Operations
 from .models import DisputeCreate, DisputeChange, DisputeNote
+from .market_metadata import MarketMetadataProvider
+
+
+log = logging.getLogger(__name__)
 
 
 def create_app(settings=None, pool=None, sessions=None, reports=None, operations=None):
@@ -29,14 +34,19 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
     sessions = sessions or Sessions(pool)
     reports = reports or Reports(pool)
     operations = operations or Operations(pool)
+    metadata_provider = MarketMetadataProvider()
 
     @asynccontextmanager
     async def lifespan(app):
         if owned:
             pool.open()
             try:
-                await run_in_threadpool(pool.wait, 10)
-                await run_in_threadpool(migrate, pool)
+                try:
+                    await run_in_threadpool(pool.wait, 10)
+                    await run_in_threadpool(migrate, pool)
+                except (DatabaseError, PoolTimeout) as exc:
+                    # Keep the process available for non-DB routes such as market metadata.
+                    log.warning("analytics database unavailable during startup: %s", exc)
                 yield
             finally:
                 pool.close()
@@ -61,11 +71,15 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
         own_origin = str(request.base_url).rstrip("/")
         if origin and origin != own_origin and origin not in settings.origins:
             return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
-        try:
-            request.state.session = await run_in_threadpool(sessions.find, request.cookies.get(COOKIE))
-        except (DatabaseError, PoolTimeout):
-            return JSONResponse({"detail": "Analytics temporarily unavailable"}, status_code=503)
-        public = request.url.path in {"/login", "/session/csrf", "/actuator/health"}
+        public = request.url.path in {"/login", "/session/csrf", "/actuator/health", "/public/market-metadata"}
+        db_optional = request.url.path in {"/actuator/health", "/public/market-metadata"}
+        if db_optional:
+            request.state.session = None
+        else:
+            try:
+                request.state.session = await run_in_threadpool(sessions.find, request.cookies.get(COOKIE))
+            except (DatabaseError, PoolTimeout):
+                return JSONResponse({"detail": "Analytics temporarily unavailable"}, status_code=503)
         session = request.state.session
         accounts = settings.accounts()
         user = session.get("username") if session else None
@@ -142,6 +156,15 @@ def create_app(settings=None, pool=None, sessions=None, reports=None, operations
             with pool.connection() as conn:
                 conn.execute("SELECT 1")
         return {"status": "UP"}
+
+    @app.get("/public/market-metadata")
+    def market_metadata(symbols: str):
+        entries = [item.strip().upper() for item in symbols.split(",") if item.strip()]
+        if not entries:
+            raise HTTPException(400, "At least one symbol is required")
+        if len(entries) > 50:
+            raise HTTPException(400, "At most 50 symbols are supported")
+        return JSONResponse(jsonable_encoder(metadata_provider.get(entries)))
 
     def parse_filter(request, require_dates=False):
         q = request.query_params

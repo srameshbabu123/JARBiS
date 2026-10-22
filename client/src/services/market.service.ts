@@ -7,7 +7,7 @@ import {
   DestroyRef,
 } from "@angular/core";
 import { Router } from "@angular/router";
-import { MarketStock } from "../models/market.models";
+import { MarketStock, MarketSymbolMetadata } from "../models/market.models";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { SessionService } from "./session.service";
 import { MarketDataEvent } from "../models/brokerage.models";
@@ -20,18 +20,16 @@ export class MarketService {
   private readonly destroyRef = inject(DestroyRef);
   private searchDebounceTimer: any = null;
 
-  readonly availableSectors = [
-    "All sectors",
-    "Technology",
-    "Automotive",
-    "Consumer",
-    "Financials",
-    "Aerospace",
-    "Healthcare",
-    "Energy",
-    "Industrial",
-    "Cryptocurrency",
-  ];
+  get availableSectors() {
+    const sectors = this.stocks
+      .map((stock) => stock.sector)
+      .filter((sector) => !!sector && sector !== "Unknown");
+    return ["All sectors", ...new Set(sectors)].sort((left, right) => {
+      if (left === "All sectors") return -1;
+      if (right === "All sectors") return 1;
+      return left.localeCompare(right);
+    });
+  }
 
   private readonly stocksState = signal<MarketStock[]>([]);
   get stocks(): MarketStock[] {
@@ -111,6 +109,7 @@ export class MarketService {
                   color: "var(--purple)",
                 };
                 this.stocks = [newStock, ...this.stocks];
+                this.refreshMetadata([clean]);
               }
             },
             error: () => {},
@@ -264,6 +263,7 @@ export class MarketService {
           this.selected = this.stocks[0];
           this.refreshHistory(this.selected.symbol, this.range);
         }
+        this.refreshMetadata(this.stocks.map((stock) => stock.symbol));
         this.refreshQuotes();
       },
       error: () => {},
@@ -311,6 +311,9 @@ export class MarketService {
           }),
           ...fetched,
         ];
+        if (fetched.length) {
+          this.refreshMetadata(fetched.map((stock) => stock.symbol));
+        }
         const selEvent = eventMap.get(this.selected.symbol);
         if (selEvent && typeof selEvent.price === "number") {
           const changePct =
@@ -326,6 +329,36 @@ export class MarketService {
       },
       error: () => {},
     });
+  }
+
+  refreshMetadata(symbols: string[]) {
+    if (!this.session.token) return;
+    this.api.marketMetadata(symbols).subscribe({
+      next: (metadata) => this.applyMetadata(metadata),
+      error: () => {},
+    });
+  }
+
+  private applyMetadata(metadata: MarketSymbolMetadata[]) {
+    if (!Array.isArray(metadata) || !metadata.length) return;
+    const bySymbol = new Map(metadata.map((item) => [item.symbol, item]));
+    this.stocks = this.stocks.map((stock) => {
+      const item = bySymbol.get(stock.symbol);
+      if (!item) return stock;
+      return {
+        ...stock,
+        sector: item.sector || "Unknown",
+        cap: Number(item.marketCap) || 0,
+      };
+    });
+    const selectedMetadata = bySymbol.get(this.selected.symbol);
+    if (selectedMetadata) {
+      this.selected = {
+        ...this.selected,
+        sector: selectedMetadata.sector || "Unknown",
+        cap: Number(selectedMetadata.marketCap) || 0,
+      };
+    }
   }
 
   refreshHistory(symbol: string, range: string, clearBeforeLoad = false) {

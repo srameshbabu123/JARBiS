@@ -3,7 +3,9 @@ package com.jarbis.brokerage.controller;
 import com.jarbis.brokerage.exception.MarketDataUnavailableException;
 import com.jarbis.brokerage.marketdata.MarketDataEvent;
 import com.jarbis.brokerage.marketdata.MarketHistoryRange;
+import com.jarbis.brokerage.marketdata.MarketSymbolMetadata;
 import com.jarbis.brokerage.service.MarketDataHistoryRoutingService;
+import com.jarbis.brokerage.service.MarketMetadataService;
 import com.jarbis.brokerage.service.RedisMarketDataHistoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,13 +27,16 @@ class MarketDataControllerTest {
 
 	private RedisMarketDataHistoryService marketDataHistoryService;
 	private MarketDataHistoryRoutingService marketDataHistoryRoutingService;
+	private MarketMetadataService marketMetadataService;
 	private MarketDataController marketDataController;
 
 	@BeforeEach
 	void setUp() {
 		marketDataHistoryService = mock(RedisMarketDataHistoryService.class);
 		marketDataHistoryRoutingService = mock(MarketDataHistoryRoutingService.class);
-		marketDataController = new MarketDataController(marketDataHistoryService, marketDataHistoryRoutingService);
+		marketMetadataService = mock(MarketMetadataService.class);
+		marketDataController = new MarketDataController(marketDataHistoryService, marketDataHistoryRoutingService,
+				marketMetadataService);
 	}
 
 	@Test
@@ -72,6 +77,18 @@ class MarketDataControllerTest {
 	void getHistoryRejectsUnsupportedRange() {
 		assertThrows(IllegalArgumentException.class,
 				() -> marketDataController.getHistory("AAPL", "10y", Instant.parse("2026-10-13T20:00:00Z")));
+	}
+
+	@Test
+	@DisplayName("Should return market metadata entries")
+	void getMetadataReturnsEntries() {
+		List<MarketSymbolMetadata> metadata = List.of(new MarketSymbolMetadata("AAPL", "Technology", 100L));
+		when(marketMetadataService.getMetadata(List.of("AAPL", "MSFT"))).thenReturn(metadata);
+
+		ResponseEntity<List<MarketSymbolMetadata>> response = marketDataController.getMetadata("AAPL,MSFT");
+
+		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertEquals(metadata, response.getBody());
 	}
 
 	private MarketDataEvent event(String symbol) {

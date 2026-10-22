@@ -8,6 +8,11 @@
     </h3>
     <span class="sample-tag">Available market quotes</span>
   </div>
+  @if(supportsPaginationAndSorting){
+  <div class="table-tools">
+    <small class="muted">Click a column header to toggle descending/ascending sort.</small>
+  </div>
+  }
   <div class="filters">
     <input
       aria-label="Search stocks"
@@ -26,20 +31,52 @@
     >}
   </div>
   <div class="table-wrap">
-    <table>
+    <table class="market-table">
+      <colgroup>
+        <col class="col-company" />
+        <col class="col-price" />
+        <col class="col-change" />
+        <col class="col-sector" />
+        <col class="col-cap" />
+        <col class="col-watch" />
+      </colgroup>
       <thead>
         <tr>
-          <th>Company</th>
-          <th>Price</th>
-          <th>Change</th>
-          <th>Sector</th>
-          <th>Market cap</th>
+          <th>
+            <button class="sort-header" (click)="toggleSort('symbol')" [class.active]="isSorted('symbol')">
+              <span>Company</span>
+              <span class="sort-indicator">{{sortIndicator('symbol')}}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" (click)="toggleSort('price')" [class.active]="isSorted('price')">
+              <span>Price</span>
+              <span class="sort-indicator">{{sortIndicator('price')}}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" (click)="toggleSort('change')" [class.active]="isSorted('change')">
+              <span>Change</span>
+              <span class="sort-indicator">{{sortIndicator('change')}}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" (click)="toggleSort('sector')" [class.active]="isSorted('sector')">
+              <span>Sector</span>
+              <span class="sort-indicator">{{sortIndicator('sector')}}</span>
+            </button>
+          </th>
+          <th>
+            <button class="sort-header" (click)="toggleSort('cap')" [class.active]="isSorted('cap')">
+              <span>Market cap</span>
+              <span class="sort-indicator">{{sortIndicator('cap')}}</span>
+            </button>
+          </th>
           <th>Watch</th>
         </tr>
       </thead>
       <tbody>
-        @for(s of market.filtered;track
-        s.symbol){@if(vm.page!=='watchlist'||market.watched.includes(s.symbol)){
+        @for(s of pagedRows;track s.symbol){
         <tr>
           <td>
             <button class="asset-cell text-button" (click)="market.chart(s)">
@@ -53,7 +90,7 @@
             {{s.change>0?'+':''}}{{s.change}}%
           </td>
           <td>{{s.sector}}</td>
-          <td>{{s.cap > 0 ? (s.cap|number) : "—"}}</td>
+          <td>{{formatMarketCap(s.cap)}}</td>
           <td>
             <button
               class="star"
@@ -64,9 +101,16 @@
             </button>
           </td>
         </tr>
-        }}
+        }
       </tbody>
     </table>
+    @if(supportsPaginationAndSorting && totalRows > pageSize){
+    <div class="table-pagination">
+      <button class="outline" (click)="prevPage()" [disabled]="currentPage<=1">Previous</button>
+      <span class="muted">Page {{currentPage}} of {{totalPages}} · {{totalRows}} stocks</span>
+      <button class="outline" (click)="nextPage()" [disabled]="currentPage>=totalPages">Next</button>
+    </div>
+    }
     @if(market.filtered.length===0){
     <p class="muted">
       No market quotes available. Search for a ticker to request its latest

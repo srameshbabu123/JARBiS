@@ -43,6 +43,7 @@ class ClientRoutesIntegrationTest {
     @MockBean AccountRepository accountRepository;
     @MockBean OrderRepository orderRepository;
     @MockBean RedisMarketDataHistoryService market;
+    @MockBean MarketMetadataService metadata;
     private User user;
     private Account account;
     private Asset asset;
@@ -82,6 +83,8 @@ class ClientRoutesIntegrationTest {
         when(orders.getOrdersByAccount(-1101L)).thenReturn(List.of());
         when(assetRepository.findAll()).thenReturn(List.of(asset));
         when(assetRepository.findByNameIgnoreCase("AAPL")).thenReturn(Optional.of(asset));
+        when(metadata.getMetadata(List.of("AAPL"))).thenReturn(List.of(
+            new com.jarbis.brokerage.marketdata.MarketSymbolMetadata("AAPL", "Technology", 100L)));
     }
 
     @Test void clientReadRoutesRequireJwtAndReturnExpectedShapes() throws Exception {
@@ -101,6 +104,9 @@ class ClientRoutesIntegrationTest {
         mvc.perform(get("/assets/by-symbol/UNKNOWN").header("Authorization", bearer)).andExpect(status().isNotFound());
         mvc.perform(get("/market-data/AAPL/latest").header("Authorization", bearer)).andExpect(status().isServiceUnavailable());
         mvc.perform(get("/market-data/AAPL/history").param("from", "2026-10-01T00:00:00Z").param("to", "2026-10-20T00:00:00Z").header("Authorization", bearer)).andExpect(status().isOk());
+        mvc.perform(get("/market-data/metadata").param("symbols", "AAPL").header("Authorization", bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].sector").value("Technology"));
     }
 
     @Test void loginRegistrationAndMutationsUseJavaContracts() throws Exception {

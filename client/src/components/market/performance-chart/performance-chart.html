@@ -42,6 +42,9 @@
           preserveAspectRatio="none"
           role="img"
           aria-label="Historical market prices"
+          (mousemove)="onChartHover($event)"
+          (mouseenter)="onChartHover($event)"
+          (mouseleave)="clearChartHover()"
         >
           <defs>
             <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
@@ -68,9 +71,30 @@
             stroke="var(--purple)"
             stroke-width="3"
           />
+          @if(hoveredPoint){
+          <line
+            class="hover-guide"
+            [attr.x1]="hoveredPoint.x"
+            [attr.x2]="hoveredPoint.x"
+            y1="0"
+            y2="270"
+          />
+          <circle
+            class="hover-point"
+            [attr.cx]="hoveredPoint.x"
+            [attr.cy]="hoveredPoint.y"
+            r="5"
+          />
+          }
           }
         </svg>
       </div>
+      @if(hoveredPoint){
+      <div class="chart-hover-readout" role="status" aria-live="polite">
+        <span>{{hoveredPoint.timeLabel}}</span>
+        <strong>{{hoveredPoint.price|currency:'USD'}}</strong>
+      </div>
+      }
       @if(market.historyLoading){
       <div class="chart-loading" role="status" aria-live="polite">
         <span class="loading-dot"></span>Loading {{market.selected.symbol}} {{market.range}} history
