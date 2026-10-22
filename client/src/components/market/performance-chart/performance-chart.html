@@ -11,7 +11,7 @@
         <small>Historical market data when available</small>
       </div>
       <div class="segmented">
-        @for(r of ['1D','1W','1M','3M','1Y','ALL'];track r){<button
+        @for(r of ['1D','1W','1M','3M','6M','YTD','1Y','5Y'];track r){<button
           [class.selected]="market.range===r"
           (click)="market.range=r"
         >
@@ -22,38 +22,60 @@
     <div class="chart-value">
       {{(vm.page==='overview'?vm.cash+vm.invested:market.selected.price)|currency:(vm.page==='overview'?vm.currency:'USD')}}
     </div>
-    @if(vm.page!=='overview' && market.history.length >= 2){
-    <div class="chart">
-      <svg
-        viewBox="0 0 790 270"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="Historical market prices"
-      >
-        <defs>
-          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--purple)" stop-opacity=".27" />
-            <stop offset="100%" stop-color="var(--purple)" stop-opacity="0" />
-          </linearGradient>
-        </defs>
-        @for(y of [30,90,150,210];track y){
-        <line
-          x1="0"
-          x2="790"
-          [attr.y1]="y"
-          [attr.y2]="y"
-          stroke="var(--chart-grid)"
-          stroke-dasharray="4 6"
-        />
-        }
-        <path [attr.d]="market.path+' L 790 270 L 0 270 Z'" fill="url(#fill)" />
-        <path
-          [attr.d]="market.path"
-          fill="none"
-          stroke="var(--purple)"
-          stroke-width="3"
-        />
-      </svg>
+    @if(vm.page!=='overview' && (market.historyLoading || market.history.length >= 2)){
+    <div class="chart" [class.loading]="market.historyLoading">
+      <div class="chart-canvas">
+        <svg
+          class="y-axis-svg"
+          viewBox="0 0 58 270"
+          aria-hidden="true"
+          preserveAspectRatio="xMaxYMid meet"
+        >
+          @for(y of [30,90,150,210];track y; let i = $index){
+          <text class="y-axis-label" x="56" [attr.y]="y" text-anchor="end" dominant-baseline="middle">
+            {{market.priceLevels[i]}}
+          </text>
+          }
+        </svg>
+        <svg
+          viewBox="0 0 790 270"
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="Historical market prices"
+        >
+          <defs>
+            <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--purple)" stop-opacity=".27" />
+              <stop offset="100%" stop-color="var(--purple)" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          @for(y of [30,90,150,210];track y){
+          <line
+            x1="0"
+            x2="790"
+            [attr.y1]="y"
+            [attr.y2]="y"
+            stroke="var(--chart-grid)"
+            stroke-dasharray="4 6"
+          />
+          }
+          @if(market.history.length >= 2){
+          <path [attr.d]="market.path+' L 790 270 L 0 270 Z'" fill="url(#fill)" />
+          <path
+            class="history-line"
+            [attr.d]="market.path"
+            fill="none"
+            stroke="var(--purple)"
+            stroke-width="3"
+          />
+          }
+        </svg>
+      </div>
+      @if(market.historyLoading){
+      <div class="chart-loading" role="status" aria-live="polite">
+        <span class="loading-dot"></span>Loading {{market.selected.symbol}} {{market.range}} history
+      </div>
+      }
       <div class="axis">
         <span>Period start</span><span>{{market.range}} view</span
         ><span>Period end</span>

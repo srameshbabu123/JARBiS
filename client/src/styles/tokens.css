@@ -12,8 +12,8 @@
   --pink: #ff4d8d;
   --magenta: #d93cbe;
   --purple: #9d2bff;
-  --positive: #cba6ff;
-  --negative: #ff8bb5;
+  --positive: #22c55e;
+  --negative: #f87171;
   --button-text: #050505;
   --radius-control: 8px;
   --radius-panel: 12px;
@@ -32,8 +32,8 @@
   --pink: #e60067;
   --magenta: #b812a4;
   --purple: #7209b7;
-  --positive: #7209b7;
-  --negative: #b00050;
+  --positive: #15803d;
+  --negative: #b91c1c;
   --button-text: #050505;
 }
 :root {
@@ -47,5 +47,7 @@
   --orange-wash: color-mix(in srgb, var(--orange) 12%, var(--panel));
   --pink-wash: color-mix(in srgb, var(--pink) 12%, var(--panel));
   --purple-wash: color-mix(in srgb, var(--purple) 12%, var(--panel));
+  --positive-wash: color-mix(in srgb, var(--positive) 14%, var(--panel));
+  --negative-wash: color-mix(in srgb, var(--negative) 14%, var(--panel));
   --accent-line: color-mix(in srgb, var(--purple) 40%, var(--line));
 }

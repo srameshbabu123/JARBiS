@@ -18,7 +18,9 @@
   </section>
   <section class="stat">
     <span>Unrealized return <i>⌁</i></span>
-    <h2 class="positive">{{vm.live ? (vm.pnl|currency:vm.currency) : '—'}}</h2>
+    <h2 class="positive" [class.negative]="vm.pnl < 0">
+      {{vm.live ? (vm.pnl|currency:vm.currency) : '—'}}
+    </h2>
     <small>Across current holdings</small>
   </section>
 </div>

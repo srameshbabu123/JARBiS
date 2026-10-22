@@ -275,6 +275,8 @@ main {
 .segmented {
   display: flex;
   gap: 3px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .segmented button {
   background: none;
@@ -283,6 +285,7 @@ main {
   border-radius: 5px;
   padding: 6px 8px;
   font-size: 9px;
+  white-space: nowrap;
 }
 .segmented .selected {
   background: var(--line);
@@ -300,11 +303,70 @@ main {
 }
 .chart {
   margin-top: 16px;
+  position: relative;
+}
+.chart-canvas {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+.y-axis-svg {
+  width: 100%;
+  height: 205px;
+  overflow: visible;
+}
+.y-axis-label {
+  fill: var(--muted);
+  font-size: 12px;
+  font-family: "DM Sans", sans-serif;
+}
+.chart .history-line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chart.loading svg {
+  opacity: 0.55;
+}
+.chart.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    color-mix(in oklab, var(--purple) 10%, transparent) 45%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: chart-sheen 1.05s linear infinite;
+  pointer-events: none;
 }
 .chart svg {
   width: 100%;
   height: 205px;
   overflow: visible;
+}
+.chart-loading {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+  padding: 6px 9px;
+  border-radius: 999px;
+}
+.loading-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--purple);
+  animation: loading-dot-pulse 0.9s ease-in-out infinite alternate;
 }
 .axis {
   display: flex;
@@ -328,6 +390,21 @@ main {
   border-radius: 50%;
   background: var(--purple);
   margin-right: 7px;
+}
+@keyframes chart-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes loading-dot-pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }
 .text-button {
   background: none;
