@@ -3,6 +3,7 @@ package com.jarbis.brokerage.service;
 import com.jarbis.brokerage.dto.request.CreateOrderDisputeRequestDto;
 import com.jarbis.brokerage.dto.response.OrderDisputeResponseDto;
 import com.jarbis.brokerage.entity.Order;
+import com.jarbis.brokerage.messaging.OrderAuditWriter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +20,12 @@ public class OrderDisputeService {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final OrderService orderService;
+	 private final OrderAuditWriter audit;
 
-	public OrderDisputeService(JdbcTemplate jdbcTemplate, OrderService orderService) {
+	 public OrderDisputeService(JdbcTemplate jdbcTemplate, OrderService orderService, OrderAuditWriter audit) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.orderService = orderService;
+	  this.audit = audit;
 	}
 
 	public OrderDisputeResponseDto submit(Long orderId, CreateOrderDisputeRequestDto body) {
@@ -56,6 +59,7 @@ public class OrderDisputeService {
 				accountId,
 				reason,
 				details);
+		audit.recordClientDispute(order, id, reason, details);
 
 		return jdbcTemplate.queryForObject(
 				"""

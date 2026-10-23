@@ -36,10 +36,21 @@ public class OrderAuditWriter {
     }
     @Transactional(propagation=Propagation.MANDATORY)
     public void record(Order order,String kind,Map<String,Object> details) { write(snapshot(order),kind,details); }
+    @Transactional(propagation=Propagation.MANDATORY)
+    public void recordClientDispute(Order order, Long disputeId, String reason, String details) {
+        Map<String,Object> eventDetails = new LinkedHashMap<>();
+        eventDetails.put("disputeId", disputeId);
+        eventDetails.put("reason", reason);
+        eventDetails.put("details", details);
+        write(snapshot(order), "CLIENT_DISPUTE_SUBMITTED", eventDetails, "ClientDisputeSubmitted");
+    }
     private void write(Map<String,Object> snapshot,String kind,Map<String,Object> details) {
+        write(snapshot, kind, details, "OrderLifecycle");
+    }
+    private void write(Map<String,Object> snapshot,String kind,Map<String,Object> details,String type) {
         UUID id=UUID.randomUUID();Instant at=Instant.now();
         Map<String,Object> e=new LinkedHashMap<>(snapshot);
-        e.put("schemaVersion",1);e.put("eventId",id);e.put("type","OrderLifecycle");
+        e.put("schemaVersion",1);e.put("eventId",id);e.put("type",type);
         e.put("eventType",kind);e.put("occurredAt",at);e.put("details",details);
         var auth=SecurityContextHolder.getContext().getAuthentication();
         e.put("actor",auth==null?"SYSTEM":auth.getName());

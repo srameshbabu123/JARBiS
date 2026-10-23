@@ -1,6 +1,10 @@
 :host {
   display: block;
 }
+.cancel-order {
+  color: var(--negative);
+  white-space: nowrap;
+}
 .panel-inner {
   border: 1px solid var(--line);
   border-radius: 10px;

@@ -115,7 +115,7 @@ services:
     profiles: ["analytics"]
     build: ./admin-ui
     ports:
-      - "127.0.0.1:8083:8080"
+      - "8083:8080"
     depends_on:
       analytics:
         condition: service_started
