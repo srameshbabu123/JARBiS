@@ -57,7 +57,15 @@ import {
          color-mix(in srgb, #ffffff 70%, var(--surface))
        );
      }
-     img { width: 100%; height: 100%; object-fit: contain; padding: 5px; display: block; }`,
+     img {
+       width: 100%;
+       height: 100%;
+       object-fit: contain;
+       padding: 5px;
+       display: block;
+       /* Keep very light or very dark marks readable against mixed badge tones. */
+       filter: drop-shadow(0 0 0.8px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 0.8px rgba(255, 255, 255, 0.35));
+     }`,
   ],
 })
 export class CompanyLogoComponent implements OnChanges {
@@ -65,19 +73,48 @@ export class CompanyLogoComponent implements OnChanges {
   @Input() name = "";
   @Input() color = "var(--purple)";
   failed = false;
-  badgeBackground = "#f2f2f2";
+  badgeBackground = this.defaultBadgeBackground();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["symbol"] || changes["name"]) {
       this.failed = false;
-      this.badgeBackground = "#f2f2f2";
+      this.badgeBackground = this.defaultBadgeBackground();
     }
   }
 
   onImageLoad(event: Event): void {
     const img = event.target as HTMLImageElement | null;
     if (!img) return;
-    this.badgeBackground = this.sampleBackgroundColor(img) || "#f2f2f2";
+    const sampled = this.sampleBackgroundColor(img);
+    this.badgeBackground = sampled
+      ? this.adjustForTheme(sampled)
+      : this.defaultBadgeBackground();
+  }
+
+  private defaultBadgeBackground(): string {
+    return this.isLightTheme() ? "#ececec" : "#f2f2f2";
+  }
+
+  private isLightTheme(): boolean {
+    return document.documentElement.dataset["theme"] === "light";
+  }
+
+  private adjustForTheme(color: string): string {
+    const match = color.match(/rgb\((\d+)\s+(\d+)\s+(\d+)\)/);
+    if (!match) return this.defaultBadgeBackground();
+    const r = Number(match[1]);
+    const g = Number(match[2]);
+    const b = Number(match[3]);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+    if (!this.isLightTheme() && luminance > 0.9) {
+      // Prevent white logos from disappearing on a white-tinted badge in dark mode.
+      return "#232323";
+    }
+    if (this.isLightTheme() && luminance < 0.12) {
+      return "#f2f2f2";
+    }
+    return color;
   }
 
   private sampleBackgroundColor(img: HTMLImageElement): string | null {
@@ -141,8 +178,7 @@ export class CompanyLogoComponent implements OnChanges {
     const lookupPath = isCrypto
       ? `crypto/${encodeURIComponent(ticker.split("-")[0])}`
       : `ticker/${encodeURIComponent(ticker)}`;
-    const mode = document.documentElement.dataset["theme"] === "light" ? "light" : "dark";
-    return `https://img.logo.dev/${lookupPath}?token=${encodeURIComponent(token)}&size=64&format=png&theme=${mode}`;
+    return `https://img.logo.dev/${lookupPath}?token=${encodeURIComponent(token)}&size=64&format=png`;
   }
 }
 
