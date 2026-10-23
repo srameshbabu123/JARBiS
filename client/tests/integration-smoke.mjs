@@ -24,6 +24,7 @@ try {
   const token = ['test', Buffer.from(JSON.stringify({ exp: Math.floor(Date.now()/1000) + 3600 })).toString('base64url'), 'signature'].join('.');
   const account = { id: -1101, ownerId: user.id, balance: 0, accountType: 'INVESTMENT', currency: 'USD' };
   const orders = [];
+  const assets = ['AAPL', 'AMZN', 'AMD'].map((name, index) => ({ id: -2001 - index, name, type: 'STOCK' }));
   let hasAccount = false, expire = false, posts = 0, failInitialization = false;
   const seen = new Set();
   await page.route('**/api/**', async route => {
@@ -50,9 +51,16 @@ try {
       else if (/\/accounts\/-1101\/(deposit|withdraw)$/.test(path)) {
         const amount = req.postDataJSON().amount;
         account.balance += path.endsWith('deposit') ? amount : -amount; body = account;
-      } else if (path === '/api/assets') body = [{ id: -2001, name: 'AAPL', type: 'STOCK' }];
-      else if (path === '/api/assets/by-symbol/AAPL') body = { id: -2001, name: 'AAPL', type: 'STOCK' };
-      else if (path === '/api/market-data/AAPL/latest') body = { symbol: 'AAPL', price: 100, changePercent: 1 };
+      } else if (path === '/api/assets') body = assets;
+      else if (path.startsWith('/api/assets/by-symbol/')) {
+        body = assets.find(asset => asset.name === path.split('/').at(-1));
+        if (!body) return route.fulfill({ status: 404, json: { message: 'Unknown ticker' } });
+      }
+      else if (/^\/api\/market-data\/[^/]+\/latest$/.test(path)) {
+        const symbol = path.split('/')[3];
+        if (!assets.some(asset => asset.name === symbol)) return route.fulfill({ status: 404, json: { message: 'Unknown ticker' } });
+        body = { symbol, price: 100, changePercent: 1 };
+      }
       else if (path === '/api/market-data/AAPL/history') body = [{ symbol: 'AAPL', price: 99 }, { symbol: 'AAPL', price: 100 }];
       else if (path === '/api/orders' && req.method() === 'POST') {
         posts++; const data = req.postDataJSON();
@@ -93,7 +101,36 @@ try {
     await page.locator('nav button').filter({ hasText: name }).click();
     await page.waitForURL('**/#/' + name.toLowerCase().replace(' ', '-'));
   }
-  await page.getByLabel('Stock ticker symbol').fill('AAPL');
+  const ticker = page.getByRole('combobox', { name: 'Stock ticker symbol' });
+  const suggestions = page.getByRole('listbox', { name: 'Available stock tickers' });
+  await ticker.fill('a');
+  await suggestions.waitFor();
+  assert.deepEqual(await suggestions.getByRole('option').allTextContents().then(items => items.map(item => item.trim())), ['AAPL', 'AMD', 'AMZN']);
+  await ticker.fill('aM');
+  assert.deepEqual(await suggestions.getByRole('option').allTextContents().then(items => items.map(item => item.trim())), ['AMD', 'AMZN']);
+  await suggestions.getByRole('option', { name: 'AMZN', exact: true }).click();
+  assert.equal(await ticker.inputValue(), 'AMZN');
+  assert.equal(await ticker.getAttribute('aria-expanded'), 'false');
+  await ticker.fill('a');
+  await ticker.press('ArrowUp');
+  assert.equal(await ticker.getAttribute('aria-activedescendant'), 'trade-ticker-option-2');
+  await ticker.press('ArrowDown');
+  assert.equal(await ticker.getAttribute('aria-activedescendant'), 'trade-ticker-option-0');
+  await ticker.press('Enter');
+  assert.equal(await ticker.inputValue(), 'AAPL');
+  assert.equal(await ticker.getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.locator('.review').count(), 0);
+  await ticker.fill('a');
+  await ticker.press('Escape');
+  assert.equal(await ticker.getAttribute('aria-expanded'), 'false');
+  await ticker.fill('zzzz');
+  await page.getByRole('status').filter({ hasText: 'No matching tickers available.' }).waitFor();
+  await ticker.fill('');
+  assert.equal(await ticker.getAttribute('aria-expanded'), 'false');
+  await ticker.fill('a');
+  await ticker.press('Tab');
+  assert.equal(await ticker.getAttribute('aria-expanded'), 'false');
+  await ticker.fill('AAPL');
   assert.equal(await page.getByLabel('Quantity', { exact: true }).inputValue(), '');
   await page.getByLabel('Quantity', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Review buy order' }).click();
@@ -123,5 +160,5 @@ try {
   await page.getByText('Loaded account -1101 · USD').waitFor();
   for (const endpoint of ['POST /api/auth/register', 'POST /api/auth/login', 'GET /api/auth/me', 'POST /api/accounts/mine/initialize', 'GET /api/accounts/mine/-1101', 'GET /api/holdings/account/-1101', 'GET /api/orders/account/-1101', 'POST /api/accounts/-1101/deposit', 'POST /api/accounts/-1101/withdraw', 'PUT /api/users/-1001', 'GET /api/assets', 'GET /api/assets/by-symbol/AAPL', 'GET /api/market-data/AAPL/latest', 'GET /api/market-data/AAPL/history', 'POST /api/orders']) assert(seen.has(endpoint), endpoint);
   assert.deepEqual(errors, []);
-  console.log('PASS: authenticated UI routes, signup/account initialization, login, persisted session, profile, cash, quotes, history, negative baseline IDs, order submission, sign-out and 401 redirect (mock API).');
+  console.log('PASS: authenticated UI routes, signup/account initialization, login, persisted session, profile, cash, quotes, history, ticker suggestions and keyboard selection, negative baseline IDs, order submission, sign-out and 401 redirect (mock API).');
 } finally { await browser.close(); server.close(); }

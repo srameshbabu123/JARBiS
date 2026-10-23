@@ -50,6 +50,8 @@ export class TradeComponent implements OnInit, OnChanges {
 
   side: "BUY" | "SELL" = "BUY";
   ticker = "";
+  tickerSuggestionsOpen = false;
+  activeTickerIndex = -1;
   assetId: number | null = null;
   quantity: number | null = null;
   price: number | null = null;
@@ -139,10 +141,72 @@ export class TradeComponent implements OnInit, OnChanges {
   selectTicker(sym: string) {
     this.ticker = sym;
     this.onTickerChange(sym);
+    this.closeTickerSuggestions();
+  }
+
+  get tickerSuggestions(): { symbol: string; name: string }[] {
+    const query = this.ticker.trim().toUpperCase();
+    if (!query) return [];
+
+    const candidates = new Map<string, { symbol: string; name: string }>();
+    for (const stock of this.market.stocks) {
+      const symbol = stock.symbol.toUpperCase();
+      candidates.set(symbol, { symbol, name: stock.name });
+    }
+    for (const holding of this.holdings) {
+      const symbol = this.getHoldingTicker(holding).toUpperCase();
+      if (!candidates.has(symbol)) {
+        candidates.set(symbol, { symbol, name: holding.assetName || symbol });
+      }
+    }
+    return [...candidates.values()]
+      .filter((stock) => stock.symbol.startsWith(query))
+      .sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }
+
+  openTickerSuggestions() {
+    this.tickerSuggestionsOpen = this.ticker.trim().length > 0;
+    this.activeTickerIndex = -1;
+  }
+
+  closeTickerSuggestions() {
+    this.tickerSuggestionsOpen = false;
+    this.activeTickerIndex = -1;
+  }
+
+  onTickerKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      if (this.tickerSuggestionsOpen) event.preventDefault();
+      this.closeTickerSuggestions();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      const suggestions = this.tickerSuggestions;
+      if (!suggestions.length) return;
+      event.preventDefault();
+      this.tickerSuggestionsOpen = true;
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      this.activeTickerIndex =
+        this.activeTickerIndex < 0
+          ? direction > 0
+            ? 0
+            : suggestions.length - 1
+          : (this.activeTickerIndex + direction + suggestions.length) %
+            suggestions.length;
+      return;
+    }
+    if (event.key === "Enter" && this.tickerSuggestionsOpen) {
+      const suggestion = this.tickerSuggestions[this.activeTickerIndex];
+      if (suggestion) {
+        event.preventDefault();
+        this.selectTicker(suggestion.symbol);
+      }
+    }
   }
 
   onTickerChange(value: string) {
     this.ticker = value;
+    this.openTickerSuggestions();
     this.edit();
     this.fetchQuoteAndResolve(value);
   }

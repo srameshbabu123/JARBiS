@@ -38,14 +38,52 @@
             placeholder="e.g. AAPL, NVDA, TSLA, MSFT"
             autocomplete="off"
             spellcheck="false"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="trade-ticker-suggestions"
+            [attr.aria-expanded]="tickerSuggestionsOpen"
+            [attr.aria-activedescendant]="tickerSuggestionsOpen && activeTickerIndex >= 0 ? 'trade-ticker-option-' + activeTickerIndex : null"
             [ngModel]="ticker"
             (ngModelChange)="onTickerChange($event)"
+            (focus)="openTickerSuggestions()"
+            (blur)="closeTickerSuggestions()"
+            (keydown)="onTickerKeydown($event)"
             required
           />
           @if(fetchingQuote) {
           <span class="ticker-badge loading">Fetching…</span>
           } @else if(liveQuote) {
           <span class="ticker-badge live">● LIVE</span>
+          } @if(tickerSuggestionsOpen) {
+          <div class="ticker-dropdown">
+            <ul
+              id="trade-ticker-suggestions"
+              role="listbox"
+              aria-label="Available stock tickers"
+            >
+              @for(stock of tickerSuggestions; track stock.symbol; let i =
+              $index) {
+              <li
+                [id]="'trade-ticker-option-' + i"
+                role="option"
+                [attr.aria-selected]="activeTickerIndex === i"
+                [class.highlighted]="activeTickerIndex === i"
+                (mousedown)="$event.preventDefault()"
+                (click)="selectTicker(stock.symbol)"
+              >
+                <strong>{{stock.symbol}}</strong>
+                @if(stock.name.toUpperCase() !== stock.symbol) {
+                <span>{{stock.name}}</span>
+                }
+              </li>
+              }
+            </ul>
+            @if(tickerSuggestions.length === 0) {
+            <p class="ticker-no-results" role="status">
+              No matching tickers available.
+            </p>
+            }
+          </div>
           }
         </div>
 
