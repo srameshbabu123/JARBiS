@@ -82,7 +82,7 @@ class MarketDataControllerTest {
 	@Test
 	@DisplayName("Should return market metadata entries")
 	void getMetadataReturnsEntries() {
-		List<MarketSymbolMetadata> metadata = List.of(new MarketSymbolMetadata("AAPL", "Apple Inc.", "Technology", 100L));
+		List<MarketSymbolMetadata> metadata = List.of(new MarketSymbolMetadata("AAPL", "Technology", 100L));
 		when(marketMetadataService.getMetadata(List.of("AAPL", "MSFT"))).thenReturn(metadata);
 
 		ResponseEntity<List<MarketSymbolMetadata>> response = marketDataController.getMetadata("AAPL,MSFT");

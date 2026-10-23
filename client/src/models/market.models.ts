@@ -11,7 +11,6 @@ export interface MarketStock {
 
 export interface MarketSymbolMetadata {
   symbol: string;
-  name: string;
   sector: string;
   marketCap: number;
 }

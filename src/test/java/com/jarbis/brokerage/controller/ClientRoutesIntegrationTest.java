@@ -84,7 +84,7 @@ class ClientRoutesIntegrationTest {
         when(assetRepository.findAll()).thenReturn(List.of(asset));
         when(assetRepository.findByNameIgnoreCase("AAPL")).thenReturn(Optional.of(asset));
         when(metadata.getMetadata(List.of("AAPL"))).thenReturn(List.of(
-            new com.jarbis.brokerage.marketdata.MarketSymbolMetadata("AAPL", "Apple Inc.", "Technology", 100L)));
+            new com.jarbis.brokerage.marketdata.MarketSymbolMetadata("AAPL", "Technology", 100L)));
     }
 
     @Test void clientReadRoutesRequireJwtAndReturnExpectedShapes() throws Exception {

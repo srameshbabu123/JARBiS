@@ -75,7 +75,10 @@ export class TradeComponent implements OnInit, OnChanges {
     "AMZN",
     "META",
     "AMD",
+    "PLTR",
+    "COIN",
     "SPY",
+    "QQQ",
   ];
 
   ngOnInit() {
@@ -143,7 +146,7 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   get tickerSuggestions(): { symbol: string; name: string }[] {
-    const query = this.ticker.trim().toLowerCase();
+    const query = this.ticker.trim().toUpperCase();
     if (!query) return [];
 
     const candidates = new Map<string, { symbol: string; name: string }>();
@@ -158,26 +161,8 @@ export class TradeComponent implements OnInit, OnChanges {
       }
     }
     return [...candidates.values()]
-      .filter((stock) => {
-        const symbol = stock.symbol.toLowerCase();
-        const name = (stock.name || "").toLowerCase();
-        return symbol.startsWith(query) || name.includes(query);
-      })
-      .sort((a, b) => {
-        const aSymbolStarts = a.symbol.toLowerCase().startsWith(query);
-        const bSymbolStarts = b.symbol.toLowerCase().startsWith(query);
-        if (aSymbolStarts !== bSymbolStarts) {
-          return aSymbolStarts ? -1 : 1;
-        }
-
-        const aNameStarts = (a.name || "").toLowerCase().startsWith(query);
-        const bNameStarts = (b.name || "").toLowerCase().startsWith(query);
-        if (aNameStarts !== bNameStarts) {
-          return aNameStarts ? -1 : 1;
-        }
-
-        return a.symbol.localeCompare(b.symbol);
-      });
+      .filter((stock) => stock.symbol.startsWith(query))
+      .sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
   openTickerSuggestions() {

@@ -1,104 +1,104 @@
 # US equities
-SPY|SPDR S&P 500 ETF Trust
-AAPL|Apple Inc.
-MSFT|Microsoft Corporation
-NVDA|NVIDIA Corporation
-AMZN|Amazon.com, Inc.
-GOOGL|Alphabet Inc.
-META|Meta Platforms, Inc.
-AVGO|Broadcom Inc.
-TSLA|Tesla, Inc.
-BRK.B|Berkshire Hathaway Inc. Class B
-LLY|Eli Lilly and Company
-WMT|Walmart Inc.
-JPM|JPMorgan Chase & Co.
-V|Visa Inc.
-JNJ|Johnson & Johnson
-XOM|Exxon Mobil Corporation
-MA|Mastercard Incorporated
-PG|Procter & Gamble Co.
-ORCL|Oracle Corporation
-HD|Home Depot, Inc.
-CVX|Chevron Corporation
-MRK|Merck & Co., Inc.
-COST|Costco Wholesale Corporation
-ABBV|AbbVie Inc.
-CRM|Salesforce, Inc.
-NFLX|Netflix, Inc.
-AMD|Advanced Micro Devices, Inc.
-ADBE|Adobe Inc.
-PEP|PepsiCo, Inc.
-KO|Coca-Cola Company
-BAC|Bank of America Corporation
-ACN|Accenture plc
-MCD|McDonald's Corporation
-TMO|Thermo Fisher Scientific Inc.
-CSCO|Cisco Systems, Inc.
-ABT|Abbott Laboratories
-IBM|International Business Machines Corporation
-LIN|Linde plc
-GE|GE Aerospace
-INTU|Intuit Inc.
-CAT|Caterpillar Inc.
-QCOM|QUALCOMM Incorporated
-TXN|Texas Instruments Incorporated
-AMGN|Amgen Inc.
-ISRG|Intuitive Surgical, Inc.
-NOW|ServiceNow, Inc.
-PFE|Pfizer Inc.
-DIS|Walt Disney Company
-SPGI|S&P Global Inc.
-PM|Philip Morris International Inc.
-GS|Goldman Sachs Group, Inc.
-RTX|RTX Corporation
-UBER|Uber Technologies, Inc.
-NEE|NextEra Energy, Inc.
-LOW|Lowe's Companies, Inc.
-HON|Honeywell International Inc.
-UNP|Union Pacific Corporation
-BLK|BlackRock, Inc.
-UPS|United Parcel Service, Inc.
-SBUX|Starbucks Corporation
-DE|Deere & Company
-ELV|Elevance Health, Inc.
-BA|Boeing Company
-PLD|Prologis, Inc.
-ADP|Automatic Data Processing, Inc.
-MDT|Medtronic plc
-GILD|Gilead Sciences, Inc.
-CVS|CVS Health Corporation
-LMT|Lockheed Martin Corporation
-TJX|TJX Companies, Inc.
-BKNG|Booking Holdings Inc.
-VRTX|Vertex Pharmaceuticals Incorporated
-REGN|Regeneron Pharmaceuticals, Inc.
-SYK|Stryker Corporation
-MMC|Marsh & McLennan Companies, Inc.
-ZTS|Zoetis Inc.
-MU|Micron Technology, Inc.
-PANW|Palo Alto Networks, Inc.
-SNOW|Snowflake Inc.
+SPY
+AAPL
+MSFT
+NVDA
+AMZN
+GOOGL
+META
+AVGO
+TSLA
+BRK.B
+LLY
+WMT
+JPM
+V
+JNJ
+XOM
+MA
+PG
+ORCL
+HD
+CVX
+MRK
+COST
+ABBV
+CRM
+NFLX
+AMD
+ADBE
+PEP
+KO
+BAC
+ACN
+MCD
+TMO
+CSCO
+ABT
+IBM
+LIN
+GE
+INTU
+CAT
+QCOM
+TXN
+AMGN
+ISRG
+NOW
+PFE
+DIS
+SPGI
+PM
+GS
+RTX
+UBER
+NEE
+LOW
+HON
+UNP
+BLK
+UPS
+SBUX
+DE
+ELV
+BA
+PLD
+ADP
+MDT
+GILD
+CVS
+LMT
+TJX
+BKNG
+VRTX
+REGN
+SYK
+MMC
+ZTS
+MU
+PANW
+SNOW
 
 # India equities (NSE)
-RELIANCE.NS|Reliance Industries Limited
-TCS.NS|Tata Consultancy Services Limited
-HDFCBANK.NS|HDFC Bank Limited
-INFY.NS|Infosys Limited
-ICICIBANK.NS|ICICI Bank Limited
-HINDUNILVR.NS|Hindustan Unilever Limited
-ITC.NS|ITC Limited
-SBIN.NS|State Bank of India
-BHARTIARTL.NS|Bharti Airtel Limited
-KOTAKBANK.NS|Kotak Mahindra Bank Limited
-LT.NS|Larsen & Toubro Limited
-AXISBANK.NS|Axis Bank Limited
-MARUTI.NS|Maruti Suzuki India Limited
-SUNPHARMA.NS|Sun Pharmaceutical Industries Limited
-TATAMOTORS.NS|Tata Motors Limited
+RELIANCE.NS
+TCS.NS
+HDFCBANK.NS
+INFY.NS
+ICICIBANK.NS
+HINDUNILVR.NS
+ITC.NS
+SBIN.NS
+BHARTIARTL.NS
+KOTAKBANK.NS
+LT.NS
+AXISBANK.NS
+MARUTI.NS
+SUNPHARMA.NS
+TATAMOTORS.NS
 
 # Crypto
-BTC-USD|Bitcoin
-ETH-USD|Ethereum
-BNB-USD|BNB
-SOL-USD|Solana
-XRP-USD|XRP
+BTC-USD
+ETH-USD
+BNB-USD
+SOL-USD
+XRP-USD
