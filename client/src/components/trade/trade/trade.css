@@ -97,6 +97,48 @@ select {
   gap: 6px;
   margin-top: 8px;
 }
+.ticker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px #0003;
+}
+.ticker-dropdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ticker-dropdown li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ticker-dropdown li:hover,
+.ticker-dropdown li.highlighted {
+  background: var(--purple-wash);
+  color: var(--purple);
+}
+.ticker-dropdown li span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.ticker-no-results {
+  padding: 12px 14px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
 .chips-label {
   font-size: 11px;
   color: var(--muted);
