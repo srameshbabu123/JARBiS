@@ -13,6 +13,7 @@ import {
   OrderDispute,
   MarketDataEvent,
 } from "../models/brokerage.models";
+import { MarketSymbolMetadata } from "../models/market.models";
 
 interface CachedQuote {
   event: MarketDataEvent;
@@ -155,6 +156,17 @@ export class BrokerageApiService {
         params: { range, to },
       },
     );
+  }
+
+  marketMetadata(symbols: string[]) {
+    const normalized = [
+      ...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean)),
+    ];
+    if (!normalized.length) return of([] as MarketSymbolMetadata[]);
+
+    return this.http.get<MarketSymbolMetadata[]>("/api/market-data/metadata", {
+      params: { symbols: normalized.join(",") },
+    });
   }
 
   submitOrderDispute(orderId: number, body: CreateOrderDispute) {

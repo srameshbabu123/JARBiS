@@ -40,3 +40,6 @@ brokerage.market-data.redis.key-prefix=market-data:
 brokerage.market-data.redis.retention-window=7d
 brokerage.market-data.cleanup.fixed-delay-ms=3600000
 brokerage.market-data.cleanup.initial-delay-ms=300000
+
+# Internal analytics HTTP service for metadata enrichments (sector/market-cap)
+brokerage.analytics.service-url=http://analytics:8082

@@ -347,6 +347,35 @@ main {
   height: 205px;
   overflow: visible;
 }
+.chart .hover-guide {
+  stroke: color-mix(in srgb, var(--purple) 70%, var(--line));
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+.chart .hover-point {
+  fill: var(--surface);
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+.chart-hover-readout {
+  position: absolute;
+  left: 74px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.chart-hover-readout strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
 .chart-loading {
   position: absolute;
   top: 10px;
@@ -616,6 +645,68 @@ td:first-child {
   gap: 12px;
   margin-bottom: 24px;
   align-items: center;
+}
+.table-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sort-header {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sort-header.active {
+  color: var(--orange);
+}
+.sort-indicator {
+  display: inline-block;
+  width: 1.3ch;
+  text-align: center;
+}
+.market-table {
+  table-layout: fixed;
+}
+.market-table .col-company {
+  width: 34%;
+}
+.market-table .col-price {
+  width: 12%;
+}
+.market-table .col-change {
+  width: 12%;
+}
+.market-table .col-sector {
+  width: 18%;
+}
+.market-table .col-cap {
+  width: 16%;
+}
+.market-table .col-watch {
+  width: 8%;
+}
+.market-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.market-table th:first-child {
+  padding-left: 4px;
+}
+.table-pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 input,
 select {
@@ -909,6 +1000,10 @@ footer small {
   }
   .filters > input {
     width: 100%;
+  }
+  .table-tools,
+  .table-pagination {
+    flex-wrap: wrap;
   }
   footer {
     flex-wrap: wrap;

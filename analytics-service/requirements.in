@@ -4,3 +4,4 @@ psycopg[binary,pool]>=3.2,<4
 pandas>=2.2,<4
 bcrypt>=4,<6
 python-multipart>=0.0.20,<1
+yfinance>=0.2.54,<1

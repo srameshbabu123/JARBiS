@@ -8,3 +8,9 @@ export interface MarketStock {
   cap: number;
   color: string;
 }
+
+export interface MarketSymbolMetadata {
+  symbol: string;
+  sector: string;
+  marketCap: number;
+}
