@@ -146,22 +146,37 @@ export class TradeComponent implements OnInit, OnChanges {
   }
 
   get tickerSuggestions(): { symbol: string; name: string }[] {
-    const query = this.ticker.trim().toUpperCase();
-    if (!query) return [];
+    const queryRaw = this.ticker.trim();
+    if (!queryRaw) return [];
+    const query = queryRaw.toUpperCase();
+    const queryLower = queryRaw.toLowerCase();
 
     const candidates = new Map<string, { symbol: string; name: string }>();
     for (const stock of this.market.stocks) {
       const symbol = stock.symbol.toUpperCase();
-      candidates.set(symbol, { symbol, name: stock.name });
+      candidates.set(symbol, {
+        symbol,
+        name: stock.name || this.market.getCompanyNameForSymbol(symbol),
+      });
     }
     for (const holding of this.holdings) {
       const symbol = this.getHoldingTicker(holding).toUpperCase();
       if (!candidates.has(symbol)) {
-        candidates.set(symbol, { symbol, name: holding.assetName || symbol });
+        candidates.set(symbol, {
+          symbol,
+          name:
+            this.market.getCompanyNameForSymbol(symbol) ||
+            holding.assetName ||
+            symbol,
+        });
       }
     }
     return [...candidates.values()]
-      .filter((stock) => stock.symbol.startsWith(query))
+      .filter(
+        (stock) =>
+          stock.symbol.startsWith(query) ||
+          stock.name.toLowerCase().includes(queryLower),
+      )
       .sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
@@ -223,17 +238,20 @@ export class TradeComponent implements OnInit, OnChanges {
       return;
     }
     const rawLower = raw.toLowerCase();
+    const resolvedFromName = this.market.resolveSymbolFromQuery(raw);
 
     // 1. Resolve asset ID and canonical symbol
     const matchingHolding = this.holdings.find(
       (h) =>
         this.getHoldingTicker(h).toLowerCase() === rawLower ||
-        (h.assetName && h.assetName.toLowerCase() === rawLower),
+        (h.assetName && h.assetName.toLowerCase() === rawLower) ||
+        (h.assetName && h.assetName.toLowerCase().startsWith(rawLower)),
     );
 
     const matchingStock = this.market.stocks.find(
       (s) =>
         s.symbol.toLowerCase() === rawLower ||
+        s.symbol.toLowerCase() === resolvedFromName.toLowerCase() ||
         s.name.toLowerCase() === rawLower ||
         s.name.toLowerCase().startsWith(rawLower),
     );
@@ -242,10 +260,10 @@ export class TradeComponent implements OnInit, OnChanges {
       ? matchingHolding.assetName &&
         matchingHolding.assetName.toLowerCase() === rawLower
         ? this.getHoldingTicker(matchingHolding).toUpperCase()
-        : raw.toUpperCase()
+        : resolvedFromName.toUpperCase()
       : matchingStock
         ? matchingStock.symbol.toUpperCase()
-        : raw.toUpperCase();
+        : resolvedFromName.toUpperCase();
 
     if (matchingHolding) {
       this.assetId = matchingHolding.assetId;
@@ -342,6 +360,7 @@ export class TradeComponent implements OnInit, OnChanges {
     const raw = (this.ticker || "").trim();
     if (!raw) return "";
     const rawLower = raw.toLowerCase();
+    const resolvedFromName = this.market.resolveSymbolFromQuery(raw);
 
     const h = this.holdings.find(
       (item) =>
@@ -353,12 +372,13 @@ export class TradeComponent implements OnInit, OnChanges {
     const stock = this.market.stocks.find(
       (s) =>
         s.symbol.toLowerCase() === rawLower ||
+        s.symbol.toLowerCase() === resolvedFromName.toLowerCase() ||
         s.name.toLowerCase() === rawLower ||
         s.name.toLowerCase().startsWith(rawLower),
     );
     if (stock) return stock.symbol.toUpperCase();
 
-    return raw.toUpperCase();
+    return resolvedFromName.toUpperCase();
   }
 
   get holding() {

@@ -19,9 +19,18 @@ public class MarketDataAssetInitializer implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) {
-		for (String symbol : symbolProvider.getSymbols()) {
-			assetRepository.findByNameIgnoreCase(symbol)
-					.orElseGet(() -> assetRepository.save(new StockAsset(symbol)));
+		for (MarketDataSymbolProvider.SymbolEntry entry : symbolProvider.getSymbolEntries()) {
+			String symbol = entry.symbol();
+			String assetName = entry.assetName();
+
+			assetRepository.findByNameIgnoreCase(assetName)
+					.or(() -> assetRepository.findByNameIgnoreCase(symbol))
+					.ifPresentOrElse(existing -> {
+						if (!assetName.equalsIgnoreCase(existing.getName())) {
+							existing.setName(assetName);
+							assetRepository.save(existing);
+						}
+					}, () -> assetRepository.save(new StockAsset(assetName)));
 		}
 	}
 }
