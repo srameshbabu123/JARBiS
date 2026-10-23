@@ -15,6 +15,7 @@ import { CompanyLogoComponent } from "../../shared/company-logo/company-logo";
 export class PerformanceChartComponent {
   protected readonly market = inject(MarketService);
   protected readonly workspace = inject(WorkspaceService);
+  protected readonly maxWatchlistPreview = 5;
 
   protected hoveredPoint: {
     index: number;
@@ -84,6 +85,12 @@ export class PerformanceChartComponent {
 
   protected clearChartHover(): void {
     this.hoveredPoint = null;
+  }
+
+  protected get watchlistPreview() {
+    return this.market.stocks
+      .filter((stock) => this.market.watched.includes(stock.symbol))
+      .slice(0, this.maxWatchlistPreview);
   }
 
   private toChartPoint(index: number, events: { price: number }[]): { x: number; y: number } {

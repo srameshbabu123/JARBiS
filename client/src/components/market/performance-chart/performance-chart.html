@@ -122,8 +122,8 @@
         View all ↗
       </button>
     </div>
-    @for(s of market.stocks;track
-    s.symbol){@if(market.watched.includes(s.symbol)){<button
+    @for(s of watchlistPreview;track
+    s.symbol){<button
       class="stock-row"
       (click)="market.chart(s)"
     >
@@ -135,7 +135,7 @@
           >{{s.change>0?'+':''}}{{s.change}}%</small
         ></span
       ></button
-    >}}@if(!market.watched.length){
+    >}@if(!market.watched.length){
     <p class="muted">Add stocks from the screener to get started.</p>
     }<button class="add-watch" (click)="vm.go('Screener')">
       + Discover more assets
