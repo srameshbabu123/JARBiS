@@ -84,9 +84,7 @@
         </div>
 
         <div class="asset-summary">
-          <span class="stock-icon"
-            >{{assetSymbol ? assetSymbol.slice(0, 1) : '?'}}</span
-          >
+          <app-company-logo [symbol]="assetSymbol" [name]="assetLabel" />
           <div>
             <strong>{{assetLabel}}</strong>
             <small>

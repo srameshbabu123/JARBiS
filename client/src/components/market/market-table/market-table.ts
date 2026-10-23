@@ -4,6 +4,7 @@ import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { WorkspaceService } from "../../../services/workspace.service";
+import { CompanyLogoComponent } from "../../shared/company-logo/company-logo";
 
 type SortColumn = "symbol" | "price" | "change" | "sector" | "cap";
 
@@ -11,7 +12,7 @@ type SortColumn = "symbol" | "price" | "change" | "sector" | "cap";
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [":host { display: block; }"],
   selector: "app-market-table",
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CompanyLogoComponent],
   templateUrl: "./market-table.html",
 })
 export class MarketTableComponent {

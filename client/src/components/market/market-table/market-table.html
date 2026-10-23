@@ -80,9 +80,8 @@
         <tr>
           <td>
             <button class="asset-cell text-button" (click)="market.chart(s)">
-              <span class="stock-icon" [style.color]="s.color"
-                >{{s.symbol[0]}}</span
-              ><span><b>{{s.symbol}}</b><small>{{s.name}}</small></span>
+              <app-company-logo [symbol]="s.symbol" [name]="s.name" [color]="s.color" />
+              <span><b>{{s.symbol}}</b><small>{{s.name}}</small></span>
             </button>
           </td>
           <td>{{s.price|currency}}</td>

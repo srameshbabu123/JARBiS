@@ -228,6 +228,8 @@ services:
 
   client:
     build: ./client
+    environment:
+      LOGO_DEV_TOKEN: ${LOGO_DEV_TOKEN:-}
     ports:
       - "8095:80"
     depends_on:

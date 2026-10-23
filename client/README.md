@@ -89,6 +89,8 @@ Login and registration return `{user, token, tokenType}`. The client restores an
 
 Set `BROKERAGE_MARKET_DATA_API_KEY` on **the backend**, and run its market-data poller with Redis available. Quotes/history come from Java's collected data; missing quotes return 503 and are never replaced with a browser-to-provider call. History contains only retained observations, not invented long-range prices. The asset catalog drives the initial market list. Watchlists remain browser-local and scoped to the signed-in user; News opens external reporting links rather than an in-app feed.
 
+Company marks use Logo.dev's ticker/crypto image endpoints and fall back to the ticker initial if no image is available. Create a Logo.dev **publishable key** (`pk_...`; some accounts use `live_...`) and set `LOGO_DEV_TOKEN` in the environment used by Docker Compose; the client container injects it at startup. Do not use a secret API key (`sk_...`) in the browser. For local `npm start`, set the publishable key in `src/assets/logo-config.js`. Restrict the publishable key to your app's domains in Logo.dev. Without a supported publishable key, the app continues to show initial-based icons.
+
 For a production build, `ng serve` and its proxy are absent. Your web server must serve `dist/client/browser` and forward `/api/` to Java, removing the prefix. This change configures development connectivity; it does not deploy Nginx.
 
 ## Verification
