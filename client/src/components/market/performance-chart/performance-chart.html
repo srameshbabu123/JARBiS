@@ -127,9 +127,8 @@
       class="stock-row"
       (click)="market.chart(s)"
     >
-      <span class="stock-icon" [style.color]="s.color"
-        >{{s.symbol.slice(0,1)}}</span
-      ><span><b>{{s.symbol}}</b><small>{{s.name}}</small></span
+      <app-company-logo [symbol]="s.symbol" [name]="s.name" [color]="s.color" />
+      <span><b>{{s.symbol}}</b><small>{{s.name}}</small></span
       ><span class="stock-price"
         ><b>{{s.price|currency:'USD'}}</b
         ><small [class.negative]="s.change<0" class="positive"

@@ -4,11 +4,12 @@ import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { WorkspaceService } from "../../../services/workspace.service";
+import { CompanyLogoComponent } from "../../shared/company-logo/company-logo";
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [":host { display: block; }"],
   selector: "app-performance-chart",
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CompanyLogoComponent],
   templateUrl: "./performance-chart.html",
 })
 export class PerformanceChartComponent {

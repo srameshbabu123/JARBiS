@@ -12,5 +12,7 @@ FROM nginx:alpine
 
 COPY --from=build /app/dist/client/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint/40-logo-config.sh /docker-entrypoint.d/40-logo-config.sh
+RUN chmod +x /docker-entrypoint.d/40-logo-config.sh
 
 EXPOSE 80

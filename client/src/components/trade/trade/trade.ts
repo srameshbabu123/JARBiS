@@ -25,13 +25,14 @@ import {
 import { BrokerageApiService } from "../../../services/brokerage-api.service";
 import { SessionService } from "../../../services/session.service";
 import { MarketService } from "../../../services/market.service";
+import { CompanyLogoComponent } from "../../shared/company-logo/company-logo";
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [":host { display: block; }"],
   selector: "app-trade",
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CompanyLogoComponent],
   templateUrl: "./trade.html",
   styleUrl: "./trade.css",
 })
