@@ -347,6 +347,7 @@ export class MarketService {
       if (!item) return stock;
       return {
         ...stock,
+        name: item.name || stock.name,
         sector: item.sector || "Unknown",
         cap: Number(item.marketCap) || 0,
       };
@@ -355,6 +356,7 @@ export class MarketService {
     if (selectedMetadata) {
       this.selected = {
         ...this.selected,
+        name: selectedMetadata.name || this.selected.name,
         sector: selectedMetadata.sector || "Unknown",
         cap: Number(selectedMetadata.marketCap) || 0,
       };
