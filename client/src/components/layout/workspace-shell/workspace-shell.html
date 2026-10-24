@@ -39,10 +39,7 @@
     </div>
     <div class="header-right">
       <app-theme-toggle />
-      <span class="demo"
-        ><span class="dot"></span>{{vm.live?'API connected':'Connecting to
-        API'}}</span
-      >@if(vm.session.currentUser){<button
+      @if(vm.session.currentUser){<button
         class="outline"
         (click)="vm.signOut()"
       >
@@ -73,9 +70,6 @@
           balance, and holdings.':'A clearer view of your investing world.'}}
         </p>
       </div>
-      <span class="sample-tag"
-        >{{vm.live?'Account data from API':'Account loading'}}</span
-      >
     </div>
     @if(vm.error){
     <p role="alert" class="alert">{{vm.error}}</p>
@@ -86,9 +80,6 @@
     <footer>
       <app-brand-logo [compact]="true" /><span
         >A clearer view. A confident next step.</span
-      ><small
-        >{{vm.live?'Brokerage data from API':'Account connection
-        pending'}}</small
       >
     </footer>
   </main>

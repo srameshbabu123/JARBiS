@@ -2,3 +2,9 @@
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/shared.css";
+
+/* Hide connection labels even if a stale shell template is still cached. */
+.header-right > .demo,
+.page-heading > .sample-tag {
+	display: none !important;
+}
