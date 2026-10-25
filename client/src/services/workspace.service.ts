@@ -318,8 +318,7 @@ export class WorkspaceService {
           this.cash = r.account.balance;
           this.holdings = r.holdings;
           this.orders = r.orders;
-          this.notice =
-            "Loaded account " + r.account.id + " · " + r.account.currency;
+          this.notice = "";
         },
         error: () => {
           this.busy = false;

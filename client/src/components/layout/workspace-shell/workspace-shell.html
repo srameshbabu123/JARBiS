@@ -4,20 +4,15 @@
   ><span class="nav-label">WORKSPACE</span>
   <nav>
     @for(item of vm.nav;track item;let i=$index){<button
-      type="button"
       [routerLink]="'/' + item.toLowerCase().replace(' ', '-')"
       [class.active]="vm.page===item.toLowerCase().replace(' ','-')"
+      (click)="vm.go(item)"
     >
       <span>{{vm.icons[i]}}</span
       >{{item}}@if(item==='Watchlist'){<em>{{market.watched.length}}</em>}</button
     >}
   </nav>
   <div class="sidebar-bottom">
-    <div class="preview-card">
-      <span class="dot"></span> Built for your next move
-      <p>Your portfolio.<br />A fresh perspective.</p>
-      <button (click)="vm.go('Charts')">Explore the markets ↗</button>
-    </div>
     <button class="user" (click)="vm.go('Profile')">
       <span class="avatar">{{vm.profileName.slice(0,1)}}</span
       ><span
@@ -39,10 +34,7 @@
     </div>
     <div class="header-right">
       <app-theme-toggle />
-      <span class="demo"
-        ><span class="dot"></span>{{vm.live?'API connected':'Connecting to
-        API'}}</span
-      >@if(vm.session.currentUser){<button
+      @if(vm.session.currentUser){<button
         class="outline"
         (click)="vm.signOut()"
       >
