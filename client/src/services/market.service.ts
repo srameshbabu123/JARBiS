@@ -84,8 +84,13 @@ export class MarketService {
   set query(value: string) {
     this.queryState.set(value);
     clearTimeout(this.searchDebounceTimer);
-    const clean = (value || "").trim().toUpperCase();
-    if (clean.length >= 1 && clean.length <= 6 && /^[A-Z]+$/.test(clean)) {
+    const raw = (value || "").trim();
+    const clean = (this.resolveSymbolFromQuery(raw) || raw).toUpperCase();
+    if (
+      clean.length >= 1 &&
+      clean.length <= 20 &&
+      /^[A-Z0-9.\-]+$/.test(clean)
+    ) {
       if (!this.stocks.some((s) => s.symbol === clean)) {
         this.searchDebounceTimer = setTimeout(() => {
           this.api.latestMarketData(clean).subscribe({
@@ -98,7 +103,7 @@ export class MarketService {
                 const newStock: MarketStock = {
                   id: 0,
                   symbol: clean,
-                  name: clean,
+                  name: this.getCompanyNameForSymbol(clean),
                   price: Math.round(e.price * 100) / 100,
                   change:
                     typeof e.changePercent === "number"
@@ -250,9 +255,8 @@ export class MarketService {
     this.api.assets().subscribe({
       next: (assets) => {
         this.stocks = assets.map((asset) => ({
+          ...this.parseAssetName(asset.name),
           id: asset.id,
-          symbol: asset.name,
-          name: asset.name,
           price: 0,
           change: 0,
           sector: "Unknown",
@@ -286,7 +290,7 @@ export class MarketService {
           .map((e) => ({
             id: 0,
             symbol: e.symbol,
-            name: e.symbol,
+            name: this.getCompanyNameForSymbol(e.symbol),
             price: e.price,
             change: e.changePercent ?? 0,
             sector: "Unknown",
@@ -359,6 +363,51 @@ export class MarketService {
         cap: Number(selectedMetadata.marketCap) || 0,
       };
     }
+  }
+
+  getCompanyNameForSymbol(symbol: string) {
+    const clean = (symbol || "").trim().toUpperCase();
+    if (!clean) return "";
+    const stock = this.stocks.find((item) => item.symbol.toUpperCase() === clean);
+    return stock?.name || clean;
+  }
+
+  resolveSymbolFromQuery(query: string) {
+    const raw = (query || "").trim();
+    if (!raw) return "";
+
+    const upper = raw.toUpperCase();
+    if (/^[A-Z0-9.\-]{1,20}$/.test(upper)) return upper;
+
+    const rawLower = raw.toLowerCase();
+    const stockMatch = this.stocks.find((stock) => {
+      const nameLower = (stock.name || "").toLowerCase();
+      const symbolLower = (stock.symbol || "").toLowerCase();
+      return (
+        nameLower === rawLower ||
+        nameLower.startsWith(rawLower) ||
+        symbolLower === rawLower ||
+        symbolLower.startsWith(rawLower)
+      );
+    });
+    return stockMatch?.symbol?.toUpperCase() || "";
+  }
+
+  private parseAssetName(assetName: string): { symbol: string; name: string } {
+    const raw = (assetName || "").trim();
+    if (!raw) {
+      return { symbol: "", name: "" };
+    }
+
+    const suffixMatch = raw.match(/\(([A-Z0-9.\-]{1,20})\)\s*$/i);
+    if (!suffixMatch) {
+      const symbol = raw.toUpperCase();
+      return { symbol, name: this.getCompanyNameForSymbol(symbol) };
+    }
+
+    const symbol = suffixMatch[1].toUpperCase();
+    const display = raw.replace(/\s*\([A-Z0-9.\-]{1,20}\)\s*$/i, "").trim();
+    return { symbol, name: display || this.getCompanyNameForSymbol(symbol) };
   }
 
   refreshHistory(symbol: string, range: string, clearBeforeLoad = false) {

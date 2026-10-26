@@ -1,104 +1,104 @@
 # US equities
-SPY
-AAPL
-MSFT
-NVDA
-AMZN
-GOOGL
-META
-AVGO
-TSLA
-BRK.B
-LLY
-WMT
-JPM
-V
-JNJ
-XOM
-MA
-PG
-ORCL
-HD
-CVX
-MRK
-COST
-ABBV
-CRM
-NFLX
-AMD
-ADBE
-PEP
-KO
-BAC
-ACN
-MCD
-TMO
-CSCO
-ABT
-IBM
-LIN
-GE
-INTU
-CAT
-QCOM
-TXN
-AMGN
-ISRG
-NOW
-PFE
-DIS
-SPGI
-PM
-GS
-RTX
-UBER
-NEE
-LOW
-HON
-UNP
-BLK
-UPS
-SBUX
-DE
-ELV
-BA
-PLD
-ADP
-MDT
-GILD
-CVS
-LMT
-TJX
-BKNG
-VRTX
-REGN
-SYK
-MMC
-ZTS
-MU
-PANW
-SNOW
+AAPL|Apple
+MSFT|Microsoft
+NVDA|NVIDIA
+AMZN|Amazon
+GOOGL|Alphabet
+META|Meta
+AVGO|Broadcom
+TSLA|Tesla
+BRK.B|Berkshire Hathaway Class B
+LLY|Eli Lilly
+WMT|Walmart
+JPM|JPMorgan Chase
+V|Visa
+JNJ|Johnson & Johnson
+XOM|Exxon Mobil
+MA|Mastercard
+PG|Procter & Gamble
+ORCL|Oracle
+HD|Home Depot
+CVX|Chevron
+MRK|Merck
+COST|Costco
+ABBV|AbbVie
+CRM|Salesforce
+NFLX|Netflix
+AMD|Advanced Micro Devices
+ADBE|Adobe
+PEP|PepsiCo
+KO|Coca-Cola
+BAC|Bank of America
+ACN|Accenture
+MCD|McDonald's
+TMO|Thermo Fisher Scientific
+CSCO|Cisco
+ABT|Abbott Laboratories
+IBM|IBM
+LIN|Linde
+GE|GE Aerospace
+INTU|Intuit
+CAT|Caterpillar
+QCOM|Qualcomm
+TXN|Texas Instruments
+AMGN|Amgen
+ISRG|Intuitive Surgical
+NOW|ServiceNow
+PFE|Pfizer
+DIS|Disney
+SPGI|S&P Global
+PM|Philip Morris International
+GS|Goldman Sachs
+RTX|RTX Corporation
+UBER|Uber
+NEE|NextEra Energy
+LOW|Lowe's
+HON|Honeywell
+UNP|Union Pacific
+BLK|BlackRock
+UPS|United Parcel Service
+SBUX|Starbucks
+DE|Deere & Company
+ELV|Elevance Health
+BA|Boeing
+PLD|Prologis
+ADP|Automatic Data Processing
+MDT|Medtronic
+GILD|Gilead Sciences
+CVS|CVS Health
+LMT|Lockheed Martin
+TJX|TJX Companies
+BKNG|Booking Holdings
+VRTX|Vertex Pharmaceuticals
+REGN|Regeneron Pharmaceuticals
+SYK|Stryker
+MMC|Marsh McLennan
+ZTS|Zoetis
+MU|Micron Technology
+PANW|Palo Alto Networks
+SNOW|Snowflake
+SPY|SPDR S&P 500 ETF Trust
 
 # India equities (NSE)
-RELIANCE.NS
-TCS.NS
-HDFCBANK.NS
-INFY.NS
-ICICIBANK.NS
-HINDUNILVR.NS
-ITC.NS
-SBIN.NS
-BHARTIARTL.NS
-KOTAKBANK.NS
-LT.NS
-AXISBANK.NS
-MARUTI.NS
-SUNPHARMA.NS
-TATAMOTORS.NS
+RELIANCE.NS|Reliance Industries
+TCS.NS|Tata Consultancy Services
+HDFCBANK.NS|HDFC Bank
+INFY.NS|Infosys
+ICICIBANK.NS|ICICI Bank
+HINDUNILVR.NS|Hindustan Unilever
+ITC.NS|ITC
+SBIN.NS|State Bank of India
+BHARTIARTL.NS|Bharti Airtel
+KOTAKBANK.NS|Kotak Mahindra Bank
+LT.NS|Larsen & Toubro
+AXISBANK.NS|Axis Bank
+MARUTI.NS|Maruti Suzuki
+SUNPHARMA.NS|Sun Pharmaceutical
+TATAMOTORS.NS|Tata Motors
 
 # Crypto
-BTC-USD
-ETH-USD
-BNB-USD
-SOL-USD
-XRP-USD
+BTC-USD|Bitcoin
+ETH-USD|Ethereum
+BNB-USD|BNB
+SOL-USD|Solana
+XRP-USD|XRP
