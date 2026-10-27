@@ -3,10 +3,13 @@ aside {
   inset: 0 auto 0 0;
   width: 232px;
   border-right: 1px solid var(--line);
-  padding: 30px 20px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .brand {
   display: flex;
@@ -14,24 +17,31 @@ aside {
   gap: 10px;
   font: 800 25px Manrope;
   letter-spacing: -1px;
+  max-width: 100%;
+}
+.aside-top {
+  display: block;
+}
+.mobile-header-actions {
+  display: none;
 }
 .nav-label {
   font-size: 9px;
   color: var(--muted);
   letter-spacing: 2px;
-  margin: 48px 12px 17px;
+  margin: 20px 12px 10px;
 }
 nav {
   display: grid;
-  gap: 7px;
+  gap: 3px;
 }
 nav button {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   border: 0;
   background: none;
-  padding: 13px 15px;
+  padding: 9px 13px;
   text-align: left;
   color: var(--muted);
   border-radius: 8px;
@@ -889,7 +899,7 @@ footer small {
 @media (max-width: 1150px) {
   aside {
     width: 192px;
-    padding: 30px 14px;
+    padding: 24px 14px;
   }
   .workspace {
     margin-left: 192px;
@@ -929,42 +939,108 @@ footer small {
 }
 @media (max-width: 760px) {
   aside {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     width: auto;
-    padding: 17px;
+    padding: 12px 16px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    max-height: 100vh;
+    overflow-y: auto;
   }
-  .brand {
-    font-size: 22px;
+  .aside-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+  .brand .logo-window {
+    width: 125px;
+    height: auto;
+    aspect-ratio: 190 / 62;
+  }
+  .mobile-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mobile-header-actions app-theme-toggle {
+    display: inline-flex;
+  }
+  .mobile-header-actions app-theme-toggle button,
+  .mobile-header-actions .outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+  .hamburger-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+  .hamburger-btn:hover {
+    background: var(--panel);
+    border-color: var(--muted);
   }
   .nav-label,
   .sidebar-bottom {
     display: none;
   }
   nav {
-    display: flex;
-    overflow: auto;
-    margin-top: 20px;
-    gap: 5px;
-  }
-  nav button {
-    white-space: nowrap;
-    padding: 9px;
-    font-size: 11px;
-  }
-  nav button > span {
-    font-size: 15px;
-  }
-  nav em {
     display: none;
+  }
+  aside.menu-open nav {
+    display: grid;
+    gap: 4px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  aside.menu-open nav button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+    text-align: left;
+  }
+  aside.menu-open .nav-label {
+    display: block;
+    margin: 14px 12px 6px;
+  }
+  aside.menu-open .sidebar-bottom {
+    display: block;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
   }
   .workspace {
     margin: 0;
   }
-  header {
-    height: 58px;
-    padding: 0 20px;
+  .workspace > header {
+    display: none;
   }
   .header-right {
     gap: 10px;

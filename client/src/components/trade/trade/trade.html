@@ -5,7 +5,6 @@
         <span class="eyebrow">MAKE YOUR NEXT MOVE</span>
         <h3>Order ticket</h3>
       </div>
-      <span class="mode">{{connected?'API order':'Account unavailable'}}</span>
     </div>
     <div class="side-picker" role="group" aria-label="Order side">
       <button
@@ -238,9 +237,11 @@
       </p>
       <span class="pill">{{receipt.status}}</span>
       <p>Accepted does not mean filled. Check your order history for status.</p>
-      <button class="outline" (click)="navigate.emit('Order history')">
-        View order history ↗</button
-      ><button class="text-button" (click)="edit()">New order</button>
+      <div class="receipt-actions">
+        <button class="outline" (click)="navigate.emit('Order history')">
+          View order history ↗</button
+        ><button class="text-button" (click)="edit()">New order</button>
+      </div>
     </div>
     }
   </section>
