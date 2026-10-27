@@ -19,6 +19,12 @@ aside {
   letter-spacing: -1px;
   max-width: 100%;
 }
+.aside-top {
+  display: block;
+}
+.mobile-header-actions {
+  display: none;
+}
 .nav-label {
   font-size: 9px;
   color: var(--muted);
@@ -933,50 +939,97 @@ footer small {
 }
 @media (max-width: 760px) {
   aside {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     width: auto;
-    padding: 17px;
+    padding: 12px 16px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    max-height: 100vh;
+    overflow-y: auto;
   }
-  .brand {
-    font-size: 22px;
+  .aside-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+  .brand .logo-window {
+    width: 125px;
+    height: auto;
+    aspect-ratio: 190 / 62;
+  }
+  .mobile-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mobile-header-actions app-theme-toggle button,
+  .mobile-header-actions .outline {
+    padding: 6px 9px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+  .hamburger-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .hamburger-btn:hover {
+    background: var(--panel);
+    border-color: var(--muted);
   }
   .nav-label,
   .sidebar-bottom {
     display: none;
   }
   nav {
+    display: none;
+  }
+  aside.menu-open nav {
+    display: grid;
+    gap: 4px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  aside.menu-open nav button {
     display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    margin-top: 20px;
-    gap: 6px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    padding-bottom: 2px;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+    text-align: left;
   }
-  nav::-webkit-scrollbar {
-    display: none;
+  aside.menu-open .nav-label {
+    display: block;
+    margin: 14px 12px 6px;
   }
-  nav button {
-    white-space: nowrap;
-    padding: 9px;
-    font-size: 11px;
-  }
-  nav button > span {
-    font-size: 15px;
-  }
-  nav em {
-    display: none;
+  aside.menu-open .sidebar-bottom {
+    display: block;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
   }
   .workspace {
     margin: 0;
   }
-  header {
-    height: 58px;
-    padding: 0 20px;
+  .workspace > header {
+    display: none;
   }
   .header-right {
     gap: 10px;
