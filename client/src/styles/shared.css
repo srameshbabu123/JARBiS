@@ -967,25 +967,36 @@ footer small {
     align-items: center;
     gap: 6px;
   }
+  .mobile-header-actions app-theme-toggle {
+    display: inline-flex;
+  }
   .mobile-header-actions app-theme-toggle button,
   .mobile-header-actions .outline {
-    padding: 6px 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 10px;
     font-size: 11px;
+    white-space: nowrap;
     border-radius: 6px;
+    box-sizing: border-box;
   }
   .hamburger-btn {
     background: var(--surface);
     border: 1px solid var(--line);
     color: var(--text);
     border-radius: 6px;
-    width: 34px;
-    height: 34px;
-    display: grid;
-    place-items: center;
-    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
+    box-sizing: border-box;
   }
   .hamburger-btn:hover {
     background: var(--panel);
