@@ -32,7 +32,11 @@
           name="email"
           [(ngModel)]="email"
           required
-          autocomplete="email" /></label
+          autocomplete="email" />
+        @if(emailError){
+          <span class="field-error" role="alert">{{emailError}}</span>
+        }
+      </label
       ><label
         >Password<input
           type="password"
@@ -50,7 +54,7 @@
       ><button
         class="primary wide"
         [class.busy]="vm.busy"
-        [disabled]="vm.busy || !isFormValid"
+        [disabled]="vm.busy"
         [attr.aria-busy]="vm.busy"
       >
         {{vm.busy?'Please wait…':signup?'Create account →':'Sign in →'}}

@@ -53,11 +53,15 @@ export class LoginPageComponent {
     this.fullNameState.set(value);
   }
 
-  get passwordError(): string {
-    const pwd = this.password;
-    if (!pwd) return "";
-    if (pwd.length < 8) {
-      return `Password must be at least 8 characters long (currently ${pwd.length}).`;
+  get isEmailValid(): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());
+  }
+
+  get emailError(): string {
+    const em = this.email.trim();
+    if (!em) return "";
+    if (!this.isEmailValid) {
+      return "Please enter a valid email address.";
     }
     return "";
   }
@@ -66,8 +70,17 @@ export class LoginPageComponent {
     return !!this.password && this.password.length >= 8;
   }
 
+  get passwordError(): string {
+    const pwd = this.password;
+    if (!pwd) return "";
+    if (pwd.length < 8) {
+      return "Password must be at least 8 characters.";
+    }
+    return "";
+  }
+
   get isFormValid(): boolean {
-    if (!this.email.trim()) return false;
+    if (!this.email.trim() || !this.isEmailValid) return false;
     if (!this.isPasswordValid) return false;
     if (this.signup && !this.fullName.trim()) return false;
     return true;
@@ -77,25 +90,31 @@ export class LoginPageComponent {
     if (this.workspace.busy) return;
     this.workspace.error = "";
 
-    if (this.signup && !this.fullName.trim()) {
-      this.workspace.error = "Please enter your full name.";
-      return;
-    }
-    if (!this.email.trim()) {
-      this.workspace.error = "Please enter your email address.";
-      return;
-    }
-    if (!this.password) {
-      this.workspace.error = "Please enter your password.";
-      return;
-    }
-    if (this.password.length < 8) {
-      this.workspace.error = "Password must be at least 8 characters long.";
-      return;
+    const isSignup = this.signup;
+
+    if (isSignup) {
+      if (
+        !this.fullName.trim() ||
+        !this.email.trim() ||
+        !this.isEmailValid ||
+        !this.isPasswordValid
+      ) {
+        this.workspace.error =
+          "Please enter a valid name, email, and password (at least 8 characters).";
+        return;
+      }
+    } else {
+      if (
+        !this.email.trim() ||
+        !this.isEmailValid ||
+        !this.isPasswordValid
+      ) {
+        this.workspace.error = "Email or password is invalid.";
+        return;
+      }
     }
 
     this.workspace.busy = true;
-    const isSignup = this.signup;
     const request = isSignup
       ? this.workspace.api.createUser({
           fullName: this.fullName.trim(),
@@ -106,6 +125,7 @@ export class LoginPageComponent {
           email: this.email.trim(),
           password: this.password,
         });
+
     request
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -143,9 +163,11 @@ export class LoginPageComponent {
           } else if (err.status === 400 || err.status === 422) {
             this.workspace.error =
               serverMessage ||
-              "Password must be at least 8 characters long.";
+              (isSignup
+                ? "Please enter a valid name, email, and password (at least 8 characters)."
+                : "Email or password is invalid.");
           } else if (err.status === 401) {
-            this.workspace.error = "Incorrect email or password.";
+            this.workspace.error = "Email or password is invalid.";
           } else if (err.status === 404) {
             this.workspace.error =
               "Authentication endpoint not found. Check the Angular proxy and Java server address.";
