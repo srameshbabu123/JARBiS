@@ -75,10 +75,7 @@ export class TradeComponent implements OnInit, OnChanges {
     "AMZN",
     "META",
     "AMD",
-    "PLTR",
-    "COIN",
     "SPY",
-    "QQQ",
   ];
 
   ngOnInit() {
