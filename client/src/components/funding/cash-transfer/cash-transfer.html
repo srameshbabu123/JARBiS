@@ -73,15 +73,17 @@
       {{review.action==='deposit'?'Deposit':'Withdraw'}} {{review.amount |
       currency:review.currency}} in your selected brokerage account.
     </p>
-    <button
-      class="primary"
-      (click)="confirm()"
-      [disabled]="submitting() || uncertain()"
-    >
-      {{submitting()?'Submitting…':'Confirm cash change'}}</button
-    ><button class="text-button" (click)="reset()" [disabled]="submitting()">
-      {{uncertain()?'Start a new transfer after checking balance':'Cancel'}}
-    </button>
+    <div class="cash-review-actions">
+      <button
+        class="primary"
+        (click)="confirm()"
+        [disabled]="submitting() || uncertain()"
+      >
+        {{submitting()?'Submitting…':'Confirm cash change'}}</button
+      ><button class="text-button" (click)="reset()" [disabled]="submitting()">
+        {{uncertain()?'Start a new transfer after checking balance':'Cancel'}}
+      </button>
+    </div>
   </div>
   } } @if(error()){
   <p role="alert" class="alert">{{error()}}</p>

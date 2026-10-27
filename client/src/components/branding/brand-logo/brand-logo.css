@@ -2,17 +2,21 @@
   display: inline-block;
   flex-shrink: 0;
   vertical-align: middle;
+  max-width: 100%;
 }
 .logo-window {
   display: block;
-  width: 190px;
-  height: 62px;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
+  aspect-ratio: 190 / 62;
   overflow: hidden;
   border-radius: var(--radius-control);
 }
 .logo-window.compact {
   width: 106px;
   height: 35px;
+  aspect-ratio: 106 / 35;
 }
 img {
   display: block;

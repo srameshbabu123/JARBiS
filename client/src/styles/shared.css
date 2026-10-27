@@ -3,10 +3,13 @@ aside {
   inset: 0 auto 0 0;
   width: 232px;
   border-right: 1px solid var(--line);
-  padding: 30px 20px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .brand {
   display: flex;
@@ -14,24 +17,25 @@ aside {
   gap: 10px;
   font: 800 25px Manrope;
   letter-spacing: -1px;
+  max-width: 100%;
 }
 .nav-label {
   font-size: 9px;
   color: var(--muted);
   letter-spacing: 2px;
-  margin: 48px 12px 17px;
+  margin: 20px 12px 10px;
 }
 nav {
   display: grid;
-  gap: 7px;
+  gap: 3px;
 }
 nav button {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   border: 0;
   background: none;
-  padding: 13px 15px;
+  padding: 9px 13px;
   text-align: left;
   color: var(--muted);
   border-radius: 8px;
@@ -889,7 +893,7 @@ footer small {
 @media (max-width: 1150px) {
   aside {
     width: 192px;
-    padding: 30px 14px;
+    padding: 24px 14px;
   }
   .workspace {
     margin-left: 192px;
@@ -944,9 +948,17 @@ footer small {
   }
   nav {
     display: flex;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     margin-top: 20px;
-    gap: 5px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+  nav::-webkit-scrollbar {
+    display: none;
   }
   nav button {
     white-space: nowrap;

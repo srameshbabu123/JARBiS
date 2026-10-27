@@ -25,3 +25,10 @@ form .primary {
 .cash-panel > .muted {
   margin-top: 12px;
 }
+
+.cash-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
