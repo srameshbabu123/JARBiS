@@ -6,6 +6,10 @@ CREATE ROLE jarbis_app LOGIN;
 \password jarbis_app
 CREATE ROLE jarbis_analytics LOGIN;
 \password jarbis_analytics
+-- RDS administrators are not true superusers. PostgreSQL requires permission
+-- to SET ROLE to a different owner when creating a database for that role.
+-- Temporary memberships also permit the owner-level schema grants below.
+GRANT jarbis_app, jarbis_analytics TO CURRENT_USER;
 CREATE DATABASE jarbis_db OWNER jarbis_app;
 CREATE DATABASE jarbis_olap OWNER jarbis_analytics;
 REVOKE ALL ON DATABASE jarbis_db FROM PUBLIC;
@@ -16,3 +20,4 @@ GRANT USAGE, CREATE ON SCHEMA public TO jarbis_app;
 \connect jarbis_olap
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE, CREATE ON SCHEMA public TO jarbis_analytics;
+REVOKE jarbis_app, jarbis_analytics FROM CURRENT_USER;
