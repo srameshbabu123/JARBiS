@@ -19,6 +19,7 @@ export class MarketService {
   private readonly session = inject(SessionService);
   private readonly destroyRef = inject(DestroyRef);
   private searchDebounceTimer: any = null;
+  private scrollAnimationFrameId: number | null = null;
 
   get availableSectors() {
     const sectors = this.stocks
@@ -57,9 +58,35 @@ export class MarketService {
   }
 
   private readonly historyState = signal<MarketDataEvent[]>([]);
+  private readonly requestedHistoryKeyState = signal<string>("");
   private historyRequestId = 0;
   private readonly historyLoadingState = signal<boolean>(false);
   private readonly historyCache = new Map<string, MarketDataEvent[]>();
+  private readonly historyRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly historyRetryAttempts = new Map<string, number>();
+  private readonly HISTORY_RETRY_DELAY_MS = 2500;
+  private readonly HISTORY_RETRY_MAX_ATTEMPTS = 3;
+  private readonly historyPrefetchInFlight = new Set<string>();
+  private readonly fixedHistoryRanges = [
+    "1d",
+    "1w",
+    "1m",
+    "3m",
+    "6m",
+    "ytd",
+    "1y",
+    "5y",
+  ] as const;
+  private readonly historyRangeByLabel: Record<string, string> = {
+    "1D": "1d",
+    "1W": "1w",
+    "1M": "1m",
+    "3M": "3m",
+    "6M": "6m",
+    YTD: "ytd",
+    "1Y": "1y",
+    "5Y": "5y",
+  };
   get history() {
     return this.historyState();
   }
@@ -205,6 +232,15 @@ export class MarketService {
       if (typeof document !== "undefined" && onVisibility) {
         document.removeEventListener("visibilitychange", onVisibility);
       }
+      if (this.scrollAnimationFrameId !== null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(this.scrollAnimationFrameId);
+        this.scrollAnimationFrameId = null;
+      }
+      for (const timerId of this.historyRetryTimers.values()) {
+        clearTimeout(timerId);
+      }
+      this.historyRetryTimers.clear();
+      this.historyRetryAttempts.clear();
     });
   }
 
@@ -248,7 +284,45 @@ export class MarketService {
   chart(s: MarketStock) {
     this.selected = s;
     this.refreshHistory(s.symbol, this.range, true);
-    void this.router.navigateByUrl("/charts");
+    const onChartsPage = this.router.url.split("?")[0] === "/charts";
+    if (onChartsPage) {
+      this.scrollChartsToTop();
+    }
+    void this.router.navigateByUrl("/charts").then(() => {
+      this.scrollChartsToTop();
+    });
+  }
+
+  private scrollChartsToTop() {
+    if (typeof window === "undefined") return;
+    if (this.scrollAnimationFrameId !== null) {
+      window.cancelAnimationFrame(this.scrollAnimationFrameId);
+      this.scrollAnimationFrameId = null;
+    }
+
+    const startY = window.scrollY || window.pageYOffset || 0;
+    if (startY <= 0) return;
+
+    const durationMs = 520;
+    const startTime = performance.now();
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const tick = (timestamp: number) => {
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const eased = easeOutCubic(progress);
+      const nextY = Math.round(startY * (1 - eased));
+      window.scrollTo(0, nextY);
+
+      if (progress < 1) {
+        this.scrollAnimationFrameId = window.requestAnimationFrame(tick);
+      } else {
+        this.scrollAnimationFrameId = null;
+        window.scrollTo(0, 0);
+      }
+    };
+
+    this.scrollAnimationFrameId = window.requestAnimationFrame(tick);
   }
 
   loadAssets() {
@@ -414,49 +488,121 @@ export class MarketService {
     if (!symbol || !this.session.token) return;
     const requestId = ++this.historyRequestId;
     const normalizedSymbol = symbol.trim().toUpperCase();
-    const historyRange =
-      {
-        "1D": "1d",
-        "1W": "1w",
-        "1M": "1m",
-        "3M": "3m",
-        "6M": "6m",
-        YTD: "ytd",
-        "1Y": "1y",
-        "5Y": "5y",
-      }[range] ?? "1m";
+    const historyRange = this.normalizeHistoryRange(range);
     const cacheKey = `${normalizedSymbol}|${historyRange}`;
+    this.requestedHistoryKeyState.set(cacheKey);
     const cached = this.historyCache.get(cacheKey);
 
     if (cached && cached.length >= 2) {
       this.historyState.set(cached);
       this.historyLoadingState.set(false);
+      this.clearHistoryRetry(cacheKey);
     }
 
     const uncachedLoad = !cached;
-    if (clearBeforeLoad && uncachedLoad) {
+    if (uncachedLoad) {
       this.historyState.set([]);
     }
     this.historyLoadingState.set(uncachedLoad);
-    const now = new Date();
-    const to = now.toISOString();
-    this.api.marketDataHistory(symbol, historyRange, to).subscribe({
+    const to = new Date().toISOString();
+    this.api.marketDataHistory(normalizedSymbol, historyRange, to).subscribe({
       next: (events) => {
         if (requestId !== this.historyRequestId) return;
         this.historyLoadingState.set(false);
         if (Array.isArray(events) && events.length >= 2) {
+          this.clearHistoryRetry(cacheKey);
           this.historyCache.set(cacheKey, events);
           this.historyState.set(events);
+          this.prefetchOtherHistoryRanges(normalizedSymbol, historyRange);
         } else {
+          this.scheduleHistoryRetry(normalizedSymbol, historyRange, cacheKey);
           this.historyState.set([]);
         }
       },
       error: () => {
         if (requestId !== this.historyRequestId) return;
-        this.historyLoadingState.set(false);
+        this.scheduleHistoryRetry(normalizedSymbol, historyRange, cacheKey);
         this.historyState.set([]);
+        if (this.requestedHistoryKeyState() === cacheKey) {
+          this.historyLoadingState.set(
+            (this.historyRetryAttempts.get(cacheKey) ?? 0) <
+              this.HISTORY_RETRY_MAX_ATTEMPTS,
+          );
+        } else {
+          this.historyLoadingState.set(false);
+        }
       },
     });
+  }
+
+  private normalizeHistoryRange(range: string) {
+    if (this.fixedHistoryRanges.includes(range as (typeof this.fixedHistoryRanges)[number])) {
+      return range;
+    }
+    return this.historyRangeByLabel[range] ?? "1m";
+  }
+
+  private clearHistoryRetry(cacheKey: string) {
+    const timerId = this.historyRetryTimers.get(cacheKey);
+    if (timerId) {
+      clearTimeout(timerId);
+      this.historyRetryTimers.delete(cacheKey);
+    }
+    this.historyRetryAttempts.delete(cacheKey);
+  }
+
+  private scheduleHistoryRetry(symbol: string, historyRange: string, cacheKey: string) {
+    if (this.historyRetryTimers.has(cacheKey)) {
+      return;
+    }
+
+    const attempts = this.historyRetryAttempts.get(cacheKey) ?? 0;
+    if (attempts >= this.HISTORY_RETRY_MAX_ATTEMPTS) {
+      return;
+    }
+
+    this.historyRetryAttempts.set(cacheKey, attempts + 1);
+    if (this.requestedHistoryKeyState() === cacheKey) {
+      this.historyLoadingState.set(true);
+    }
+    const timerId = setTimeout(() => {
+      this.historyRetryTimers.delete(cacheKey);
+      if (!this.session.token) return;
+      this.refreshHistory(symbol, historyRange);
+    }, this.HISTORY_RETRY_DELAY_MS);
+    this.historyRetryTimers.set(cacheKey, timerId);
+  }
+
+  private prefetchOtherHistoryRanges(symbol: string, requestedRange: string) {
+    if (!symbol || !this.session.token) return;
+    const to = new Date().toISOString();
+
+    for (const historyRange of this.fixedHistoryRanges) {
+      if (historyRange === requestedRange) continue;
+
+      const cacheKey = `${symbol}|${historyRange}`;
+      if (
+        this.historyCache.has(cacheKey) ||
+        this.historyPrefetchInFlight.has(cacheKey)
+      ) {
+        continue;
+      }
+
+      this.historyPrefetchInFlight.add(cacheKey);
+      this.api.marketDataHistory(symbol, historyRange, to).subscribe({
+        next: (events) => {
+          if (Array.isArray(events) && events.length >= 2) {
+            this.historyCache.set(cacheKey, events);
+          }
+        },
+        error: () => {
+          this.historyPrefetchInFlight.delete(cacheKey);
+        },
+        complete: () => {
+          this.historyPrefetchInFlight.delete(cacheKey);
+        },
+      });
+    }
   }
 
   get path() {

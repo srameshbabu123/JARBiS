@@ -10,6 +10,7 @@ import {
   finalize,
   switchMap,
   of,
+  catchError,
 } from "rxjs";
 import { BrokerageApiService } from "./brokerage-api.service";
 import { Holding, Order, Account } from "../models/brokerage.models";
@@ -289,11 +290,23 @@ export class WorkspaceService {
     this.holdings = [];
     this.orders = [];
     this.busy = true;
+    let holdingsUnavailable = false;
+    let ordersUnavailable = false;
     forkJoin({
       user: this.api.user(this.userId),
       account: this.api.account(this.accountId),
-      holdings: this.api.holdings(this.accountId),
-      orders: this.api.orders(this.accountId),
+      holdings: this.api.holdings(this.accountId).pipe(
+        catchError(() => {
+          holdingsUnavailable = true;
+          return of([] as Holding[]);
+        }),
+      ),
+      orders: this.api.orders(this.accountId).pipe(
+        catchError(() => {
+          ordersUnavailable = true;
+          return of([] as Order[]);
+        }),
+      ),
     })
       .pipe(
         takeUntil(this.resetRequests),
@@ -318,7 +331,10 @@ export class WorkspaceService {
           this.cash = r.account.balance;
           this.holdings = r.holdings;
           this.orders = r.orders;
-          this.notice = "";
+          this.notice =
+            holdingsUnavailable || ordersUnavailable
+              ? "Account loaded, but some portfolio data is temporarily unavailable."
+              : "";
         },
         error: () => {
           this.busy = false;

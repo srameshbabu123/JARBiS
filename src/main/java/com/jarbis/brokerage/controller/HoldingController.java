@@ -8,6 +8,7 @@ import com.jarbis.brokerage.entity.Holding;
 import com.jarbis.brokerage.exception.AccountNotFoundException;
 import com.jarbis.brokerage.exception.HoldingNotFoundException;
 import com.jarbis.brokerage.exception.InvalidOrderRequestException;
+import com.jarbis.brokerage.exception.MarketDataUnavailableException;
 import com.jarbis.brokerage.repository.AccountRepository;
 import com.jarbis.brokerage.repository.AssetRepository;
 import com.jarbis.brokerage.repository.HoldingRepository;
@@ -164,11 +165,20 @@ public class HoldingController {
 		dto.setAssetName(holding.getAsset().getName());
 		dto.setQuantity(holding.getQuantity());
 		dto.setAveragePrice(holding.getAveragePrice());
-		dto.setMarketValue(holdingService.getMarketValue(holding));
-		dto.setCostBasis(holdingService.getCostBasis(holding));
-		dto.setUnrealizedPnL(holdingService.computeUnrealizedPnL(holding));
-		dto.setUnrealizedPnLPercentage(holdingService.computeUnrealizedPnLPercentage(holding));
-		dto.setIsProfitable(holdingService.isProfitable(holding));
+		Double costBasis = holdingService.getCostBasis(holding);
+		dto.setCostBasis(costBasis);
+		try {
+			dto.setMarketValue(holdingService.getMarketValue(holding));
+			dto.setUnrealizedPnL(holdingService.computeUnrealizedPnL(holding));
+			dto.setUnrealizedPnLPercentage(holdingService.computeUnrealizedPnLPercentage(holding));
+			dto.setIsProfitable(holdingService.isProfitable(holding));
+		} catch (MarketDataUnavailableException ignored) {
+			// Keep holdings endpoint available when live pricing is temporarily missing.
+			dto.setMarketValue(costBasis);
+			dto.setUnrealizedPnL(0.0);
+			dto.setUnrealizedPnLPercentage(0.0);
+			dto.setIsProfitable(false);
+		}
 		return dto;
 	}
 }
