@@ -1,0 +1,18 @@
+-- Run interactively using psql as the RDS administrator against postgres.
+-- Fresh-instance bootstrap ONLY. Intentionally fails on existing roles/databases.
+-- Do not run with --single-transaction: CREATE DATABASE cannot run in a transaction.
+\set ON_ERROR_STOP on
+CREATE ROLE jarbis_app LOGIN;
+\password jarbis_app
+CREATE ROLE jarbis_analytics LOGIN;
+\password jarbis_analytics
+CREATE DATABASE jarbis_db OWNER jarbis_app;
+CREATE DATABASE jarbis_olap OWNER jarbis_analytics;
+REVOKE ALL ON DATABASE jarbis_db FROM PUBLIC;
+REVOKE ALL ON DATABASE jarbis_olap FROM PUBLIC;
+\connect jarbis_db
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO jarbis_app;
+\connect jarbis_olap
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO jarbis_analytics;

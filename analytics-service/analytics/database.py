@@ -5,6 +5,14 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 
+# V6 was published in two forms. Keep the original source immutable, retain
+# each database's actual history, and let V7 converge both schemas. This is
+# deliberately not a general checksum-repair mechanism.
+_V6_VERSION = "V6__client_portfolio_snapshot_key_update.sql"
+_V6_CANONICAL_CHECKSUM = "3e9bd53ced53dcddfd03dcbe1b44cd5a2a083d2425c1c285ffc433b15e450f7f"
+_V6_HISTORICAL_CHECKSUM = "6365379c8a92136f5b311421a05f564e72ccdb6bfb20e8374405d91f2360cdad"
+
+
 def make_pool(settings):
     return ConnectionPool(settings.db_url, min_size=1, max_size=5, timeout=5, open=False,
                           kwargs={"user": settings.db_user, "password": settings.db_password,
@@ -23,7 +31,12 @@ def migrate(pool):
             checksum = hashlib.sha256(source.encode()).hexdigest()
             previous = conn.execute("SELECT checksum FROM reporting_migrations.python_history WHERE version=%s", (path.name,)).fetchone()
             if previous:
-                if previous["checksum"] != checksum:
+                known_v6_history = (
+                    path.name == _V6_VERSION
+                    and checksum == _V6_CANONICAL_CHECKSUM
+                    and previous["checksum"] == _V6_HISTORICAL_CHECKSUM
+                )
+                if previous["checksum"] != checksum and not known_v6_history:
                     raise RuntimeError(f"Applied migration changed: {path.name}")
                 continue
             # Adopt recorded Java migrations instead of rerunning data backfills against live facts.

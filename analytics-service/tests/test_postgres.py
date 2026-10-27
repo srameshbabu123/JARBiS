@@ -142,3 +142,39 @@ def test_adopts_flyway_versions_without_rewriting_live_unknown_currency(pool, ev
     finally:
         with pool.connection() as conn:
             conn.execute("DROP TABLE reporting_migrations.flyway_schema_history")
+
+
+@pytest.mark.parametrize("historical", [False, True])
+def test_both_published_v6_schemas_converge_without_losing_snapshots(pool, historical):
+    import hashlib
+    from pathlib import Path
+
+    version = "V6__client_portfolio_snapshot_key_update.sql"
+    canonical = hashlib.sha256(
+        (Path(__file__).resolve().parents[1] / "migrations" / version).read_text().encode()
+    ).hexdigest()
+    checksum = "6365379c8a92136f5b311421a05f564e72ccdb6bfb20e8374405d91f2360cdad" if historical else canonical
+    with pool.connection() as conn:
+        conn.execute("DELETE FROM reporting_migrations.python_history WHERE version = 'V7__client_portfolio_snapshot_dataset_key.sql'")
+        conn.execute("UPDATE reporting_migrations.python_history SET checksum=%s WHERE version=%s", (checksum, version))
+        if historical:
+            # Reproduce the actual schema left behind by the alternate V6.
+            conn.execute("ALTER TABLE analytics.client_portfolio_snapshots DROP CONSTRAINT client_portfolio_snapshots_pkey")
+            conn.execute("DROP INDEX analytics.client_portfolio_asof_idx")
+            conn.execute("ALTER TABLE analytics.client_portfolio_snapshots DROP COLUMN data_source")
+            conn.execute("ALTER TABLE analytics.client_portfolio_snapshots ADD PRIMARY KEY (user_id, currency, captured_at)")
+            conn.execute("CREATE INDEX client_portfolio_asof_idx ON analytics.client_portfolio_snapshots(user_id, currency, captured_at DESC)")
+        conn.execute("INSERT INTO analytics.client_portfolio_snapshots(user_id,currency,captured_at,holdings_cost) VALUES (42,'USD','2026-03-01',100)")
+        before = conn.execute("SELECT checksum,applied_at FROM reporting_migrations.python_history WHERE version=%s", (version,)).fetchone()
+
+    migrate(pool)
+    migrate(pool)
+
+    with pool.connection() as conn:
+        assert conn.execute("SELECT checksum,applied_at FROM reporting_migrations.python_history WHERE version=%s", (version,)).fetchone() == before
+        row = conn.execute("SELECT data_source,holdings_cost FROM analytics.client_portfolio_snapshots WHERE user_id=42").fetchone()
+        assert row == {"data_source": "LIVE", "holdings_cost": Decimal("100")}
+        conn.execute("INSERT INTO analytics.client_portfolio_snapshots(user_id,currency,data_source,captured_at,holdings_cost) VALUES (42,'USD','LEGACY','2026-03-01',200)")
+        assert conn.execute("SELECT count(*) AS n FROM analytics.client_portfolio_snapshots WHERE user_id=42").fetchone()["n"] == 2
+        index = conn.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='analytics' AND indexname='client_portfolio_asof_idx'").fetchone()["indexdef"]
+        assert "user_id, currency, data_source, captured_at DESC" in index
