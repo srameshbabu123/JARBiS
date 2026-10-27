@@ -19,7 +19,7 @@
       {{signup?'Your next chapter starts here.':'A little perspective goes a
       long way.'}}
     </p>
-    <form #authForm="ngForm" (ngSubmit)="authForm.valid && authenticate()">
+    <form #authForm="ngForm" (ngSubmit)="authenticate()">
       @if(signup){<label
         >Full name<input
           name="name"
@@ -40,8 +40,19 @@
           [(ngModel)]="password"
           minlength="8"
           required
-          [autocomplete]="signup?'new-password':'current-password'" /></label
-      ><button class="primary wide" [disabled]="vm.busy || authForm.invalid">
+          [autocomplete]="signup?'new-password':'current-password'" />
+        @if(passwordError){
+          <span class="field-error" role="alert">{{passwordError}}</span>
+        } @else if(signup){
+          <small class="field-hint">Must be at least 8 characters.</small>
+        }
+      </label
+      ><button
+        class="primary wide"
+        [class.busy]="vm.busy"
+        [disabled]="vm.busy || !isFormValid"
+        [attr.aria-busy]="vm.busy"
+      >
         {{vm.busy?'Please wait…':signup?'Create account →':'Sign in →'}}
       </button>
     </form>

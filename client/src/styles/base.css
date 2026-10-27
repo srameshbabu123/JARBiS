@@ -45,6 +45,11 @@ select:focus-visible {
 }
 button:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+button:disabled.busy,
+button.busy,
+button[aria-busy="true"] {
   cursor: wait;
 }
 h1,

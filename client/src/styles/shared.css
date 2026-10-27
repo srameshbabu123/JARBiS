@@ -861,6 +861,20 @@ footer small {
     0 0 0 30px color-mix(in srgb, var(--magenta) 6%, transparent),
     0 0 0 65px color-mix(in srgb, var(--magenta) 6%, transparent);
 }
+.auth-form .field-error {
+  display: block;
+  color: var(--pink);
+  font-size: 11px;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.auth-form .field-hint {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 6px;
+  line-height: 1.4;
+}
 .auth-form {
   width: min(400px, 85%);
   margin: auto;
