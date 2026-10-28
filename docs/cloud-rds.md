@@ -44,6 +44,11 @@ are not accidentally packaged into the backend image.
 
 ## 4. HTTPS routing
 
+For one CloudFront hostname serving both applications, follow
+[the single-distribution setup](cloudfront.md). It serves the client at `/`
+and the admin UI at `/staff/`, with separate origin ports and API behaviors.
+The following is the alternative two-host ALB setup.
+
 This template assumes HTTPS termination at an ALB with ACM:
 
 | Host | EC2 target port |
