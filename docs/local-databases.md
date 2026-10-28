@@ -61,6 +61,11 @@ checksums and fail if history was changed. Fix mistakes with a NEW migration.
 Applied data files run once, so restarting does not reset balances or holdings.
 Do not put credentials or a production data dump in committed SQL.
 
+The two previously published OLAP V6 variants have a narrowly scoped compatibility
+path; see [team V6 compatibility](admin-dashboard.md#team-compatibility-for-the-two-published-v6-versions).
+Pull the complete fix and rebuild the images, rather than changing checksums or
+deleting database volumes. All other migration checksum validation remains strict.
+
 ## Existing databases and the former server
 
 V1 creates missing tables/indexes without dropping existing compatible JPA

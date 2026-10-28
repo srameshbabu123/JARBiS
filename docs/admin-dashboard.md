@@ -79,6 +79,35 @@ Enable `BROKERAGE_ANALYTICS_ENABLED=true` only on the designated Java deployment
 
 No volumes need to be deleted. Startup takes a PostgreSQL advisory lock and applies additive SQL with a SHA-256 ledger in `reporting_migrations.python_history`. Recorded Flyway V1/V2 versions are adopted without rerunning their data backfills; fresh databases run the original idempotent SQL. The old Flyway history remains intact; do not run the retired Java analytics application against the same deployment. A new V3 adds internal sessions. Do not modify already applied migration files; add another version instead.
 
+### Team compatibility for the two published V6 versions
+
+V6 was accidentally changed after release: the original included `data_source`
+in the snapshot key, while a later version removed it. Different local volumes
+therefore legitimately recorded different SHA-256 checksums for the same filename.
+The repository restores the original V6 and recognizes only this verified pair:
+
+| V6 source | SHA-256 |
+| --- | --- |
+| Canonical, dataset-aware | `3e9bd53ced53dcddfd03dcbe1b44cd5a2a083d2425c1c285ffc433b15e450f7f` |
+| Historical, dataset removed | `6365379c8a92136f5b311421a05f564e72ccdb6bfb20e8374405d91f2360cdad` |
+
+With the canonical file checked out, startup accepts either recorded version
+without rerunning V6 or rewriting its history. V7 brings either schema to the
+same dataset-aware key. Fresh databases use canonical V6, then V7. Unknown
+checksums and future file edits still fail validation. V7 cannot recover dataset
+labels already discarded by the historical V6; remaining snapshots default to LIVE.
+
+Teammates should pull the same commit containing the canonical V6, compatibility
+runner, and V7, then run the Compose startup command above **with `--build`**.
+The runner is baked into the analytics image; pulling SQL alone is insufficient.
+No manual ledger updates, migration-file edits, or volume deletion are needed.
+An `olap-migrate` exit code of 0 is expected; it is a one-shot startup job.
+
+For future changes, reserve a unique new migration version when merging branches,
+never edit an applied file, and test both a fresh database and an upgrade from
+existing history. Database contents may differ between teammates; the migration
+sources and final schema should not.
+
 New volumes initialize the OLAP schema without fixtures. Existing facts are LEGACY, not live backfill. Load sample SQL only into a disposable database before initial analytics migrations. Never mix synthetic trade IDs with live ingestion; the projector rejects collisions. Old trades without a trustworthy execution timestamp are not assigned a fabricated live timestamp.
 
 ## Frontend API contract

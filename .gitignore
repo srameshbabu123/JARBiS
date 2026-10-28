@@ -25,7 +25,7 @@ node_modules/
 package-lock.json
 
 # Environment variables (keep local configuration secret)
-.env
+certs/
 
 # Application properties with credentials
 src/main/resources/application.properties
